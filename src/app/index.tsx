@@ -7,6 +7,7 @@ import { HintRow } from '@/components/hint-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WebBadge } from '@/components/web-badge';
+import { Message } from '@/components/message';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 
 function getDevMenuHint() {
@@ -38,6 +39,11 @@ export default function HomeScreen() {
             Messenger
           </ThemedText>
         </ThemedView>
+        
+        <Message 
+          author="Alex" 
+          text="Привет! Это первое сообщение!"
+        />
 
         <ThemedText type="code" style={styles.code}>
           get started
