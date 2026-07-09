@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -6,12 +7,13 @@ import { messages } from '@/data/message';
 
 
 export default function HomeScreen() {
+  const [messageList, setMessageList] = useState(messages);
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Messenger</Text>
 
       <View style={styles.messages}>
-        {messages.map((message) => {
+        {messageList.map((message) => {
           return (
             <Message
               key={message.id}
