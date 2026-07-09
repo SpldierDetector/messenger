@@ -35,7 +35,7 @@ const styles = StyleSheet.create({
         fontSize: 12,
         alignSelf: 'flex-end',
         marginRight: 4,
-        minWidth: 40,
+        width: 50,
         textAlign: 'right',
     },
      ownMessage: {

@@ -64,8 +64,6 @@ export default function HomeScreen() {
             placeholder="Написать сообщение..."
             placeholderTextColor='gray'
             style={styles.input}
-            returnKeyType="send"
-            onSubmitEditing={handleSend}
             multiline
           />
           <Pressable
