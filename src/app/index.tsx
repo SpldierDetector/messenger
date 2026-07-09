@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Platform, KeyboardAvoidingView } from 'react-native';
+import { Platform, KeyboardAvoidingView, FlatList } from 'react-native';
 import { StyleSheet, Text, View, TextInput, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -40,20 +40,19 @@ export default function HomeScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <Text style={styles.title}>Messenger</Text>
-
-        <View style={styles.messages}>
-          {messageList.map((message) => {
-            return (
-              <Message
-                key={message.id}
-                author={message.author}
-                text={message.text}
-                time={message.time}
-                isOwn={message.isOwn}
-              />
-            );
-          })}
-        </View>
+        <FlatList
+          style={styles.messages}
+          data={messageList}
+          keyExtractor={(message) => message.id.toString()}
+          renderItem={({ item }) => (
+            <Message
+              author={item.author}
+              text={item.text}
+              time={item.time}
+              isOwn={item.isOwn}
+            />
+          )}
+        />
         <View style={styles.inputRow}>
           <TextInput 
             value={text}
@@ -88,7 +87,6 @@ const styles = StyleSheet.create({
   },
   messages: {
     flex: 1,
-    gap: 8,
   },
   input: {
     flex: 1,
