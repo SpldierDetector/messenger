@@ -97,15 +97,22 @@ const styles = StyleSheet.create({
     color: 'white',
     borderWidth: 1,
     borderColor: 'gray',
-    padding: 12,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginBottom: 10
   },
   inputRow: {
     flexDirection: "row",
     alignItems: 'center',
     gap: 8,
+    paddingTop: 8,
   },
   sendButton: {
-    padding: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#2563eb'
   },
   sendButtonText: {
     color: 'white',
