@@ -64,6 +64,9 @@ export default function HomeScreen() {
             placeholder="Написать сообщение..."
             placeholderTextColor='gray'
             style={styles.input}
+            returnKeyType="send"
+            onSubmitEditing={handleSend}
+            multiline
           />
           <Pressable
             style={styles.sendButton}
@@ -100,7 +103,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    marginBottom: 10
+    marginBottom: 10,
+    maxHeight: 120,
+    textAlignVertical: 'top',
   },
   inputRow: {
     flexDirection: "row",
