@@ -10,7 +10,26 @@ export default function HomeScreen() {
   const [messageList, setMessageList] = useState(messages);
   const [text, setText] = useState('');
   function handleSend() {
-    console.log(text);
+    if (!text.trim()){
+      return;
+    }
+
+    const now = new Date();
+
+    const time = `${String(now.getHours()).padStart(2, '0')}:${String(
+    now.getMinutes()
+    ).padStart(2, '0')}`;
+
+    const newMessage = {
+      id: Date.now(),
+      author: 'Me',
+      text: text.trim(),
+      time: time,
+      isOwn: true,
+    };
+    
+    setMessageList([...messageList, newMessage]);
+    setText('')
   }
 
   return (

@@ -12,7 +12,7 @@ export function Message({author, text, time, isOwn}: MessageProps) {
         <View style={[styles.container, isOwn ? styles.ownMessage : styles.otherMessage,]}>
             {!isOwn && (<Text style={styles.author}>{author}</Text>)}
             <Text style={styles.text}>{text}</Text>
-            <Text style={styles.time}>{time}</Text>
+            <Text style={styles.time} numberOfLines={1}>{time}</Text>
         </View>
     )
 }
@@ -20,6 +20,8 @@ export function Message({author, text, time, isOwn}: MessageProps) {
 const styles = StyleSheet.create({
     container: {
         padding: 12,
+        maxWidth: '75%',
+        minWidth: 90,
     },
     author: {
         fontWeight: 'bold',
@@ -31,7 +33,10 @@ const styles = StyleSheet.create({
     time: {
         color: 'gray',
         fontSize: 12,
-        textAlign: 'right'
+        alignSelf: 'flex-end',
+        marginRight: 4,
+        minWidth: 40,
+        textAlign: 'right',
     },
      ownMessage: {
     alignSelf: 'flex-end',
