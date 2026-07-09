@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Platform, KeyboardAvoidingView, FlatList } from 'react-native';
 import { StyleSheet, Text, View, TextInput, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,6 +10,7 @@ import { messages } from '@/data/message';
 export default function HomeScreen() {
   const [messageList, setMessageList] = useState(messages);
   const [text, setText] = useState('');
+  const listRef = useRef<FlatList>(null);
   function handleSend() {
     if (!text.trim()){
       return;
@@ -41,8 +42,11 @@ export default function HomeScreen() {
       >
         <Text style={styles.title}>Messenger</Text>
         <FlatList
+          ref={listRef}
           style={styles.messages}
           data={messageList}
+          onContentSizeChange={() => {listRef.current?.scrollToEnd({animated: true});
+        }}
           keyExtractor={(message) => message.id.toString()}
           renderItem={({ item }) => (
             <Message
