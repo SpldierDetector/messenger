@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Message } from '@/components/message';
@@ -8,6 +8,7 @@ import { messages } from '@/data/message';
 
 export default function HomeScreen() {
   const [messageList, setMessageList] = useState(messages);
+  const [text, setText] = useState('');
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Messenger</Text>
@@ -25,6 +26,13 @@ export default function HomeScreen() {
           );
         })}
       </View>
+      <TextInput 
+        value={text}
+        onChangeText={setText}
+        placeholder="Написать сообщение..."
+        placeholderTextColor='gray'
+        style={styles.input}
+      />
     </SafeAreaView>
   );
 }
@@ -43,5 +51,11 @@ const styles = StyleSheet.create({
   },
   messages: {
     gap: 8,
+  },
+  input: {
+    color: 'white',
+    borderWidth: 1,
+    borderColor: 'gray',
+    padding: 12,
   },
 });
