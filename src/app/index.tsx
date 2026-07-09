@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Platform, StyleSheet, Text, View, TextInput, Pressable } from 'react-native';
+import { Platform, KeyboardAvoidingView } from 'react-native';
+import { StyleSheet, Text, View, TextInput, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Message } from '@/components/message';
@@ -34,37 +35,41 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Messenger</Text>
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <Text style={styles.title}>Messenger</Text>
 
-      <View style={styles.messages}>
-        {messageList.map((message) => {
-          return (
-            <Message
-              key={message.id}
-              author={message.author}
-              text={message.text}
-              time={message.time}
-              isOwn={message.isOwn}
-            />
-          );
-        })}
-      </View>
-      <View style={styles.inputRow}>
-        <TextInput 
-          value={text}
-          onChangeText={setText}
-          placeholder="Написать сообщение..."
-          placeholderTextColor='gray'
-          style={styles.input}
-        />
-        <Pressable
-          style={styles.sendButton}
-          onPress={handleSend}
-        >
-          <Text style={styles.sendButtonText}>Send</Text>
-        </Pressable>
-      </View>
-      
+        <View style={styles.messages}>
+          {messageList.map((message) => {
+            return (
+              <Message
+                key={message.id}
+                author={message.author}
+                text={message.text}
+                time={message.time}
+                isOwn={message.isOwn}
+              />
+            );
+          })}
+        </View>
+        <View style={styles.inputRow}>
+          <TextInput 
+            value={text}
+            onChangeText={setText}
+            placeholder="Написать сообщение..."
+            placeholderTextColor='gray'
+            style={styles.input}
+          />
+          <Pressable
+            style={styles.sendButton}
+            onPress={handleSend}
+          >
+            <Text style={styles.sendButtonText}>Send</Text>
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -82,6 +87,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   messages: {
+    flex: 1,
     gap: 8,
   },
   input: {
@@ -102,5 +108,8 @@ const styles = StyleSheet.create({
   sendButtonText: {
     color: 'white',
     fontWeight: 'bold',
+  },
+  keyboardAvoidingView: {
+    flex: 1,
   },
 });
