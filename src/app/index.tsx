@@ -11,6 +11,7 @@ export default function HomeScreen() {
   const [messageList, setMessageList] = useState(messages);
   const [text, setText] = useState('');
   const listRef = useRef<FlatList>(null);
+  const isSendDisabled = !text.trim();
   function handleSend() {
     if (!text.trim()){
       return;
@@ -40,7 +41,7 @@ export default function HomeScreen() {
         style={styles.keyboardAvoidingView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <Text style={styles.title}>Messenger</Text>
+        <Text style={styles.title}>VoXa</Text>
         <FlatList
           ref={listRef}
           style={styles.messages}
@@ -67,8 +68,11 @@ export default function HomeScreen() {
             multiline
           />
           <Pressable
-            style={styles.sendButton}
+            style={({ pressed }) => [styles.sendButton, 
+              isSendDisabled && styles.sendButtonDisabled,
+              pressed && !isSendDisabled && styles.sendButtonPressed,]}
             onPress={handleSend}
+            disabled={isSendDisabled}
           >
             <Text style={styles.sendButtonText}>Send</Text>
           </Pressable>
@@ -101,7 +105,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    marginBottom: 10,
     maxHeight: 120,
     textAlignVertical: 'top',
   },
@@ -110,6 +113,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     paddingTop: 8,
+    marginBottom: 10,
   },
   sendButton: {
     paddingHorizontal: 16,
@@ -124,4 +128,10 @@ const styles = StyleSheet.create({
   keyboardAvoidingView: {
     flex: 1,
   },
+  sendButtonDisabled: {
+    opacity: 0.4,
+  },
+  sendButtonPressed: {
+    opacity: 0.7,
+  }
 });
