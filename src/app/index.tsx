@@ -41,7 +41,21 @@ export default function HomeScreen() {
         style={styles.keyboardAvoidingView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <Text style={styles.title}>VoXa</Text>
+        <View style={styles.header}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>A</Text>
+          </View>
+
+          <View style={styles.headerInfo}>
+            <Text style={styles.headerTitle}>Alex</Text>
+            <Text style={styles.headerStatus}>online</Text>
+          </View>
+
+          <Pressable style={({ pressed }) => [styles.callButton,
+          pressed && styles.callButtonPressed,]}>
+            <Text style={styles.callButtonText}>📞</Text>
+          </Pressable>
+        </View>
         <FlatList
           ref={listRef}
           style={styles.messages}
@@ -88,12 +102,7 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: 'black',
   },
-  title: {
-    color: 'white',
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
+
   messages: {
     flex: 1,
   },
@@ -132,6 +141,55 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   sendButtonPressed: {
+    opacity: 0.7,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#27272a',
+    marginBottom: 12,
+  },
+  headerTitle: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  headerStatus: {
+    color: '#22c55e',
+    fontSize: 13,
+    marginTop: 2,
+  },
+  avatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#3f3f46',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  avatarText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  headerInfo: {
+    flex: 1,
+  },
+  callButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#27272a',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  callButtonText: {
+    fontSize: 18,
+  },
+  callButtonPressed:{
     opacity: 0.7,
   }
 });
