@@ -13,8 +13,12 @@ import { styles } from '@/styles/chat.styles';
 export default function HomeScreen() {
   const { id } = useLocalSearchParams();
   const chat = chats.find((item) => item.id.toString() === id);
+  const currentChatId = Number(id);
+  const initialMessages = messages.filter(
+    (message) => message.chatId === currentChatId
+  );
 
-  const [messageList, setMessageList] = useState(messages);
+  const [messageList, setMessageList] = useState(initialMessages);
   const [text, setText] = useState('');
   const listRef = useRef<FlatList>(null);
   const isSendDisabled = !text.trim();
@@ -32,6 +36,7 @@ export default function HomeScreen() {
 
     const newMessage = {
       id: Date.now(),
+      chatId: currentChatId,
       author: 'Me',
       text: text.trim(),
       time: time,
