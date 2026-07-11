@@ -2,7 +2,7 @@ import { router, type Href } from 'expo-router'
 import { Text, FlatList, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { styles } from './index.styles';
+import { styles } from '@/styles/index.styles';
 
 import { ChatPreview } from '@/components/chat-preview';
 import { chats } from '@/data/chat';

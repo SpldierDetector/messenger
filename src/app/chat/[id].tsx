@@ -1,18 +1,24 @@
 import { useState, useRef } from 'react'
 import { Platform, KeyboardAvoidingView, FlatList } from 'react-native';
-import { StyleSheet, Text, View, TextInput, Pressable } from 'react-native';
+import { Text, View, TextInput, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLocalSearchParams } from 'expo-router';
+import { chats } from '@/data/chat';
 
 import { Message } from '@/components/message';
 import { messages } from '@/data/message';
-import { styles } from './chat.styles';
+import { styles } from '@/styles/chat.styles';
 
 
 export default function HomeScreen() {
+  const { id } = useLocalSearchParams();
+  const chat = chats.find((item) => item.id.toString() === id);
+
   const [messageList, setMessageList] = useState(messages);
   const [text, setText] = useState('');
   const listRef = useRef<FlatList>(null);
   const isSendDisabled = !text.trim();
+
   function handleSend() {
     if (!text.trim()){
       return;
@@ -44,12 +50,14 @@ export default function HomeScreen() {
       >
         <View style={styles.header}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>A</Text>
+            <Text style={styles.avatarText}>{chat?.name[0]}</Text>
           </View>
 
           <View style={styles.headerInfo}>
-            <Text style={styles.headerTitle}>Alex Chat</Text>
-            <Text style={styles.headerStatus}>online</Text>
+            <Text style={styles.headerTitle}>{chat?.name}</Text>
+            <Text style={styles.headerStatus}>
+              {chat?.isOnline ? 'online' : 'offline'}
+            </Text>
           </View>
 
           <Pressable style={({ pressed }) => [styles.callButton,
@@ -67,7 +75,7 @@ export default function HomeScreen() {
           keyExtractor={(message) => message.id.toString()}
           renderItem={({ item }) => (
             <Message
-              author={item.author}
+              author={item.isOwn ? item.author : chat?.name ?? item.author}
               text={item.text}
               time={item.time}
               isOwn={item.isOwn}
