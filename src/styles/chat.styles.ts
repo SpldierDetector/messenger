@@ -94,5 +94,28 @@ export const styles = StyleSheet.create({
   },
   callButtonPressed:{
     opacity: 0.7,
-  }
+  },
+  notFoundContainer:{
+    flex: 1,
+    backgroundColor: 'black',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  notFoundTitle: {
+    color: 'white',
+    fontSize: 22,
+    fontWeight: '600',
+    marginBottom: 16,
+  },
+  notFoundButton: {
+    backgroundColor: '#2563eb',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+  notFoundButtonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
 });

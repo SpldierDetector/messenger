@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import { Platform, KeyboardAvoidingView, FlatList } from 'react-native';
 import { Text, View, TextInput, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { chats } from '@/data/chat';
 
 import { Message } from '@/components/message';
@@ -46,7 +46,22 @@ export default function ChatScreen() {
     setMessageList([...messageList, newMessage]);
     setText('')
   }
+if (!chat) {
+  return (
+    <SafeAreaView style={styles.notFoundContainer}>
+      <Text style={styles.notFoundTitle}>Чат не найден</Text>
 
+      <Pressable
+        style={styles.notFoundButton}
+        onPress={() => router.replace('/')}
+      >
+        <Text style={styles.notFoundButtonText}>
+          Вернуться к чатам
+        </Text>
+      </Pressable>
+    </SafeAreaView>
+  );
+}  
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -55,13 +70,13 @@ export default function ChatScreen() {
       >
         <View style={styles.header}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{chat?.name[0]}</Text>
+            <Text style={styles.avatarText}>{chat.name[0]}</Text>
           </View>
 
           <View style={styles.headerInfo}>
-            <Text style={styles.headerTitle}>{chat?.name}</Text>
+            <Text style={styles.headerTitle}>{chat.name}</Text>
             <Text style={styles.headerStatus}>
-              {chat?.isOnline ? 'online' : 'offline'}
+              {chat.isOnline ? 'online' : 'offline'}
             </Text>
           </View>
 
@@ -70,7 +85,7 @@ export default function ChatScreen() {
             <Text style={styles.callButtonText}>📞</Text>
           </Pressable>
         </View>
-        
+      
         <FlatList
           ref={listRef}
           style={styles.messages}
@@ -80,7 +95,7 @@ export default function ChatScreen() {
           keyExtractor={(message) => message.id.toString()}
           renderItem={({ item }) => (
             <Message
-              author={item.isOwn ? item.author : chat?.name ?? item.author}
+              author={item.isOwn ? item.author : chat.name ?? item.author}
               text={item.text}
               time={item.time}
               isOwn={item.isOwn}
@@ -110,4 +125,5 @@ export default function ChatScreen() {
     </SafeAreaView>
   );
 }
+
 
