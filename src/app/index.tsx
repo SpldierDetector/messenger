@@ -8,7 +8,7 @@ import { ChatPreview } from '@/components/chat-preview';
 import { chats } from '@/data/chat';
 
 
-export default function HomeScreen() {
+export default function ChatListScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Voxa</Text>

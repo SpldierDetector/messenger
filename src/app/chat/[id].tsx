@@ -10,7 +10,7 @@ import { messages } from '@/data/message';
 import { styles } from '@/styles/chat.styles';
 
 
-export default function HomeScreen() {
+export default function ChatScreen() {
   const { id } = useLocalSearchParams();
   const chat = chats.find((item) => item.id.toString() === id);
   const currentChatId = Number(id);
