@@ -6,19 +6,20 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { chats } from '@/data/chat';
 
 import { Message } from '@/components/message';
-import { messages } from '@/data/message';
+import { useMessages } from '@/providers/messages-provider';
 import { styles } from '@/styles/chat.styles';
 
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams();
+  const { messages, sendMessage } = useMessages();
+
   const chat = chats.find((item) => item.id.toString() === id);
   const currentChatId = Number(id);
-  const initialMessages = messages.filter(
+
+  const messageList = messages.filter(
     (message) => message.chatId === currentChatId
   );
-
-  const [messageList, setMessageList] = useState(initialMessages);
   const [text, setText] = useState('');
   const listRef = useRef<FlatList>(null);
   const isSendDisabled = !text.trim();
@@ -43,7 +44,7 @@ export default function ChatScreen() {
       isOwn: true,
     };
     
-    setMessageList([...messageList, newMessage]);
+    sendMessage(newMessage);
     setText('')
   }
 if (!chat) {
@@ -78,7 +79,7 @@ if (!chat) {
           >
             <Text style={styles.backButtonText}>←</Text>
           </Pressable>
-          
+
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{chat.name[0]}</Text>
           </View>
