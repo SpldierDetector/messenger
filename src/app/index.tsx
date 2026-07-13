@@ -18,7 +18,11 @@ export default function ChatListScreen() {
         keyExtractor={(chat) => chat.id.toString()}
         renderItem={({ item }) => (
           <Pressable
-            onPress={() => {
+          style={({ pressed }) => [
+            styles.chatPreview,
+            pressed && styles.chatPreviewPressed,
+          ]}  
+          onPress={() => {
               router.push(`/chat/${item.id}` as Href);
             }}
           >
