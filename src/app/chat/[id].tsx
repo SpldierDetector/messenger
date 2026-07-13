@@ -69,6 +69,16 @@ if (!chat) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <View style={styles.header}>
+          <Pressable 
+            style={({ pressed }) => [
+              styles.backButton,
+              pressed && styles.backButtonPressed,
+            ]}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.backButtonText}>←</Text>
+          </Pressable>
+          
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{chat.name[0]}</Text>
           </View>

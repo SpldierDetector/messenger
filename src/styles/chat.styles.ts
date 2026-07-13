@@ -118,4 +118,18 @@ export const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '600',
   },
+  backButton: {
+    width: 38,
+    height: 38,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  backButtonText: {
+    color: 'white',
+    fontSize: 28,
+  },
+  backButtonPressed: {
+    opacity: 0.6,
+  }
 });
