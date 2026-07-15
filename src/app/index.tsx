@@ -35,8 +35,8 @@ export default function ChatListScreen() {
             >
               <ChatPreview
                 name={item.name}
-                lastMessage={lastMessage?.text ?? item.lastMessage}
-                time={lastMessage?.time ?? item.time}
+                lastMessage={lastMessage?.text ?? 'Нет сообщений'}
+                time={lastMessage?.time ?? ''}
                 isOnline={item.isOnline}
               />
             </Pressable>
