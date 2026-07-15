@@ -1,9 +1,8 @@
-import { useState, useRef } from 'react'
-import { Platform, KeyboardAvoidingView, FlatList } from 'react-native';
-import { Text, View, TextInput, Pressable } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useLocalSearchParams } from 'expo-router';
 import { chats } from '@/data/chat';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useRef, useState } from 'react';
+import { FlatList, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Message } from '@/components/message';
 import { useMessages } from '@/providers/messages-provider';
@@ -41,6 +40,7 @@ export default function ChatScreen() {
       author: 'Me',
       text: text.trim(),
       time: time,
+      createdAt: Date.now(),
       isOwn: true,
     };
     

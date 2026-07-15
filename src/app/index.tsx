@@ -13,12 +13,31 @@ import { getLastMessage } from '@/utils/message';
 export default function ChatListScreen() {
   const { messages } = useMessages();
 
+  const sortedChats = [...chats].sort((firstChat, secondChat) => {
+    const firstLastMessage = getLastMessage(messages, firstChat.id);
+    const secondLastMessage = getLastMessage(messages, secondChat.id);
+
+    if (!firstLastMessage && !secondLastMessage) {
+      return 0;
+    }
+
+    if (!firstLastMessage){
+      return 1;
+    }
+
+    if (!secondLastMessage){
+      return -1;
+    }
+
+    return secondLastMessage.createdAt - firstLastMessage.createdAt;
+  })
+
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Voxa</Text>
 
       <FlatList
-        data={chats}
+        data={sortedChats}
         keyExtractor={(chat) => chat.id.toString()}
         renderItem={({ item }) => {
           const lastMessage = getLastMessage(messages, item.id);

@@ -1,4 +1,4 @@
-import type { MessageData } from '@/types/message'
+import type { MessageData } from '@/types/message';
 
 export const messages: MessageData[] = [
   {
@@ -7,6 +7,7 @@ export const messages: MessageData[] = [
     author: 'Alex',
     text: 'Привет! Как дела?',
     time: '20:15',
+    createdAt: Date.now(),
     isOwn: false,
   },
 
@@ -16,6 +17,7 @@ export const messages: MessageData[] = [
     author: 'Me',
     text: 'Привет! Всё отлично.',
     time: '20:16',
+    createdAt: Date.now(),
     isOwn: true,
   },
 
@@ -25,6 +27,7 @@ export const messages: MessageData[] = [
     author: 'Alex',
     text: 'Продолжаем делать мессенджер?',
     time: '20:17',
+    createdAt: Date.now(),
     isOwn: false,
   },
 
@@ -34,6 +37,7 @@ export const messages: MessageData[] = [
     author: 'John',
     text: 'До завтра?',
     time: '18:40',
+    createdAt: Date.now(),
     isOwn: false,
   },
 
@@ -43,6 +47,7 @@ export const messages: MessageData[] = [
     author: 'Me',
     text: 'Да, увидимся завтра.',
     time: '18:42',
+    createdAt: Date.now(),
     isOwn: true,
   },
 
@@ -52,6 +57,7 @@ export const messages: MessageData[] = [
     author: 'Maria',
     text: 'Хорошо, договорились',
     time: '16:05',
+    createdAt: Date.now(),
     isOwn: false,
   },
   
@@ -61,6 +67,7 @@ export const messages: MessageData[] = [
     author: 'Me',
     text: 'Отлично, тогда так и сделаем.',
     time: '16:06',
+    createdAt: Date.now(),
     isOwn: true,
   },
 ];
