@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Message } from '@/components/message';
 import { useMessages } from '@/providers/messages-provider';
 import { styles } from '@/styles/chat.styles';
+import { formatMessageTime } from '@/utils/date';
 
 
 export default function ChatScreen() {
@@ -108,7 +109,7 @@ if (!chat) {
             <Message
               author={item.isOwn ? item.author : chat.name ?? item.author}
               text={item.text}
-              time={item.time}
+              time={formatMessageTime(item.createdAt)}
               isOwn={item.isOwn}
             />
           )}

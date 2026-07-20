@@ -8,6 +8,7 @@ import { ChatPreview } from '@/components/chat-preview';
 import { chats } from '@/data/chat';
 import { useMessages } from '@/providers/messages-provider';
 import { getLastMessage } from '@/utils/message';
+import { formatMessageTime } from '@/utils/date';
 
 
 export default function ChatListScreen() {
@@ -55,7 +56,7 @@ export default function ChatListScreen() {
               <ChatPreview
                 name={item.name}
                 lastMessage={lastMessage?.text ?? 'Нет сообщений'}
-                time={lastMessage?.time ?? ''}
+                time={lastMessage ? formatMessageTime(lastMessage.createdAt) : ''}
                 isOnline={item.isOnline}
               />
             </Pressable>
