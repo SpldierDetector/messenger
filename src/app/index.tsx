@@ -9,29 +9,13 @@ import { chats } from '@/data/chat';
 import { useMessages } from '@/providers/messages-provider';
 import { getLastMessage } from '@/utils/message';
 import { formatMessageTime } from '@/utils/date';
+import { sortChatsByLatestMessage } from '@/utils/chat';
 
 
 export default function ChatListScreen() {
   const { messages } = useMessages();
 
-  const sortedChats = [...chats].sort((firstChat, secondChat) => {
-    const firstLastMessage = getLastMessage(messages, firstChat.id);
-    const secondLastMessage = getLastMessage(messages, secondChat.id);
-
-    if (!firstLastMessage && !secondLastMessage) {
-      return 0;
-    }
-
-    if (!firstLastMessage){
-      return 1;
-    }
-
-    if (!secondLastMessage){
-      return -1;
-    }
-
-    return secondLastMessage.createdAt - firstLastMessage.createdAt;
-  })
+  const sortedChats = sortChatsByLatestMessage(chats, messages);
 
   return (
     <SafeAreaView style={styles.container}>
