@@ -25,28 +25,23 @@ export default function ChatScreen() {
   const isSendDisabled = !text.trim();
 
   function handleSend() {
-    if (!text.trim()){
+    if (!text.trim()) {
       return;
     }
 
-    const now = new Date();
-
-    const time = `${String(now.getHours()).padStart(2, '0')}:${String(
-    now.getMinutes()
-    ).padStart(2, '0')}`;
+    const now = Date.now();
 
     const newMessage = {
       id: Date.now(),
       chatId: currentChatId,
       author: 'Me',
       text: text.trim(),
-      time: time,
-      createdAt: Date.now(),
+      createdAt: now,
       isOwn: true,
     };
     
     sendMessage(newMessage);
-    setText('')
+    setText('');
   }
 if (!chat) {
   return (

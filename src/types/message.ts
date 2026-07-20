@@ -3,7 +3,6 @@ export type MessageData = {
   chatId: number;
   author: string;
   text: string;
-  time: string;
   createdAt: number;
   isOwn: boolean;
 }
