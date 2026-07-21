@@ -1,18 +1,23 @@
-import { DarkTheme, DefaultTheme, ThemeProvider, Stack } from 'expo-router';
-import { useColorScheme } from 'react-native';
+import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { MessagesProvider } from '@/providers/messages-provider';
 
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={DarkTheme}>
       <MessagesProvider>
         <AnimatedSplashOverlay />
-        <Stack screenOptions={{headerShown: false}}/>
+
+        <Stack screenOptions={{
+          headerShown: false,
+          animation: 'fade',
+          contentStyle: {
+            backgroundColor: '#000000',
+          },
+        }}/>
       </MessagesProvider>
     </ThemeProvider>
   );

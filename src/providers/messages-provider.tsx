@@ -2,11 +2,14 @@ import { createContext, type ReactNode, useContext, useEffect, useState, } from 
 
 import { messages as initialMessages } from '@/data/message';
 import { loadMessages, saveMessages } from '@/services/message-storage';
+import { createOutgoingMessage } from '@/utils/create-message';
+
 import type { MessageData } from '@/types/message';
 
 type MessagesContextValue = {
 	messages: MessageData[];
-	sendMessage: (message: MessageData) => void
+	sendMessage: (chatId: number, text: string) => void;
+  isLoaded: boolean;
 };
 
 export const MessagesContext = createContext<
@@ -45,15 +48,19 @@ export function MessagesProvider({
     saveMessages(messages);
   }, [messages, isLoaded]);
 
-	function sendMessage(message: MessageData) {
-		setMessages((currentMessages) => [
+	function sendMessage(chatId: number, text: string) {
+		const message = createOutgoingMessage(chatId, text);
+
+    setMessages((currentMessages) => [
 			...currentMessages,
 			message,
 		]);
 	}
 
 	return (
-  	<MessagesContext.Provider value={{ messages, sendMessage }}>
+  	<MessagesContext.Provider 
+    value={{ messages, sendMessage, isLoaded }}
+    >
 			{children}
 			</MessagesContext.Provider>
 	);

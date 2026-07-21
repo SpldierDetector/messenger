@@ -12,7 +12,7 @@ import { formatMessageTime } from '@/utils/date';
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams();
-  const { messages, sendMessage } = useMessages();
+  const { messages, sendMessage, isLoaded } = useMessages();
 
   const chat = chats.find((item) => item.id.toString() === id);
   const currentChatId = Number(id);
@@ -30,35 +30,31 @@ export default function ChatScreen() {
     }
 
     const now = Date.now();
-
-    const newMessage = {
-      id: Date.now(),
-      chatId: currentChatId,
-      author: 'Me',
-      text: text.trim(),
-      createdAt: now,
-      isOwn: true,
-    };
     
-    sendMessage(newMessage);
+    sendMessage(currentChatId, text);
     setText('');
   }
-if (!chat) {
-  return (
-    <SafeAreaView style={styles.notFoundContainer}>
-      <Text style={styles.notFoundTitle}>Чат не найден</Text>
+  if (!chat) {
+    return (
+      <SafeAreaView style={styles.notFoundContainer}>
+        <Text style={styles.notFoundTitle}>Чат не найден</Text>
 
-      <Pressable
-        style={styles.notFoundButton}
-        onPress={() => router.replace('/')}
-      >
-        <Text style={styles.notFoundButtonText}>
-          Вернуться к чатам
-        </Text>
-      </Pressable>
-    </SafeAreaView>
-  );
-}  
+        <Pressable
+          style={styles.notFoundButton}
+          onPress={() => router.replace('/')}
+        >
+          <Text style={styles.notFoundButtonText}>
+            Вернуться к чатам
+          </Text>
+        </Pressable>
+      </SafeAreaView>
+    );
+  } 
+
+  if (!isLoaded) {
+    return null;
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView

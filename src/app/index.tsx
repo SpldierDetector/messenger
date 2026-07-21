@@ -7,16 +7,19 @@ import { styles } from '@/styles/index.styles';
 import { ChatPreview } from '@/components/chat-preview';
 import { chats } from '@/data/chat';
 import { useMessages } from '@/providers/messages-provider';
-import { getLastMessage } from '@/utils/message';
-import { formatMessageTime } from '@/utils/date';
 import { sortChatsByLatestMessage } from '@/utils/chat';
+import { formatMessageTime } from '@/utils/date';
+import { getLastMessage } from '@/utils/message';
 
 
 export default function ChatListScreen() {
-  const { messages } = useMessages();
+  const { messages, isLoaded } = useMessages();
 
   const sortedChats = sortChatsByLatestMessage(chats, messages);
-
+  
+  if (!isLoaded) {
+    return null;
+  }
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Voxa</Text>

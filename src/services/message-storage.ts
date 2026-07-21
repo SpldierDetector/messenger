@@ -7,22 +7,32 @@ const MESSAGES_STORAGE_KEY = 'voxa_messages';
 export async function saveMessages(
   messages: MessageData[]
 ) {
-  const serializedMessages = JSON.stringify(messages);
+  try {
+    const serializedMessages = JSON.stringify(messages);
 
-  await AsyncStorage.setItem(
-    MESSAGES_STORAGE_KEY,
-    serializedMessages
-  );
+    await AsyncStorage.setItem(
+      MESSAGES_STORAGE_KEY,
+      serializedMessages
+    );
+  } catch (error) {
+    console.error('Failed to save messages:', error)
+  }
 }
 
 export async function loadMessages() {
-  const serializedMessages = await AsyncStorage.getItem(
-    MESSAGES_STORAGE_KEY
-  );
+  try {
+    const serializedMessages = await AsyncStorage.getItem(
+      MESSAGES_STORAGE_KEY
+    );
 
-  if (!serializedMessages) {
+    if (!serializedMessages) {
+      return null;
+    }
+
+    return JSON.parse(serializedMessages) as MessageData[];
+  } catch (error) {
+    console.error('Failed to load messages:', error);
+
     return null;
   }
-
-  return JSON.parse(serializedMessages) as MessageData[];
 }
