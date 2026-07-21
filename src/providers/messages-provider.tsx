@@ -1,48 +1,72 @@
-import { createContext, type ReactNode, useContext, useState, } from 'react';
+import { createContext, type ReactNode, useContext, useEffect, useState, } from 'react';
 
 import { messages as initialMessages } from '@/data/message';
+import { loadMessages, saveMessages } from '@/services/message-storage';
 import type { MessageData } from '@/types/message';
 
 type MessagesContextValue = {
-    messages: MessageData[];
-    sendMessage: (message: MessageData) => void
+	messages: MessageData[];
+	sendMessage: (message: MessageData) => void
 };
 
 export const MessagesContext = createContext<
-    MessagesContextValue | undefined
+	MessagesContextValue | undefined
 >(undefined);
 
 type MessagesProviderProps = {
-    children: ReactNode;
+  children: ReactNode;
 };
 
 export function MessagesProvider({
-    children,
+	children,
 }: MessagesProviderProps) {
-    const [messages, setMessages] = useState(initialMessages);
+	const [messages, setMessages] = useState(initialMessages);
+  const [isLoaded, setIsLoaded] = useState(false);
 
-    function sendMessage(message: MessageData) {
-        setMessages((currentMessages) => [
-            ...currentMessages,
-            message,
-        ]);
+  useEffect(() => {
+		async function restoreMessages() {
+			const storedMessages = await loadMessages();
+
+				if (storedMessages) {
+					setMessages(storedMessages);
+				}
+
+        setIsLoaded(true);
+			}
+
+			restoreMessages();
+	}, []);
+
+  useEffect(() => {
+    if (!isLoaded) {
+      return;
     }
 
-    return (
-        <MessagesContext.Provider value={{ messages, sendMessage }}>
-            {children}
-        </MessagesContext.Provider>
-    );
+    saveMessages(messages);
+  }, [messages, isLoaded]);
+
+	function sendMessage(message: MessageData) {
+		setMessages((currentMessages) => [
+			...currentMessages,
+			message,
+		]);
+	}
+
+	return (
+  	<MessagesContext.Provider value={{ messages, sendMessage }}>
+			{children}
+			</MessagesContext.Provider>
+	);
 }
 
 export function useMessages() {
-    const context = useContext(MessagesContext);
+	const context = useContext(MessagesContext);
 
-    if (!context) {
-        throw new Error (
-            'useMessages must be used inside MessagesProvider'
-        );
-    }
+	if (!context) {
+		throw new Error (
+			'useMessages must be used inside MessagesProvider'
+		);
+	}
 
-    return context;
+	return context;
 }
