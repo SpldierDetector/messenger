@@ -131,5 +131,11 @@ export const styles = StyleSheet.create({
   },
   backButtonPressed: {
     opacity: 0.6,
-  }
+  },
+  errorText: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    color: '#ff6b6b',
+    fontSize: 14,
+  },
 });

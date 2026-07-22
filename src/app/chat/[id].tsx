@@ -12,7 +12,13 @@ import { formatMessageTime } from '@/utils/date';
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams();
-  const { messages, sendMessage, isLoaded } = useMessages();
+  const { 
+    messages,
+    sendMessage,
+    isLoaded,
+    isSending,
+    error
+  } = useMessages();
 
   const chat = chats.find((item) => item.id.toString() === id);
   const currentChatId = Number(id);
@@ -22,17 +28,15 @@ export default function ChatScreen() {
   );
   const [text, setText] = useState('');
   const listRef = useRef<FlatList>(null);
-  const isSendDisabled = !text.trim();
+  const isSendDisabled = !text.trim() || isSending;
 
-  function handleSend() {
+  async function handleSend() {
     if (!text.trim()) {
       return;
     }
-
-    const now = Date.now();
     
-    sendMessage(currentChatId, text);
-    setText('');
+    const wasSent = await sendMessage(currentChatId, text);
+    if (wasSent) {setText('');}
   }
   if (!chat) {
     return (
@@ -94,7 +98,7 @@ export default function ChatScreen() {
           style={styles.messages}
           data={messageList}
           onContentSizeChange={() => {listRef.current?.scrollToEnd({animated: true});
-        }}
+          }}
           keyExtractor={(message) => message.id.toString()}
           renderItem={({ item }) => (
             <Message
@@ -105,6 +109,13 @@ export default function ChatScreen() {
             />
           )}
         />
+
+        {error && (
+          <Text style={styles.errorText}>
+            {error}
+          </Text>
+        )}
+
         <View style={styles.inputRow}>
           <TextInput 
             value={text}
@@ -115,13 +126,17 @@ export default function ChatScreen() {
             multiline
           />
           <Pressable
-            style={({ pressed }) => [styles.sendButton, 
+            style={({ pressed }) => [
+              styles.sendButton, 
               isSendDisabled && styles.sendButtonDisabled,
-              pressed && !isSendDisabled && styles.sendButtonPressed,]}
+              pressed && !isSendDisabled && styles.sendButtonPressed,
+            ]}
             onPress={handleSend}
             disabled={isSendDisabled}
           >
-            <Text style={styles.sendButtonText}>Send</Text>
+            <Text style={styles.sendButtonText}>
+              {isSending ? '...' : 'Send'}
+            </Text>
           </Pressable>
         </View>
       </KeyboardAvoidingView>
