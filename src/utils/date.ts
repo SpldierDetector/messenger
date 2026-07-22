@@ -43,3 +43,32 @@ export function formatMessageDate(createdAt: number) {
       : undefined,
   });
 }
+
+export function formatChatPreviewDate(createdAt: number) {
+  const messageDate = new Date(createdAt);
+  const today = new Date();
+
+  if (isSameDay(createdAt, today.getTime())) {
+    return formatMessageTime(createdAt);
+  }
+
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+
+  if (isSameDay(createdAt, yesterday.getTime())) {
+    return 'Вчера';
+  }
+
+  if (messageDate.getFullYear() === today.getFullYear()) {
+    return messageDate.toLocaleDateString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+    });
+  }
+
+  return messageDate.toLocaleDateString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+  });
+}

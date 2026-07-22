@@ -26,10 +26,13 @@ export default function ChatScreen() {
 
   const chat = chats.find((item) => item.id.toString() === id);
   const currentChatId = Number(id);
-
-  const messageList = messages.filter(
-    (message) => message.chatId === currentChatId
-  );
+  
+  const messageList = messages
+    .filter((message) => message.chatId === currentChatId)
+    .sort(
+      (firstMessage, secondMessage) =>
+        firstMessage.createdAt - secondMessage.createdAt
+    );
   const [text, setText] = useState('');
   const listRef = useRef<FlatList>(null);
   const isSendDisabled = !text.trim() || isSending;
