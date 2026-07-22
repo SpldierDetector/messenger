@@ -138,4 +138,16 @@ export const styles = StyleSheet.create({
     color: '#ff6b6b',
     fontSize: 14,
   },
+  dateSeparator: {
+    alignItems: 'center',
+    marginVertical: 12,
+  },
+  dateSeparatorText: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 12,
+    backgroundColor: '#1f1f1f',
+    color: '#a9a9a9',
+    fontSize: 12,
+  }
 });

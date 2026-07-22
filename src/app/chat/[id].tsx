@@ -7,7 +7,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Message } from '@/components/message';
 import { useMessages } from '@/providers/messages-provider';
 import { styles } from '@/styles/chat.styles';
-import { formatMessageTime } from '@/utils/date';
+import {
+  formatMessageDate,
+  formatMessageTime,
+  isSameDay
+} from '@/utils/date';
 
 
 export default function ChatScreen() {
@@ -100,14 +104,39 @@ export default function ChatScreen() {
           onContentSizeChange={() => {listRef.current?.scrollToEnd({animated: true});
           }}
           keyExtractor={(message) => message.id.toString()}
-          renderItem={({ item }) => (
-            <Message
-              author={item.isOwn ? item.author : chat.name ?? item.author}
-              text={item.text}
-              time={formatMessageTime(item.createdAt)}
-              isOwn={item.isOwn}
-            />
-          )}
+          renderItem={({ item, index }) => {
+            const previousMessage = messageList[index - 1];
+
+            const shouldShowDate =
+              !previousMessage ||
+              !isSameDay(
+                previousMessage.createdAt,
+                item.createdAt
+              );
+
+            return (
+              <View>
+                {shouldShowDate && (
+                  <View style={styles.dateSeparator}>
+                    <Text style={styles.dateSeparatorText}>
+                      {formatMessageDate(item.createdAt)}
+                    </Text>
+                  </View>
+                )}
+
+                <Message
+                  author={
+                    item.isOwn
+                      ? item.author
+                      : chat.name ?? item.author
+                  }
+                  text={item.text}
+                  time={formatMessageTime(item.createdAt)}
+                  isOwn={item.isOwn}
+                />
+              </View>
+            )
+          }}
         />
 
         {error && (
