@@ -2,15 +2,12 @@ import {
   createContext,
   type ReactNode,
   useContext,
-  useEffect,
   useState,
 } from "react";
 
-import { messages as initialMessages } from "@/data/message";
 import {
   createMessage,
   loadMessageList,
-  saveMessageList
 } from "@/services/messages-service";
 
 import type { MessageData } from "@/types/message";
@@ -33,7 +30,7 @@ type MessagesProviderProps = {
 };
 
 export function MessagesProvider({ children }: MessagesProviderProps) {
-  const [messages, setMessages] = useState(initialMessages);
+  const [messages, setMessages] = useState<MessageData[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,14 +41,6 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
     setMessages(loadedMessages);
     setIsLoaded(true);
   }
-
-  useEffect(() => {
-    if (!isLoaded) {
-      return;
-    }
-
-    saveMessageList(messages);
-  }, [messages, isLoaded]);
 
   async function sendMessage(chatId: number, text: string): Promise<boolean> {
     try {
