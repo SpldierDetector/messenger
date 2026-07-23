@@ -5,8 +5,12 @@ import type {
   SendMessageResponse,
 } from '@/types/message-api';
 
-export async function getMessagesRequest(): Promise<MessageData[]> {
-  const response = await fetch(`${API_BASE_URL}/messages`);
+export async function getMessagesRequest(
+  chatId: number
+): Promise<MessageData[]> {
+  const response = await fetch(
+    `${API_BASE_URL}/messages?chatId=${chatId}`
+  );
 
   if (!response.ok) {
     throw new Error('Failed to load message');

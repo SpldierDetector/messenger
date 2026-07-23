@@ -28,9 +28,23 @@ app.get('/health', (_request, response) => {
   });
 });
 
-app.get('/messages', (_request, response) => {
-  response.json(messages);
-});;
+app.get('/messages', (request, response) => {
+  const chatId = Number(request.query.chatId);
+
+  if (!Number.isFinite(chatId)) {
+    response.status(400).json({
+      error: 'chatId must be a number',
+    });
+
+    return;
+  }
+
+  const chatMessages = messages.filter(
+    (message) => message.chatId === chatId
+  );
+
+  response.json(chatMessages);
+});
 
 app.post('/messages', (request, response) => {
   const { chatId, text } = request.body as SendMessageRequest;

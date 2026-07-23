@@ -1,6 +1,6 @@
 import { chats } from '@/data/chat';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -16,19 +16,30 @@ import {
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams();
+
   const { 
     messages,
     sendMessage,
+    loadMessages,
     isLoaded,
     isSending,
     error
   } = useMessages();
 
+  const chatId = Number(id);
+
+  useEffect(() => {
+    if (!Number.isFinite(chatId)) {
+      return;
+    }
+
+    loadMessages(chatId);
+  }, [chatId]);
+
   const chat = chats.find((item) => item.id.toString() === id);
-  const currentChatId = Number(id);
   
   const messageList = messages
-    .filter((message) => message.chatId === currentChatId)
+    .filter((message) => message.chatId === chatId)
     .sort(
       (firstMessage, secondMessage) =>
         firstMessage.createdAt - secondMessage.createdAt
@@ -42,7 +53,7 @@ export default function ChatScreen() {
       return;
     }
     
-    const wasSent = await sendMessage(currentChatId, text);
+    const wasSent = await sendMessage(chatId, text);
     if (wasSent) {setText('');}
   }
   if (!chat) {

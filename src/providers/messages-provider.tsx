@@ -21,6 +21,7 @@ type MessagesContextValue = {
   isLoaded: boolean;
   isSending: boolean;
   error: string | null;
+  loadMessages: (chatId: number) => Promise<void>;
 };
 
 export const MessagesContext = createContext<MessagesContextValue | undefined>(
@@ -37,19 +38,12 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function restoreMessages() {
-      const storedMessages = await loadMessageList();
+  async function loadMessages(chatId: number) {
+    const loadedMessages = await loadMessageList(chatId);
 
-      if (storedMessages) {
-        setMessages(storedMessages);
-      }
-
-      setIsLoaded(true);
-    }
-
-    restoreMessages();
-  }, []);
+    setMessages(loadedMessages);
+    setIsLoaded(true);
+  }
 
   useEffect(() => {
     if (!isLoaded) {
@@ -87,10 +81,11 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
     <MessagesContext.Provider 
     value={{ 
       messages, 
-      sendMessage, 
+      sendMessage,
+      loadMessages, 
       isLoaded,
       isSending,
-      error, 
+      error,
       }}>
       {children}
     </MessagesContext.Provider>

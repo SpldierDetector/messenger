@@ -13,13 +13,10 @@ import { getLastMessage } from '@/utils/message';
 
 
 export default function ChatListScreen() {
-  const { messages, isLoaded } = useMessages();
+  const { messages } = useMessages();
 
   const sortedChats = sortChatsByLatestMessage(chats, messages);
   
-  if (!isLoaded) {
-    return null;
-  }
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Voxa</Text>
