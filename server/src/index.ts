@@ -28,6 +28,10 @@ app.get('/health', (_request, response) => {
   });
 });
 
+app.get('/messages', (_request, response) => {
+  response.json(messages);
+});;
+
 app.post('/messages', (request, response) => {
   const { chatId, text } = request.body as SendMessageRequest;
 

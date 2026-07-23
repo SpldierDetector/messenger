@@ -1,9 +1,9 @@
-import { sendMessageRequest } from '@/services/message-api';
-import { loadMessages, saveMessages } from "@/services/message-storage";
+import { getMessagesRequest, sendMessageRequest } from '@/services/message-api';
+import { saveMessages } from "@/services/message-storage";
 import type { MessageData } from "@/types/message";
 
 export async function loadMessageList() {
-  return loadMessages();
+  return getMessagesRequest();
 }
 
 export async function saveMessageList(
