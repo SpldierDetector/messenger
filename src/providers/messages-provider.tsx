@@ -8,7 +8,7 @@ import {
 
 import { messages as initialMessages } from "@/data/message";
 import {
-  createLocalMessage,
+  createMessage,
   loadMessageList,
   saveMessageList
 } from "@/services/messages-service";
@@ -64,7 +64,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       setIsSending(true);
       setError(null);
 
-      const message = createLocalMessage(chatId, text);
+      const message = await createMessage(chatId, text);
 
       setMessages((currentMessages) =>[
         ...currentMessages,

@@ -1,6 +1,6 @@
+import { sendMessageRequest } from '@/services/message-api';
 import { loadMessages, saveMessages } from "@/services/message-storage";
 import type { MessageData } from "@/types/message";
-import { createOutgoingMessage } from "@/utils/create-message";
 
 export async function loadMessageList() {
   return loadMessages();
@@ -12,8 +12,12 @@ export async function saveMessageList(
   await saveMessages(messages);
 }
 
-export function createLocalMessage(
-  chatId: number, text: string
+export async function createMessage(
+  chatId: number,
+  text: string,
 ) {
-  return createOutgoingMessage(chatId, text);
+  return sendMessageRequest({
+    chatId,
+    text,
+  });
 }

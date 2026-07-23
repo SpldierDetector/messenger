@@ -1,7 +1,7 @@
 import type { MessageData } from '@/types/message';
 
 export type SendMessageRequest = {
-    charId: number;
+    chatId: number;
     text: string;
 };
 
