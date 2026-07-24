@@ -1,6 +1,10 @@
 import cors from 'cors';
 import express from 'express';
 import { database } from './db/database.js';
+import {
+  getMessagesByChatId,
+  insertMessage,
+} from './db/messages.js';
 
 type SendMessageRequest = {
   chatId: number;
@@ -80,20 +84,7 @@ app.get('/messages', (request, response) => {
     return;
   }
 
-  const selectMessages = database.prepare(`
-    SELECT
-      id,
-      chatId,
-      author,
-      text,
-      createdAt,
-      isOwn
-    FROM messages
-    WHERE chatId = ?
-    ORDER BY createdAt ASC
-  `);
-
-  const rows = selectMessages.all(chatId);
+  const rows = getMessagesByChatId(chatId);
 
   const chatMessages: MessageData[] = rows.map((row) => {
     const message = row as {
@@ -135,27 +126,16 @@ app.post('/messages', (request, response) => {
 
   const now = Date.now();
 
-  const insertMessage = database.prepare(`
-    INSERT INTO messages (
-    chatId,
-    author,
-    text,
-    createdAt,
-    isOwn
-    )
-    VALUES (?, ?, ?, ?, ?)
-  `);
-
-  const result = insertMessage.run(
+  const result = insertMessage(
     chatId,
     'Me',
     text.trim(),
     now,
-    1
+    true,
   );
 
   const message: MessageData = {
-    id: now,
+    id: Number(result.lastInsertRowid),
     chatId,
     author : 'Me',
     text: text.trim(),
@@ -167,5 +147,5 @@ app.post('/messages', (request, response) => {
 });
 
 app.listen(port, '0.0.0.0', () => {
-  console.log('Server started on port ${port}');
+  console.log(`Server started on port ${port}`);
 });
