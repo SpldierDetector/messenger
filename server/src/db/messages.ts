@@ -17,6 +17,29 @@ export function getMessagesByChatId(chatId: number) {
   return statement.all(chatId);
 }
 
+export function getLatestMessages() {
+  const statement = database.prepare(`
+    SELECT
+      id,
+      chatId,
+      author,
+      text,
+      createdAt,
+      isOwn
+    FROM messages AS message
+    WHERE id = (
+      SELECT id
+      FROM messages
+      WHERE chatId = message.chatId
+      ORDER BY createdAt DESC, id DESC
+      LIMIT 1
+    )
+    ORDER BY createdAt DESC
+  `);
+
+  return statement.all();
+}
+
 export function insertMessage(
   chatId: number,
   author: string,
@@ -43,3 +66,4 @@ export function insertMessage(
     isOwn ? 1 : 0,
   );
 }
+

@@ -1,7 +1,7 @@
 import cors from 'cors';
 import express from 'express';
-import { database } from './db/database.js';
 import {
+  getLatestMessages,
   getMessagesByChatId,
   insertMessage,
 } from './db/messages.js';
@@ -33,26 +33,7 @@ app.get('/health', (_request, response) => {
 });
 
 app.get('/messages/latest', (_request, response) => {
-  const selectLatestMessages = database.prepare(`
-    SELECT
-      id,
-      chatId,
-      author,
-      text,
-      createdAt,
-      isOwn
-    FROM messages AS message
-    WHERE id = (
-      SELECT id
-      FROM messages
-      WHERE chatId = message.chatId
-      ORDER BY createdAt DESC, id DESC
-      LIMIT 1
-    )
-    ORDER BY createdAt DESC
-  `);
-
-  const rows = selectLatestMessages.all();
+ const rows = getLatestMessages();
   
   const latestMessages: MessageData[] = rows.map((row) => {
     const message = row as {
