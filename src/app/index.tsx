@@ -1,19 +1,22 @@
 import { router, type Href } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { FlatList, Pressable, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { styles } from '@/styles/index.styles';
 
 import { ChatPreview } from '@/components/chat-preview';
-import { chats } from '@/data/chat';
 import { useMessages } from '@/providers/messages-provider';
+import { getChatsRequest } from '@/services/chat-api';
+import type { ChatData } from '@/types/chat';
 import { sortChatsByLatestMessage } from '@/utils/chat';
 import { formatChatPreviewDate } from '@/utils/date';
 import { getLastMessage } from '@/utils/message';
 
 
 export default function ChatListScreen() {
+  const [chats, setChats] = useState<ChatData[]>([]);
+
   const { 
     messages, 
     loadLatestMessagePreviews, 
@@ -21,6 +24,14 @@ export default function ChatListScreen() {
 
   useEffect(() => {
     loadLatestMessagePreviews();
+
+    getChatsRequest()
+      .then((loadedChats) => {
+        setChats(loadedChats);
+      })
+      .catch((error) => {
+        console.error('Failed to load chats:', error);
+      });
   }, []);
 
   const sortedChats = sortChatsByLatestMessage(chats, messages);

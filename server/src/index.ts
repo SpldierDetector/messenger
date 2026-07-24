@@ -1,5 +1,6 @@
 import cors from 'cors';
 import express from 'express';
+import { getChatById, getChats } from './db/chats.js';
 import {
   getLatestMessages,
   getMessagesByChatId,
@@ -84,6 +85,58 @@ app.get('/messages', (request, response) => {
   });
 
   response.json(chatMessages);
+});
+
+app.get('/chats', (_request, response) => {
+  const rows = getChats();
+
+  const chats = rows.map((row) => {
+    const chat = row as {
+      id: number;
+      name: string;
+      isOnline: number;
+    };
+
+    return {
+      ...chat,
+      isOnline: Boolean(chat.isOnline),
+    };
+  });
+
+  response.json(chats);
+})
+
+app.get('/chats/:id', (request, response) => {
+  const chatId = Number(request.params.id);
+
+  if (!Number.isFinite(chatId)) {
+    response.status(400).json({
+      error: 'chat id must be a number',
+    });
+
+    return;
+  }
+
+  const row = getChatById(chatId);
+
+  if (!row) {
+    response.status(400).json({
+      error: 'chat not found',
+    });
+
+    return;
+  }
+
+  const chat = row as {
+    id: number;
+    name: string;
+    isOnline: number;
+  };
+
+  response.json({
+    ...chat,
+    isOnline: Boolean(chat.isOnline),
+  });
 });
 
 app.post('/messages', (request, response) => {

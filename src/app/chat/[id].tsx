@@ -1,4 +1,5 @@
-import { chats } from '@/data/chat';
+import { getChatRequest } from '@/services/chat-api';
+import type { ChatData } from '@/types/chat';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
@@ -28,15 +29,28 @@ export default function ChatScreen() {
 
   const chatId = Number(id);
 
+  const [chat, setChat] = useState<ChatData | null>(null);
+  const [isChatLoaded, setIsChatLoaded] = useState(false);
+
   useEffect(() => {
     if (!Number.isFinite(chatId)) {
+      setIsChatLoaded(true);
       return;
     }
 
     loadMessages(chatId);
-  }, [chatId]);
 
-  const chat = chats.find((item) => item.id.toString() === id);
+    getChatRequest(chatId)
+      .then((loadedChat) => {
+        setChat(loadedChat);
+      })
+      .catch((error) => {
+        console.error(`Failed to load chat:', error`);
+      })
+      .finally(() => {
+        setIsChatLoaded(true);
+      });
+  }, [chatId]);
   
   const messageList = messages
     .filter((message) => message.chatId === chatId)
@@ -56,6 +70,11 @@ export default function ChatScreen() {
     const wasSent = await sendMessage(chatId, text);
     if (wasSent) {setText('');}
   }
+  
+  if (!isChatLoaded) {
+    return null;
+  }
+
   if (!chat) {
     return (
       <SafeAreaView style={styles.notFoundContainer}>
