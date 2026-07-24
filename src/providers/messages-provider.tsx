@@ -38,7 +38,13 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
   async function loadMessages(chatId: number) {
     const loadedMessages = await loadMessageList(chatId);
 
-    setMessages(loadedMessages);
+    setMessages((currentMessages) => [
+      ...currentMessages.filter(
+        (message: MessageData) => message.chatId !== chatId
+      ),
+      ...loadedMessages,
+    ]);
+
     setIsLoaded(true);
   }
 
