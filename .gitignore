@@ -3,6 +3,9 @@
 # dependencies
 node_modules/
 
+#Database
+server/voxa.db
+
 # Expo
 .expo/
 dist/
