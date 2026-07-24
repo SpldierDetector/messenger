@@ -1,5 +1,6 @@
 import cors from 'cors';
 import express from 'express';
+import { database } from './db/database.js';
 
 type SendMessageRequest = {
   chatId: number;
@@ -17,7 +18,6 @@ type MessageData = {
 
 const app = express();
 const port = 3000;
-const messages: MessageData[] = [];
 
 app.use(cors());
 app.use(express.json());
@@ -27,6 +27,47 @@ app.get('/health', (_request, response) => {
     status: 'ok',
   });
 });
+
+app.get('/messages/latest', (_request, response) => {
+  const selectLatestMessages = database.prepare(`
+    SELECT
+      id,
+      chatId,
+      author,
+      text,
+      createdAt,
+      isOwn
+    FROM messages AS message
+    WHERE id = (
+      SELECT id
+      FROM messages
+      WHERE chatId = message.chatId
+      ORDER BY createdAt DESC, id DESC
+      LIMIT 1
+    )
+    ORDER BY createdAt DESC
+  `);
+
+  const rows = selectLatestMessages.all();
+  
+  const latestMessages: MessageData[] = rows.map((row) => {
+    const message = row as {
+      id: number;
+      chatId: number;
+      author: string;
+      text: string;
+      createdAt: number;
+      isOwn: number;
+    };
+
+    return {
+      ...message,
+      isOwn: Boolean(message.isOwn),
+    };
+  });
+
+  response.json(latestMessages)
+})
 
 app.get('/messages', (request, response) => {
   const chatId = Number(request.query.chatId);
@@ -39,9 +80,36 @@ app.get('/messages', (request, response) => {
     return;
   }
 
-  const chatMessages = messages.filter(
-    (message) => message.chatId === chatId
-  );
+  const selectMessages = database.prepare(`
+    SELECT
+      id,
+      chatId,
+      author,
+      text,
+      createdAt,
+      isOwn
+    FROM messages
+    WHERE chatId = ?
+    ORDER BY createdAt ASC
+  `);
+
+  const rows = selectMessages.all(chatId);
+
+  const chatMessages: MessageData[] = rows.map((row) => {
+    const message = row as {
+      id: number;
+      chatId: number;
+      author: string;
+      text: string;
+      createdAt: number;
+      isOwn: number;
+    };
+
+    return {
+      ...message,
+      isOwn: Boolean(message.isOwn),
+    };
+  });
 
   response.json(chatMessages);
 });
@@ -67,6 +135,25 @@ app.post('/messages', (request, response) => {
 
   const now = Date.now();
 
+  const insertMessage = database.prepare(`
+    INSERT INTO messages (
+    chatId,
+    author,
+    text,
+    createdAt,
+    isOwn
+    )
+    VALUES (?, ?, ?, ?, ?)
+  `);
+
+  const result = insertMessage.run(
+    chatId,
+    'Me',
+    text.trim(),
+    now,
+    1
+  );
+
   const message: MessageData = {
     id: now,
     chatId,
@@ -75,8 +162,6 @@ app.post('/messages', (request, response) => {
     createdAt: now,
     isOwn: true,
   };
-
-  messages.push(message);
 
   response.status(201).json(message);
 });

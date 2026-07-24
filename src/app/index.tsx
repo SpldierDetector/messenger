@@ -1,4 +1,5 @@
 import { router, type Href } from 'expo-router';
+import { useEffect } from 'react';
 import { FlatList, Pressable, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -13,7 +14,14 @@ import { getLastMessage } from '@/utils/message';
 
 
 export default function ChatListScreen() {
-  const { messages } = useMessages();
+  const { 
+    messages, 
+    loadLatestMessagePreviews, 
+  } = useMessages();
+
+  useEffect(() => {
+    loadLatestMessagePreviews();
+  }, []);
 
   const sortedChats = sortChatsByLatestMessage(chats, messages);
   

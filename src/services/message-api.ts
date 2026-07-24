@@ -36,3 +36,15 @@ export async function sendMessageRequest(
 
   return response.json();
 }
+
+export async function getLatestMessagesRequest(): Promise<MessageData[]> {
+  const response = await fetch(
+    `${API_BASE_URL}/messages/latest`
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to load latest messages');
+  }
+
+  return response.json()
+}

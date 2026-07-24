@@ -7,6 +7,7 @@ import {
 
 import {
   createMessage,
+  loadLatestMessages,
   loadMessageList,
 } from "@/services/messages-service";
 
@@ -19,6 +20,7 @@ type MessagesContextValue = {
   isSending: boolean;
   error: string | null;
   loadMessages: (chatId: number) => Promise<void>;
+  loadLatestMessagePreviews: () => Promise<void>;
 };
 
 export const MessagesContext = createContext<MessagesContextValue | undefined>(
@@ -45,6 +47,13 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       ...loadedMessages,
     ]);
 
+    setIsLoaded(true);
+  }
+
+  async function loadLatestMessagePreviews() {
+    const latestMessages = await loadLatestMessages();
+
+    setMessages(latestMessages);
     setIsLoaded(true);
   }
 
@@ -77,7 +86,8 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
     value={{ 
       messages, 
       sendMessage,
-      loadMessages, 
+      loadMessages,
+      loadLatestMessagePreviews, 
       isLoaded,
       isSending,
       error,
