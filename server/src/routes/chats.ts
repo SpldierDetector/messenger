@@ -10,9 +10,7 @@ import { mapChatRow } from '../mappers/chat.js'
 chatsRouter.get('/', (_request, response) => {
   const rows = getChats();
 
-  const chats = rows
-  .map((row) => row as ChatRow)
-  .map(mapChatRow);
+  const chats = rows.map(mapChatRow);
 
   response.json(chats);
 });
@@ -38,7 +36,7 @@ chatsRouter.get('/:id', (request, response) => {
     return;
   }
 
-  const chat = mapChatRow(row as ChatRow);
+  const chat = mapChatRow(row);
 
   response.json(chat)
 });

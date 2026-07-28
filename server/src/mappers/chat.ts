@@ -3,9 +3,11 @@ import type {
   ChatRow,
 } from '../types/chat.js';
 
-export function mapChatRow(row: ChatRow): ChatData {
+export function mapChatRow(row: unknown): ChatData {
+  const chat = row as ChatRow;
+  
   return {
-    ...row,
-    isOnline: Boolean(row.isOnline),
+    ...chat,
+    isOnline: Boolean(chat.isOnline),
   };
 }

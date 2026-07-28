@@ -15,3 +15,8 @@ export type MessageData = {
   createdAt: number;
   isOwn: boolean;
 };
+
+export type SendMessageRequest = {
+  chatId: number;
+  text: string;
+};

@@ -3,9 +3,11 @@ import type {
   MessageRow,
 } from '../types/message.js';
 
-export function mapMessageRow(row: MessageRow): MessageData {
+export function mapMessageRow(row: unknown): MessageData {
+  const message = row as MessageRow;
+
   return {
-    ...row,
-    isOwn: Boolean(row.isOwn),
+    ...message,
+    isOwn: Boolean(message.isOwn),
   };
 }

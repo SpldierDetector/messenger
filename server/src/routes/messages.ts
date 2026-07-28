@@ -6,24 +6,16 @@ import {
 } from '../db/messages.js';
 import type {
   MessageData,
-  MessageRow,
+  SendMessageRequest,
 } from '../types/message.js';
 import { mapMessageRow } from '../mappers/message.js';
-
-type SendMessageRequest = {
-  chatId: number;
-  text: string;
-};
 
 export const messagesRouter = Router();
 
 messagesRouter.get('/latest', (_request, response) => {
   const rows = getLatestMessages();
-
-  const latestMessages = rows
-    .map((row) => row as MessageRow)
-    .map(mapMessageRow);
-
+  const latestMessages = rows.map(mapMessageRow);
+    
   response.json(latestMessages);
 });
 
@@ -40,9 +32,7 @@ messagesRouter.get('/', (request, response) => {
 
   const rows = getMessagesByChatId(chatId);
 
-  const chatMessages = rows
-  .map((row) => row as MessageRow)
-  .map(mapMessageRow);
+  const chatMessages = rows.map(mapMessageRow);
 
   response.json(chatMessages);
 });
