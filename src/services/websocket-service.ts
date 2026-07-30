@@ -1,8 +1,19 @@
 import { API_BASE_URL } from '@/config/api';
 
+import type { MessageData } from '@/types/message';
+
 const WEB_SOCKET_URL = API_BASE_URL.replace('http://', 'ws://');
 
-export function connectWebSocket() {
+type ConnectWebSocketOptions = {
+  onMessageCreated: (message: MessageData) => void;
+};
+
+type WebSocketEvent = {
+  type: string;
+  data: unknown;
+};
+
+export function connectWebSocket({onMessageCreated,}: ConnectWebSocketOptions) {
   const socket = new WebSocket(WEB_SOCKET_URL);
 
   socket.onopen = () => {
@@ -11,10 +22,10 @@ export function connectWebSocket() {
 
   socket.onmessage = (event) => {
     try {
-      const message = JSON.parse(event.data);
+      const message = JSON.parse(event.data) as WebSocketEvent;
 
-      console.log('WebSocket event type:', message.type);
-      console.log('WebSocket event data:', message.data);
+      if (message.type === "message_created")
+        onMessageCreated(message.data as MessageData);
     } catch (error) {
       console.error('Failed to parse WebSocket message:', error);
     }

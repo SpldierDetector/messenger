@@ -2,6 +2,7 @@ import {
   createContext,
   type ReactNode,
   useContext,
+  useEffect,
   useState,
 } from "react";
 
@@ -10,6 +11,7 @@ import {
   loadLatestMessages,
   loadMessageList,
 } from "@/services/messages-service";
+import { connectWebSocket } from "@/services/websocket-service";
 
 import type { MessageData } from "@/types/message";
 
@@ -64,10 +66,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
 
       const message = await createMessage(chatId, text);
 
-      setMessages((currentMessages) =>[
-        ...currentMessages,
-        message,
-      ]);
+      addMessageIfMissing(message);
 
       return true;
     } catch (caughtError) {
@@ -80,6 +79,29 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       setIsSending(false);
     }
   }
+
+  function addMessageIfMissing(newMessage: MessageData) {
+    setMessages((currentMessages) => {
+      const alreadyExists = currentMessages.some(
+        (message) => message.id === newMessage.id,
+      );
+
+      if (alreadyExists) {
+        return currentMessages;
+      }
+      return [...currentMessages, newMessage];
+    });
+  }
+
+  useEffect(() => {
+    const socket = connectWebSocket({
+      onMessageCreated: addMessageIfMissing,
+    });
+
+    return () => {
+      socket.close();
+    };
+  }, []);
 
   return (
     <MessagesContext.Provider 
