@@ -94,13 +94,11 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
   }
 
   useEffect(() => {
-    const socket = connectWebSocket({
+    const disconnectWebSocket = connectWebSocket({
       onMessageCreated: addMessageIfMissing,
     });
 
-    return () => {
-      socket.close();
-    };
+    return disconnectWebSocket;
   }, []);
 
   return (
