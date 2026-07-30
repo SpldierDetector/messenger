@@ -41,22 +41,6 @@ app.use('/messages', messagesRouter);
 webSocketServer.on('connection', (socket) => {
   console.log('WebSocket client connected');
 
-  socket.send(
-    JSON.stringify({
-      type: 'connected',
-      data: {
-        message: 'Hello from WebSocket server',
-      },
-    })
-  );
-
-  broadcastWebSocketEvent(webSocketServer, {
-    type: 'client_connected',
-    data: {
-      message: 'A new client connected',
-    },
-  });
-
   socket.on('close', () => {
     console.log('WebSocket client disconnected');
   });

@@ -45,7 +45,7 @@ export default function ChatScreen() {
         setChat(loadedChat);
       })
       .catch((error) => {
-        console.error(`Failed to load chat:', error`);
+        console.error(`Failed to load chat:`, error);
       })
       .finally(() => {
         setIsChatLoaded(true);
@@ -61,6 +61,15 @@ export default function ChatScreen() {
   const [text, setText] = useState('');
   const listRef = useRef<FlatList>(null);
   const isSendDisabled = !text.trim() || isSending;
+
+  function handleBackPress() {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace('/');
+  }
 
   async function handleSend() {
     if (!text.trim()) {
@@ -108,7 +117,7 @@ export default function ChatScreen() {
               styles.backButton,
               pressed && styles.backButtonPressed,
             ]}
-            onPress={() => router.back()}
+            onPress={handleBackPress}
           >
             <Text style={styles.backButtonText}>←</Text>
           </Pressable>
