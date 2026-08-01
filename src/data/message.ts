@@ -4,6 +4,7 @@ export const messages: MessageData[] = [
   {
     id: 1,
     chatId: 1,
+    senderId: 2,
     author: 'Alex',
     text: 'Привет! Как дела?',
     createdAt: Date.now(),
@@ -13,6 +14,7 @@ export const messages: MessageData[] = [
   {
     id: 2,
     chatId: 1,
+    senderId: 1,
     author: 'Me',
     text: 'Привет! Всё отлично.',
     createdAt: Date.now(),
@@ -22,6 +24,7 @@ export const messages: MessageData[] = [
   {
     id: 3,
     chatId: 1,
+    senderId: 2,
     author: 'Alex',
     text: 'Продолжаем делать мессенджер?',
     createdAt: Date.now(),
@@ -31,6 +34,7 @@ export const messages: MessageData[] = [
   {
     id: 4,
     chatId: 2,
+    senderId: 3,
     author: 'John',
     text: 'До завтра?',
     createdAt: Date.now(),
@@ -40,6 +44,7 @@ export const messages: MessageData[] = [
   {
     id: 5,
     chatId: 2,
+    senderId: 1,
     author: 'Me',
     text: 'Да, увидимся завтра.',
     createdAt: Date.now(),
@@ -49,6 +54,7 @@ export const messages: MessageData[] = [
   {
     id: 6,
     chatId: 3,
+    senderId: 4,
     author: 'Maria',
     text: 'Хорошо, договорились',
     createdAt: Date.now(),
@@ -58,6 +64,7 @@ export const messages: MessageData[] = [
   {
     id: 7,
     chatId: 3,
+    senderId: 1,
     author: 'Me',
     text: 'Отлично, тогда так и сделаем.',
     createdAt: Date.now(),

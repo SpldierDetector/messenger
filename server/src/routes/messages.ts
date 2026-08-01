@@ -9,6 +9,8 @@ import type {
   SendMessageRequest,
 } from '../types/message.js';
 import { mapMessageRow } from '../mappers/message.js';
+import { getUserById } from '../db/users.js';
+import { mapUserRow } from '../mappers/user.js';
 
 type MessagesRouterOptions = {
   broadcastMessageCreated: (message: MessageData) => void;
@@ -64,10 +66,24 @@ export function createMessagesRouter({
     }
 
     const now = Date.now();
+    const currentUserId = 1;
+
+    const currentUserRow = getUserById(currentUserId);
+
+    if (!currentUserId) {
+      response.status(500).json({
+        error: 'current user not found',
+      });
+
+      return;
+    }
+
+    const currentUser = mapUserRow(currentUserRow);
 
     const result = insertMessage(
       chatId,
-      'Me',
+      currentUserId,
+      currentUser.name,
       text.trim(),
       now,
       true,
@@ -76,7 +92,8 @@ export function createMessagesRouter({
     const message: MessageData = {
       id: Number(result.lastInsertRowid),
       chatId,
-      author: 'Me',
+      senderId: currentUserId,
+      author: currentUser.name,
       text: text.trim(),
       createdAt: now,
       isOwn: true,

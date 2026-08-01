@@ -6,6 +6,7 @@ import { WebSocketServer } from 'ws';
 import { chatsRouter } from './routes/chats.js';
 import { createMessagesRouter } from './routes/messages.js';
 import { broadcastWebSocketEvent } from './websocket/broadcast.js';
+import { usersRouter } from './routes/users.js';
 
 const app = express();
 const port = 3000;
@@ -37,6 +38,8 @@ const messagesRouter = createMessagesRouter({
 });
 
 app.use('/messages', messagesRouter);
+
+app.use('/users', usersRouter);
 
 webSocketServer.on('connection', (socket) => {
   console.log('WebSocket client connected');

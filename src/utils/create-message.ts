@@ -9,6 +9,7 @@ export function createOutgoingMessage(
   return {
     id: now,
     chatId,
+    senderId: 1,
     author: 'Me',
     text: text.trim(),
     createdAt: now,

@@ -5,6 +5,7 @@ export function getMessagesByChatId(chatId: number) {
     SELECT
       id,
       chatId,
+      senderId,
       author,
       text,
       createdAt,
@@ -22,6 +23,7 @@ export function getLatestMessages() {
     SELECT
       id,
       chatId,
+      senderId,
       author,
       text,
       createdAt,
@@ -42,6 +44,7 @@ export function getLatestMessages() {
 
 export function insertMessage(
   chatId: number,
+  senderId: number,
   author: string,
   text: string,
   createdAt: number,
@@ -50,16 +53,18 @@ export function insertMessage(
   const statement = database.prepare(`
     INSERT INTO messages (
       chatId,
+      senderId,
       author,
       text,
       createdAt,
       isOwn
     )
-    VALUES (?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?)
   `);
 
   return statement.run(
     chatId,
+    senderId,
     author,
     text,
     createdAt,
