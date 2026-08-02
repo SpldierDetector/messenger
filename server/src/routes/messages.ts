@@ -11,6 +11,7 @@ import type {
 import { mapMessageRow } from '../mappers/message.js';
 import { getUserById } from '../db/users.js';
 import { mapUserRow } from '../mappers/user.js';
+import { CURRENT_USER_ID } from '../config/current-user.js';
 
 type MessagesRouterOptions = {
   broadcastMessageCreated: (message: MessageData) => void;
@@ -66,11 +67,10 @@ export function createMessagesRouter({
     }
 
     const now = Date.now();
-    const currentUserId = 1;
 
-    const currentUserRow = getUserById(currentUserId);
+    const currentUserRow = getUserById(CURRENT_USER_ID);
 
-    if (!currentUserId) {
+    if (!currentUserRow) {
       response.status(500).json({
         error: 'current user not found',
       });
@@ -82,7 +82,7 @@ export function createMessagesRouter({
 
     const result = insertMessage(
       chatId,
-      currentUserId,
+      CURRENT_USER_ID,
       currentUser.name,
       text.trim(),
       now,
@@ -92,7 +92,7 @@ export function createMessagesRouter({
     const message: MessageData = {
       id: Number(result.lastInsertRowid),
       chatId,
-      senderId: currentUserId,
+      senderId: CURRENT_USER_ID,
       author: currentUser.name,
       text: text.trim(),
       createdAt: now,
