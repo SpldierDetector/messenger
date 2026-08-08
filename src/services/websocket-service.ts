@@ -1,6 +1,7 @@
 import { API_BASE_URL } from '@/config/api';
-
 import type { MessageData } from '@/types/message';
+import type { MessageApiData } from '@/types/message-api';
+import { mapMessageApiData } from '@/utils/map-message'
 
 const WEB_SOCKET_URL = API_BASE_URL.replace('http://', 'ws://');
 const RECONNECT_DELAY = 3000;
@@ -14,7 +15,8 @@ type WebSocketEvent = {
   data: unknown;
 };
 
-export function connectWebSocket({onMessageCreated,}: ConnectWebSocketOptions) {
+export function connectWebSocket({onMessageCreated,}: 
+  ConnectWebSocketOptions) {
   let socket: WebSocket | null = null;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   let shouldReconnect = true;
@@ -30,8 +32,12 @@ export function connectWebSocket({onMessageCreated,}: ConnectWebSocketOptions) {
       try {
         const message = JSON.parse(event.data) as WebSocketEvent;
 
-        if (message.type === "message_created")
-          onMessageCreated(message.data as MessageData);
+        if (message.type === "message_created") {
+          const apiMessage = message.data as MessageApiData;
+          const mappedMessage = mapMessageApiData(apiMessage);
+
+          onMessageCreated(mappedMessage);
+        }
       } catch (error) {
         console.error('Failed to parse WebSocket message:', error);
       }

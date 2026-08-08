@@ -1,9 +1,10 @@
 import { API_BASE_URL } from '@/config/api';
 import type { MessageData } from '@/types/message';
 import type {
+  MessageApiData,
   SendMessageRequest,
-  SendMessageResponse,
 } from '@/types/message-api';
+import { mapMessageApiData } from '@/utils/map-message';
 
 export async function getMessagesRequest(
   chatId: number
@@ -16,12 +17,14 @@ export async function getMessagesRequest(
     throw new Error('Failed to load message');
   }
 
-  return response.json();
+  const messages = (await response.json()) as MessageApiData[];
+
+  return messages.map(mapMessageApiData);
 }
 
 export async function sendMessageRequest(
-  data: SendMessageRequest
-): Promise<SendMessageResponse> {
+  data: SendMessageRequest,
+): Promise<MessageData> {
   const response = await fetch(`${API_BASE_URL}/messages`, {
     method: 'POST',
     headers: {
@@ -34,7 +37,9 @@ export async function sendMessageRequest(
     throw new Error('Failed to send message');
   }
 
-  return response.json();
+  const message = (await response.json()) as MessageApiData;
+
+  return mapMessageApiData(message);
 }
 
 export async function getLatestMessagesRequest(): Promise<MessageData[]> {
@@ -46,5 +51,7 @@ export async function getLatestMessagesRequest(): Promise<MessageData[]> {
     throw new Error('Failed to load latest messages');
   }
 
-  return response.json()
+  const messages = (await response.json()) as MessageApiData[];
+  
+  return messages.map(mapMessageApiData);
 }

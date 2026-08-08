@@ -6,3 +6,12 @@ export type SendMessageRequest = {
 };
 
 export type SendMessageResponse = MessageData;
+
+export type MessageApiData = {
+    id: number;
+    chatId: number;
+    senderId: number;
+    author: string;
+    text: string;
+    createdAt: number;
+};

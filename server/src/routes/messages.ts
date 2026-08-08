@@ -96,7 +96,6 @@ export function createMessagesRouter({
       author: currentUser.name,
       text: text.trim(),
       createdAt: now,
-      isOwn: true,
     };
 
     broadcastMessageCreated(message);

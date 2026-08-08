@@ -8,8 +8,7 @@ export function getMessagesByChatId(chatId: number) {
       message.senderId,
       sender.name AS author,
       message.text,
-      message.createdAt,
-      message.isOwn
+      message.createdAt
     FROM messages AS message
     JOIN users AS sender
       ON sender.id = message.senderId
@@ -28,8 +27,7 @@ export function getLatestMessages() {
       message.senderId,
       sender.name AS author,
       message.text,
-      message.createdAt,
-      message.isOwn
+      message.createdAt
     FROM messages AS message
     JOIN users AS sender
       ON sender.id = message.senderId

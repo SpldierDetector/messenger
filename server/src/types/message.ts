@@ -5,7 +5,6 @@ export type MessageRow = {
   author: string;
   text: string;
   createdAt: number;
-  isOwn: number;
 };
 
 export type MessageData = {
@@ -15,7 +14,6 @@ export type MessageData = {
   author: string;
   text: string;
   createdAt: number;
-  isOwn: boolean;
 };
 
 export type SendMessageRequest = {
