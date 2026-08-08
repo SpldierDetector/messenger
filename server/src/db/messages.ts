@@ -3,16 +3,18 @@ import { database } from './database.js';
 export function getMessagesByChatId(chatId: number) {
   const statement = database.prepare(`
     SELECT
-      id,
-      chatId,
-      senderId,
-      author,
-      text,
-      createdAt,
-      isOwn
-    FROM messages
-    WHERE chatId = ?
-    ORDER BY createdAt ASC
+      message.id,
+      message.chatId,
+      message.senderId,
+      sender.name AS author,
+      message.text,
+      message.createdAt,
+      message.isOwn
+    FROM messages AS message
+    JOIN users AS sender
+      ON sender.id = message.senderId
+    WHERE message.chatId = ?
+    ORDER BY message.createdAt ASC
   `);
 
   return statement.all(chatId);
@@ -21,22 +23,24 @@ export function getMessagesByChatId(chatId: number) {
 export function getLatestMessages() {
   const statement = database.prepare(`
     SELECT
-      id,
-      chatId,
-      senderId,
-      author,
-      text,
-      createdAt,
-      isOwn
+      message.id,
+      message.chatId,
+      message.senderId,
+      sender.name AS author,
+      message.text,
+      message.createdAt,
+      message.isOwn
     FROM messages AS message
-    WHERE id = (
-      SELECT id
-      FROM messages
-      WHERE chatId = message.chatId
-      ORDER BY createdAt DESC, id DESC
+    JOIN users AS sender
+      ON sender.id = message.senderId
+    WHERE message.id = (
+      SELECT latestMessage.id
+      FROM messages AS latestMessage
+      WHERE latestMessage.chatId = message.chatId
+      ORDER BY latestMessage.createdAt DESC, latestMessage.id DESC
       LIMIT 1
     )
-    ORDER BY createdAt DESC
+    ORDER BY message.createdAt DESC
   `);
 
   return statement.all();
