@@ -4,5 +4,10 @@ import type {
 } from '../types/user.js'
 
 export function mapUserRow(row: unknown): UserData {
-  return row as UserRow;
+  const user = row as UserRow;
+
+  return {
+    id: user.id,
+    name: user.name,
+  };
 }

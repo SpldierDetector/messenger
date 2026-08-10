@@ -7,6 +7,7 @@ import { chatsRouter } from './routes/chats.js';
 import { createMessagesRouter } from './routes/messages.js';
 import { broadcastWebSocketEvent } from './websocket/broadcast.js';
 import { usersRouter } from './routes/users.js';
+import { authRouter } from './routes/auth.js';
 
 const app = express();
 const port = 3000;
@@ -52,3 +53,5 @@ webSocketServer.on('connection', (socket) => {
 server.listen(port, '0.0.0.0', () => {
   console.log(`Server started on port ${port}`);
 });
+
+app.use('/auth', authRouter);
