@@ -19,7 +19,7 @@ export function getMessagesByChatId(chatId: number) {
   return statement.all(chatId);
 }
 
-export function getLatestMessages() {
+export function getLatestMessagesByUserId(userId: number) {
   const statement = database.prepare(`
     SELECT
       message.id,
@@ -29,19 +29,27 @@ export function getLatestMessages() {
       message.text,
       message.createdAt
     FROM messages AS message
+
     JOIN users AS sender
       ON sender.id = message.senderId
+
+    JOIN chat_members AS member
+      ON member.chatId = message.chatId
+      AND member.userId = ?
+
     WHERE message.id = (
       SELECT latestMessage.id
       FROM messages AS latestMessage
       WHERE latestMessage.chatId = message.chatId
-      ORDER BY latestMessage.createdAt DESC, latestMessage.id DESC
+      ORDER BY 
+        latestMessage.createdAt DESC, 
+        latestMessage.id DESC
       LIMIT 1
     )
     ORDER BY message.createdAt DESC
   `);
 
-  return statement.all();
+  return statement.all(userId);
 }
 
 export function insertMessage(

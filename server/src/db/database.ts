@@ -45,6 +45,7 @@ database.exec(`
       LIMIT 1
     )
   END
+  WHERE senderId IS NULL
 `);
 
 
@@ -62,6 +63,18 @@ database.exec(`
     name TEXT NOT NULL
   )
 `)
+
+database.exec(`
+  CREATE TABLE IF NOT EXISTS chat_members (
+    chatId INTEGER NOT NULL,
+    userId INTEGER NOT NULL,
+
+    PRIMARY KEY (chatId, userId),
+
+    FOREIGN KEY (chatId) REFERENCES chats(id),
+    FOREIGN KEY (userId) REFERENCES users(id)
+  )  
+`);
 
 database.exec(`
   CREATE TABLE IF NOT EXISTS sessions (
@@ -90,6 +103,15 @@ database.exec(`
     (3, 'John'),
     (4, 'Maria'),
     (5, 'Женёк')  
+`);
+
+database.exec(`
+  INSERT OR IGNORE INTO chat_members (chatId, userId)
+  VALUES
+    (1, 1),
+    (1, 2),
+    (3, 1),
+    (3, 4)  
 `);
 
 const userColumns = database

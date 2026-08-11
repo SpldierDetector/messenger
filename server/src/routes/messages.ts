@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import {
-  getLatestMessages,
+  getLatestMessagesByUserId,
   getMessagesByChatId,
   insertMessage,
 } from '../db/messages.js';
@@ -9,9 +9,8 @@ import type {
   SendMessageRequest,
 } from '../types/message.js';
 import { mapMessageRow } from '../mappers/message.js';
-import { getUserById } from '../db/users.js';
-import { mapUserRow } from '../mappers/user.js';
-import { CURRENT_USER_ID } from '../config/current-user.js';
+import { requireAuth } from '../middleware/auth.js';
+import { isUserInChat } from '../db/chat-members.js'
 
 type MessagesRouterOptions = {
   broadcastMessageCreated: (message: MessageData) => void;
@@ -22,19 +21,56 @@ export function createMessagesRouter({
 }: MessagesRouterOptions) {
   const messagesRouter = Router();
 
-  messagesRouter.get('/latest', (_request, response) => {
-    const rows = getLatestMessages();
+  messagesRouter.get('/latest', requireAuth, (request, response) => {
+    const currentUser = request.user;
+
+    if (!currentUser) {
+      response.status(401).json({
+        error: 'authorization required',
+      });
+
+      return;
+    }
+
+    const rows = getLatestMessagesByUserId(
+      currentUser.id,
+    );
+
     const latestMessages = rows.map(mapMessageRow);
     
     response.json(latestMessages);
-  });
+  },
+  );
 
-  messagesRouter.get('/', (request, response) => {
+  messagesRouter.get('/', requireAuth, (request, response) => {
     const chatId = Number(request.query.chatId);
 
     if (!Number.isFinite(chatId)) {
       response.status(400).json({
         error: 'chatId must be a number',
+      });
+
+      return;
+    }
+
+    const currentUser = request.user;
+
+    if (!currentUser) {
+      response.status(401).json({
+        error: 'authorization required',
+      });
+
+      return;
+    }
+
+    const userIsChatMember = isUserInChat(
+      chatId,
+      currentUser.id,
+    );
+
+    if (!userIsChatMember) {
+      response.status(403).json({
+        error: 'forbidden',
       });
 
       return;
@@ -47,7 +83,7 @@ export function createMessagesRouter({
     response.json(chatMessages);
   });
 
-  messagesRouter.post('/', (request, response) => {
+  messagesRouter.post('/', requireAuth, (request, response) => {
     const { chatId, text } = request.body as SendMessageRequest;
 
     if (typeof chatId !== 'number') {
@@ -66,23 +102,34 @@ export function createMessagesRouter({
       return;
     }
 
-    const now = Date.now();
+    const currentUser = request.user;
 
-    const currentUserRow = getUserById(CURRENT_USER_ID);
-
-    if (!currentUserRow) {
-      response.status(500).json({
-        error: 'current user not found',
+    if (!currentUser) {
+      response.status(401).json({
+        error: 'authorization required',
       });
 
       return;
     }
 
-    const currentUser = mapUserRow(currentUserRow);
+    const userIsChatMember = isUserInChat(
+      chatId,
+      currentUser.id,
+    );
+
+    if (!userIsChatMember) {
+      response.status(403).json({
+        error: 'forbidden',
+      });
+
+      return;
+    }
+
+   const now = Date.now();
 
     const result = insertMessage(
       chatId,
-      CURRENT_USER_ID,
+      currentUser.id,
       currentUser.name,
       text.trim(),
       now,
@@ -92,7 +139,7 @@ export function createMessagesRouter({
     const message: MessageData = {
       id: Number(result.lastInsertRowid),
       chatId,
-      senderId: CURRENT_USER_ID,
+      senderId: currentUser.id,
       author: currentUser.name,
       text: text.trim(),
       createdAt: now,
