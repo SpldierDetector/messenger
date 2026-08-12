@@ -1,4 +1,4 @@
-import { router, type Href } from 'expo-router';
+import { router, type Href, Redirect } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { FlatList, Pressable, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,10 +12,12 @@ import type { ChatData } from '@/types/chat';
 import { sortChatsByLatestMessage } from '@/utils/chat';
 import { formatChatPreviewDate } from '@/utils/date';
 import { getLastMessage } from '@/utils/message';
+import { useAuth } from '@/providers/auth-provider';
 
 
 export default function ChatListScreen() {
   const [chats, setChats] = useState<ChatData[]>([]);
+  const { isAuthenticated } = useAuth();
 
   const { 
     messages, 
@@ -35,6 +37,10 @@ export default function ChatListScreen() {
   }, []);
 
   const sortedChats = sortChatsByLatestMessage(chats, messages);
+
+  if (!isAuthenticated) {
+    return <Redirect href="/login" />;
+  }
   
   return (
     <SafeAreaView style={styles.container}>
