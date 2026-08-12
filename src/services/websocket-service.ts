@@ -7,6 +7,7 @@ const WEB_SOCKET_URL = API_BASE_URL.replace('http://', 'ws://');
 const RECONNECT_DELAY = 3000;
 
 type ConnectWebSocketOptions = {
+  currentUserId: number;
   onMessageCreated: (message: MessageData) => void;
 };
 
@@ -15,10 +16,14 @@ type WebSocketEvent = {
   data: unknown;
 };
 
-export function connectWebSocket({onMessageCreated,}: 
-  ConnectWebSocketOptions) {
+export function connectWebSocket({
+  currentUserId,
+  onMessageCreated,
+}: ConnectWebSocketOptions) {
   let socket: WebSocket | null = null;
-  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  let reconnectTimer: 
+    | ReturnType<typeof setTimeout> 
+    | null = null;
   let shouldReconnect = true;
 
   function connect() {
@@ -34,7 +39,7 @@ export function connectWebSocket({onMessageCreated,}:
 
         if (message.type === "message_created") {
           const apiMessage = message.data as MessageApiData;
-          const mappedMessage = mapMessageApiData(apiMessage);
+          const mappedMessage = mapMessageApiData(apiMessage, currentUserId,);
 
           onMessageCreated(mappedMessage);
         }

@@ -12,6 +12,7 @@ import {
   loadMessageList,
 } from "@/services/messages-service";
 import { connectWebSocket } from "@/services/websocket-service";
+import { useAuth } from '@/providers/auth-provider';
 
 import type { MessageData } from "@/types/message";
 
@@ -34,17 +35,23 @@ type MessagesProviderProps = {
 };
 
 export function MessagesProvider({ children }: MessagesProviderProps) {
+  const { isAuthenticated, token, user, } = useAuth();
+
   const [messages, setMessages] = useState<MessageData[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function loadMessages(chatId: number) {
-    const loadedMessages = await loadMessageList(chatId);
+    if (!token || !user) {
+      return;
+    }
+
+    const loadedMessages = await loadMessageList(chatId, token, user.id,);
 
     setMessages((currentMessages) => [
       ...currentMessages.filter(
-        (message: MessageData) => message.chatId !== chatId
+        (message: MessageData) => message.chatId !== chatId,
       ),
       ...loadedMessages,
     ]);
@@ -53,18 +60,26 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
   }
 
   async function loadLatestMessagePreviews() {
-    const latestMessages = await loadLatestMessages();
+    if (!token || !user) {
+      return;
+    }
+
+    const latestMessages = await loadLatestMessages(token, user.id,);
 
     setMessages(latestMessages);
     setIsLoaded(true);
   }
 
   async function sendMessage(chatId: number, text: string): Promise<boolean> {
+    if (!token || !user) {
+      return false;
+    }
+    
     try {
       setIsSending(true);
       setError(null);
 
-      const message = await createMessage(chatId, text);
+      const message = await createMessage(chatId, text, token, user.id,);
 
       addMessageIfMissing(message);
 
@@ -94,12 +109,21 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
   }
 
   useEffect(() => {
+    if (!isAuthenticated || !user) {
+      setMessages([]);
+      setIsLoaded(false);
+      setError(null);
+      
+      return;
+    }
+
     const disconnectWebSocket = connectWebSocket({
+      currentUserId: user.id,
       onMessageCreated: addMessageIfMissing,
     });
 
     return disconnectWebSocket;
-  }, []);
+  }, [isAuthenticated, user?.id]);
 
   return (
     <MessagesContext.Provider 

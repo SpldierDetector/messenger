@@ -7,10 +7,17 @@ import type {
 import { mapMessageApiData } from '@/utils/map-message';
 
 export async function getMessagesRequest(
-  chatId: number
+  chatId: number,
+  token: string,
+  currentUserId: number,
 ): Promise<MessageData[]> {
   const response = await fetch(
-    `${API_BASE_URL}/messages?chatId=${chatId}`
+    `${API_BASE_URL}/messages?chatId=${chatId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
   );
 
   if (!response.ok) {
@@ -19,19 +26,27 @@ export async function getMessagesRequest(
 
   const messages = (await response.json()) as MessageApiData[];
 
-  return messages.map(mapMessageApiData);
+  return messages.map((message) => 
+    mapMessageApiData(message, currentUserId),
+  );
 }
 
 export async function sendMessageRequest(
   data: SendMessageRequest,
+  token: string,
+  currentUserId: number,
 ): Promise<MessageData> {
-  const response = await fetch(`${API_BASE_URL}/messages`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/messages`, 
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    }
+  );
 
   if (!response.ok) {
     throw new Error('Failed to send message');
@@ -39,12 +54,23 @@ export async function sendMessageRequest(
 
   const message = (await response.json()) as MessageApiData;
 
-  return mapMessageApiData(message);
+  return mapMessageApiData(
+    message,
+    currentUserId,
+  );
 }
 
-export async function getLatestMessagesRequest(): Promise<MessageData[]> {
+export async function getLatestMessagesRequest(
+  token: string,
+  currentUserId: number,
+): Promise<MessageData[]> {
   const response = await fetch(
-    `${API_BASE_URL}/messages/latest`
+    `${API_BASE_URL}/messages/latest`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
   );
 
   if (!response.ok) {
@@ -53,5 +79,7 @@ export async function getLatestMessagesRequest(): Promise<MessageData[]> {
 
   const messages = (await response.json()) as MessageApiData[];
   
-  return messages.map(mapMessageApiData);
+  return messages.map((message) =>
+    mapMessageApiData(message, currentUserId),
+  );
 }
