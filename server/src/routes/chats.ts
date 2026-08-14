@@ -1,21 +1,28 @@
 import { Router } from 'express';
-import { getChatById, getChats } from '../db/chats.js';
-export const chatsRouter = Router();
-import type {
-  ChatData,
-  ChatRow,
-} from '../types/chat.js';
+import { getChatById, getChatsByUserId } from '../db/chats.js';
 import { mapChatRow } from '../mappers/chat.js'
+import { requireAuth } from '../middleware/auth.js';
 
-chatsRouter.get('/', (_request, response) => {
-  const rows = getChats();
+export const chatsRouter = Router();
+
+chatsRouter.get('/', requireAuth, (request, response) => {
+  const user = request.user;
+
+  if (!user) {
+    response.status(401).json({
+      error: 'authorization required',
+    });
+
+    return;
+  }
+  const rows = getChatsByUserId(user.id);
 
   const chats = rows.map(mapChatRow);
 
   response.json(chats);
 });
 
-chatsRouter.get('/:id', (request, response) => {
+chatsRouter.get('/:id', requireAuth, (request, response) => {
   const chatId = Number(request.params.id);
 
   if (!Number.isFinite(chatId)) {
@@ -26,7 +33,17 @@ chatsRouter.get('/:id', (request, response) => {
     return;
   }
 
-  const row = getChatById(chatId);
+  const user = request.user;
+
+  if (!user) {
+    response.status(401).json({
+      error: 'authorization required',
+    });
+
+    return;
+  }
+  
+  const row = getChatById(chatId, user.id);
 
   if (!row) {
     response.status(404).json({

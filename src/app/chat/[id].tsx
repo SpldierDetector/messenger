@@ -13,6 +13,7 @@ import {
   formatMessageTime,
   isSameDay
 } from '@/utils/date';
+import { useAuth } from '@/providers/auth-provider';
 
 
 export default function ChatScreen() {
@@ -27,6 +28,8 @@ export default function ChatScreen() {
     error
   } = useMessages();
 
+  const { token, isAuthenticated } = useAuth();
+
   const chatId = Number(id);
 
   const [chat, setChat] = useState<ChatData | null>(null);
@@ -38,9 +41,13 @@ export default function ChatScreen() {
       return;
     }
 
+    if (!isAuthenticated || !token) {
+      return;
+    }
+
     loadMessages(chatId);
 
-    getChatRequest(chatId)
+    getChatRequest(chatId, token)
       .then((loadedChat) => {
         setChat(loadedChat);
       })
@@ -50,7 +57,7 @@ export default function ChatScreen() {
       .finally(() => {
         setIsChatLoaded(true);
       });
-  }, [chatId]);
+  }, [chatId,isAuthenticated, token,]);
   
   const messageList = messages
     .filter((message) => message.chatId === chatId)

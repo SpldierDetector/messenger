@@ -21,6 +21,7 @@ export default function ChatListScreen() {
     isAuthenticated, 
     isAuthLoading, 
     logout,
+    token,
   } = useAuth();
 
   const { 
@@ -31,21 +32,22 @@ export default function ChatListScreen() {
   useEffect(() => {
     if (
       isAuthLoading ||
-      !isAuthenticated
+      !isAuthenticated ||
+      !token
     ) {
       return;
     }
 
     loadLatestMessagePreviews();
 
-    getChatsRequest()
+    getChatsRequest(token)
       .then((loadedChats) => {
         setChats(loadedChats);
       })
       .catch((error) => {
         console.error('Failed to load chats:', error);
       });
-  }, [isAuthLoading, isAuthenticated]);
+  }, [isAuthLoading, isAuthenticated, token,]);
 
   if (isAuthLoading) {
     return null;
