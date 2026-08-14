@@ -109,7 +109,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
   }
 
   useEffect(() => {
-    if (!isAuthenticated || !user) {
+    if (!isAuthenticated || !user || !token) {
       setMessages([]);
       setIsLoaded(false);
       setError(null);
@@ -118,12 +118,13 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
     }
 
     const disconnectWebSocket = connectWebSocket({
+      token,
       currentUserId: user.id,
       onMessageCreated: addMessageIfMissing,
     });
 
     return disconnectWebSocket;
-  }, [isAuthenticated, user?.id]);
+  }, [isAuthenticated, user?.id, token]);
 
   return (
     <MessagesContext.Provider 

@@ -7,6 +7,7 @@ const WEB_SOCKET_URL = API_BASE_URL.replace('http://', 'ws://');
 const RECONNECT_DELAY = 3000;
 
 type ConnectWebSocketOptions = {
+  token: string;
   currentUserId: number;
   onMessageCreated: (message: MessageData) => void;
 };
@@ -17,6 +18,7 @@ type WebSocketEvent = {
 };
 
 export function connectWebSocket({
+  token,
   currentUserId,
   onMessageCreated,
 }: ConnectWebSocketOptions) {
@@ -27,7 +29,10 @@ export function connectWebSocket({
   let shouldReconnect = true;
 
   function connect() {
-    socket = new WebSocket(WEB_SOCKET_URL);
+    const socketUrl = 
+    `${WEB_SOCKET_URL}?token=${encodeURIComponent(token)}`;
+
+    socket = new WebSocket(socketUrl);
 
     socket.onopen = () => {
       console.log('WebSocket connected');

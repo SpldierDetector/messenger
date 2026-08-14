@@ -3,11 +3,14 @@ import express from 'express';
 import { createServer } from 'node:http';
 import { WebSocketServer } from 'ws';
 
+import { getUserBySessionToken } from './auth/auth-service.js';
+
 import { chatsRouter } from './routes/chats.js';
 import { createMessagesRouter } from './routes/messages.js';
-import { broadcastWebSocketEvent } from './websocket/broadcast.js';
+import { broadcastMessageCreated } from './websocket/broadcast.js';
 import { usersRouter } from './routes/users.js';
 import { authRouter } from './routes/auth.js';
+import type { AuthenticatedWebSocket } from './types/websocket.js'
 
 const app = express();
 const port = 3000;
@@ -21,7 +24,9 @@ app.get('/health', (_request, response) => {
   });
 });
 
+app.use('/auth', authRouter);
 app.use('/chats', chatsRouter);
+app.use('/users', usersRouter);
 
 const server = createServer(app);
 
@@ -31,27 +36,52 @@ const webSocketServer = new WebSocketServer({
 
 const messagesRouter = createMessagesRouter({
   broadcastMessageCreated: (message) => {
-    broadcastWebSocketEvent(webSocketServer, {
-      type: 'message_created',
-      data: message,
-    });
+    broadcastMessageCreated(
+      webSocketServer, 
+      message,
+    );
   },
 });
 
 app.use('/messages', messagesRouter);
 
-app.use('/users', usersRouter);
+webSocketServer.on('connection', (socket, request) => {
+  const requestUrl = new URL(
+    request.url ?? '/',
+    'http://localhost',
+  );
 
-webSocketServer.on('connection', (socket) => {
-  console.log('WebSocket client connected');
+  const token = requestUrl.searchParams.get('token');
 
-  socket.on('close', () => {
-    console.log('WebSocket client disconnected');
+  if (!token) {
+    socket.close(1008, 'Authorization required');
+
+    return;
+  }
+
+  const user = getUserBySessionToken(token);
+
+  if (!user) {
+    socket.close(
+      1008,
+      'Invalid or expired session',
+    );
+
+    return;
+  }
+
+  const authenticatedSocket =
+    socket as AuthenticatedWebSocket;
+
+  authenticatedSocket.userId = user.id;
+
+  console.log(`WebSocket client connected: user ${user.id}`);
+
+  authenticatedSocket.on('close', () => {
+    console.log('WebSocket client disconnected: user ${user.id}');
   });
 });
 
 server.listen(port, '0.0.0.0', () => {
   console.log(`Server started on port ${port}`);
 });
-
-app.use('/auth', authRouter);
