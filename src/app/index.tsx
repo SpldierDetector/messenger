@@ -1,6 +1,6 @@
 import { router, type Href, Redirect } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { FlatList, Pressable, Text } from 'react-native';
+import { FlatList, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { styles } from '@/styles/index.styles';
@@ -17,7 +17,11 @@ import { useAuth } from '@/providers/auth-provider';
 
 export default function ChatListScreen() {
   const [chats, setChats] = useState<ChatData[]>([]);
-  const { isAuthenticated } = useAuth();
+  const { 
+    isAuthenticated, 
+    isAuthLoading, 
+    logout,
+  } = useAuth();
 
   const { 
     messages, 
@@ -25,6 +29,13 @@ export default function ChatListScreen() {
   } = useMessages();
 
   useEffect(() => {
+    if (
+      isAuthLoading ||
+      !isAuthenticated
+    ) {
+      return;
+    }
+
     loadLatestMessagePreviews();
 
     getChatsRequest()
@@ -34,17 +45,38 @@ export default function ChatListScreen() {
       .catch((error) => {
         console.error('Failed to load chats:', error);
       });
-  }, []);
+  }, [isAuthLoading, isAuthenticated]);
 
-  const sortedChats = sortChatsByLatestMessage(chats, messages);
+  if (isAuthLoading) {
+    return null;
+  }
 
   if (!isAuthenticated) {
     return <Redirect href="/login" />;
   }
+
+  const sortedChats = sortChatsByLatestMessage(chats, messages);
+  
+  async function handleLogout() {
+    await logout();
+    router.replace('/login');
+  }
   
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Voxa</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Voxa</Text>
+
+        <Pressable 
+          onPress={handleLogout}
+          style={({ pressed}) => [
+            styles.logoutButton,
+            pressed && styles.logoutButtonPressed,
+          ]}
+        >
+          <Text style={styles.logoutButtonText}>Выйти</Text>
+        </Pressable>
+      </View>
 
       <FlatList
         data={sortedChats}

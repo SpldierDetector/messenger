@@ -2,21 +2,34 @@ import {
   createContext,
   type ReactNode,
   useContext,
+  useEffect,
   useState,
 } from 'react';
 
-import { loginRequest } from '@/services/auth-api';
+import { 
+  getCurrentUserRequest,
+  loginRequest,
+  logoutRequest,
+} from '@/services/auth-api';
+
 import type {
   AuthUser,
   LoginRequest,
 } from '@/types/auth';
 
+import { 
+  deleteSessionToken,
+  getSessionToken,
+  saveSessionToken,
+} from '@/services/session-storage';
+
 type AuthContextData = {
   user: AuthUser | null;
   token: string | null;
   isAuthenticated: boolean;
+  isAuthLoading: boolean;
   login: (data: LoginRequest) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextData | null>(
@@ -32,20 +45,67 @@ export function AuthProvider({
 }: AuthProviderProps) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [ isAuthLoading, setIsAuthLoading, ] = useState(true);
+
+  const isAuthenticated = 
+    user !== null &&
+    token !== null;
+
+  useEffect(() => {
+    async function restoreSession() {
+      try {
+        const savedToken =
+          await getSessionToken();
+        
+        if (!savedToken) {
+          return;
+        }
+
+        const response =
+          await getCurrentUserRequest(
+            savedToken,
+          );
+
+        setToken(savedToken);
+        setUser(response.user);
+      } catch (error) {
+        console.error(
+          'Failed to restore session:',
+          error,
+        );
+
+        await deleteSessionToken();
+      } finally {
+        setIsAuthLoading(false);
+      }
+    }
+
+    restoreSession();
+  }, []);
 
   async function login(data: LoginRequest) {
     const response = await loginRequest(data);
+
+    await saveSessionToken(response.token);
 
     setUser(response.user);
     setToken(response.token);
   }
 
-  function logout() {
-    setUser(null);
-    setToken(null);
-  }
+  async function logout() {
+    try {
+      if (token) {
+        await logoutRequest(token);
+      }
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      await deleteSessionToken();
 
-  const isAuthenticated = user !== null && token !== null;
+      setUser(null);
+      setToken(null);
+    }
+  }
 
   return (
     <AuthContext.Provider
@@ -53,6 +113,7 @@ export function AuthProvider({
         user,
         token,
         isAuthenticated,
+        isAuthLoading,
         login,
         logout,
       }}

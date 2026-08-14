@@ -1,14 +1,12 @@
 import { Router } from 'express';
 
-import { 
-  authenticateUser,
-  getUserBySessionToken,
-} from '../auth/auth-service.js';
+import { authenticateUser } from '../auth/auth-service.js';
 import { 
   createSessionToken,
   getSessionExpirationTime,  
 } from '../auth/session.js';
-import { insertSession } from '../db/sessions.js';
+import { deleteSession, insertSession } from '../db/sessions.js';
+import { requireAuth } from '../middleware/auth.js';
 
 export const authRouter = Router();
 
@@ -53,10 +51,16 @@ authRouter.post('/login', (request, response) => {
   });
 });
 
-authRouter.get('/me', (request, response) => {
-  const authorization = request.headers.authorization;
+authRouter.get('/me', requireAuth, (request, response) => {
+  response.json({
+    user: request.user,
+  });
+});
 
-  if (!authorization) {
+authRouter.post('/logout', requireAuth, (request, response) =>{
+  const token = request.authToken;
+
+  if (!token) {
     response.status(401).json({
       error: 'authorization required',
     });
@@ -64,27 +68,7 @@ authRouter.get('/me', (request, response) => {
     return;
   }
 
-  const [scheme, token] = authorization.split(' ');
+  deleteSession(token);
 
-  if (scheme !== 'Bearer' || !token) {
-    response.status(401).json({
-      error: 'invalid authorization',
-    });
-
-    return;
-  }
-
-  const user = getUserBySessionToken(token);
-
-  if (!user) {
-    response.status(401).json({
-      error: 'invalid or expired session',
-    });
-
-    return;
-  }
-
-  response.json({
-    user,
-  });
+  response.status(204).send();
 });

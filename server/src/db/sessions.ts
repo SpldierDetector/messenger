@@ -41,7 +41,7 @@ export function getSessionByToken(token: string) {
 
 export function deleteSession(token: string) {
   const statement = database.prepare(`
-    DELETE FROM session
+    DELETE FROM sessions
     WHERE token = ?  
   `);
 
