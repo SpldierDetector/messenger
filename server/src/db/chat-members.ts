@@ -32,3 +32,38 @@ export function insertChatMember(
     userId,
   );
 }
+
+export function hideChatForUser(
+  chatId: number,
+  userId: number,
+) {
+  const statement = database.prepare(`
+    UPDATE chat_members
+    SET hiddenAt = ?
+    WHERE chatId = ?
+      AND userId = ?
+  `);
+
+  return statement.run(
+    Date.now(),
+    chatId,
+    userId,
+  );
+}
+
+export function showChatForUser(
+  chatId: number,
+  userId: number,
+) {
+  const statement = database.prepare(`
+    UPDATE chat_members
+    SET hiddenAt = NULL
+    WHERE chatId = ?
+      AND userId = ?  
+  `);
+
+  return statement.run(
+    chatId,
+    userId,
+  );
+}

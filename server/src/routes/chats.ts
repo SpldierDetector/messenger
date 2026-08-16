@@ -8,6 +8,11 @@ import {
 import { mapChatRow } from '../mappers/chat.js';
 import { requireAuth } from '../middleware/auth.js';
 import { getUserById } from '../db/users.js';
+import {
+  hideChatForUser,
+  isUserInChat,
+  showChatForUser,
+} from '../db/chat-members.js';
 
 export const chatsRouter = Router();
 
@@ -82,6 +87,11 @@ chatsRouter.post(
     );
 
     if (existingRow) {
+      showChatForUser(
+        existingRow.id,
+        currentUser.id,
+      );
+      
       response.json(
         mapChatRow(existingRow),
       );
@@ -144,3 +154,51 @@ chatsRouter.get('/:id', requireAuth, (request, response) => {
 
   response.json(chat)
 });
+
+chatsRouter.delete(
+  '/:id',
+  requireAuth,
+  (request, response) => {
+    const chatId = Number(
+      request.params.id,
+    );
+
+    if (!Number.isInteger(chatId)) {
+      response.status(400).json({
+        error: 'chat id must be an integer',
+      });
+
+      return;
+    }
+
+    const currentUser = request.user;
+
+    if (!currentUser) {
+      response.status(401).json({
+        error: 'authorization required',
+      });
+
+      return;
+    }
+
+    const userIsChatMember = isUserInChat(
+      chatId,
+      currentUser.id,
+    );
+
+    if (!userIsChatMember) {
+      response.status(404).json({
+        error: 'chat not found',
+      });
+
+      return;
+    }
+
+    hideChatForUser(
+      chatId,
+      currentUser.id,
+    );
+
+    response.status(204).send();
+  },
+);

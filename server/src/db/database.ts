@@ -69,6 +69,7 @@ database.exec(`
   CREATE TABLE IF NOT EXISTS chat_members (
     chatId INTEGER NOT NULL,
     userId INTEGER NOT NULL,
+    hiddenAt integer,
 
     PRIMARY KEY (chatId, userId),
 
@@ -76,6 +77,21 @@ database.exec(`
     FOREIGN KEY (userId) REFERENCES users(id)
   )  
 `);
+
+const chatMemberColumns = database
+  .prepare(`PRAGMA table_info(chat_members)`)
+  .all() as Array<{ name: string }>;
+
+const hasHiddenAt = chatMemberColumns.some(
+  (column) => column.name === 'hiddenAt',
+);
+
+if (!hasHiddenAt) {
+  database.exec(`
+    ALTER TABLE chat_members
+    ADD COLUMN hiddenAt INTEGER
+  `);
+}
 
 database.exec(`
   CREATE TABLE IF NOT EXISTS sessions (

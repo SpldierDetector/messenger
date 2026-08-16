@@ -1,5 +1,6 @@
 import { database } from './database.js';
-import { insertChatMember } from './chat-members.js' 
+import { insertChatMember } from './chat-members.js'; 
+import type { ChatRow } from '../types/chat.js';
 
 export function getChatsByUserId(
   userId: number,
@@ -15,6 +16,7 @@ export function getChatsByUserId(
     JOIN chat_members AS currentMember
       ON currentMember.chatId = chat.id
       AND currentMember.userId = ?
+      AND currentMember.hiddenAt IS NULL
 
     JOIN chat_members AS otherMember
       ON otherMember.chatId = chat.id
@@ -47,6 +49,7 @@ export function getChatById(
     JOIN chat_members AS currentMember
       ON currentMember.chatId = chat.id
       AND currentMember.userId = ?
+      AND currentMember.hiddenAt IS NULL
 
     JOIN chat_members AS otherMember
       ON otherMember.chatId = chat.id
@@ -102,7 +105,7 @@ export function getDirectChatBetweenUsers(
   return statement.get(
     currentUserId,
     otherUserId,
-  );
+  ) as ChatRow | undefined;
 }
 
 export function createDirectChat(

@@ -59,3 +59,67 @@ export async function getChatRequest (
 
   return response.json();
 }
+
+export async function createDirectChatRequest(
+  userId: number,
+  token: string,
+): Promise<ChatData> {
+  const response = await fetch(
+    `${API_BASE_URL}/chats/direct`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        userId,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+
+    console.error(
+      'Failed to create direct chat:',
+      response.status,
+      errorBody,
+    );
+
+    throw new Error(
+      `Failed to create direct chat: ${response.status}`,
+    );
+  }
+
+  return response.json();
+}
+
+export async function deleteChatRequest(
+  chatId: number,
+  token: string,
+): Promise<void> {
+  const response = await fetch(
+    `${API_BASE_URL}/chats/${chatId}`,
+    {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+
+    console.error(
+      'Failed to delete chat:',
+      response.status,
+      errorBody,
+    );
+
+    throw new Error(
+      `Failed to delete chat: ${response.status}`,
+    );
+  }
+}
