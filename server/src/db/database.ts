@@ -53,7 +53,8 @@ database.exec(`
   CREATE TABLE IF NOT EXISTS chats (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    isOnline INTEGER NOT NULL DEFAULT 0 
+    isOnline INTEGER NOT NULL DEFAULT 0,
+    type TEXT NOT NULL DEFAULT 'direct'
   );
 `);
 
@@ -174,3 +175,18 @@ const updatePasswordStatement = database.prepare(`
 
 updatePasswordStatement.run(mePasswordHash, 1);
 updatePasswordStatement.run(alexPasswordHash, 2);
+
+const chatColumns = database
+  .prepare(`PRAGMA table_info(chats)`)
+  .all() as Array<{ name: string }>;
+
+const hasChatType = chatColumns.some(
+  (column) => column.name ==='type',
+);
+
+if (!hasChatType) {
+  database.exec(`
+    ALTER TABLE chats
+    ADD COLUMN type TEXT NOT NULL DEFAULT 'direct'  
+  `);
+}

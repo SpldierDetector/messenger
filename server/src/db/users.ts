@@ -39,3 +39,30 @@ export function getUserByLogin(login: string) {
 
   return statement.get(login);
 }
+
+export function searchUsers(
+  search: string,
+  currentUserId: number,
+) {
+  const statement = database.prepare(`
+    SELECT
+      id,
+      name
+    FROM users
+    WHERE id != ?
+      AND (
+        LOWER(name) LIKE LOWER(?)
+        OR LOWER(login) LIKE LOWER(?)  
+      )  
+    ORDER BY name ASC
+    LIMIT 20
+  `);
+
+  const searchPattern = `%${search}%`;
+
+  return statement.all(
+    currentUserId,
+    searchPattern,
+    searchPattern,
+  );
+}

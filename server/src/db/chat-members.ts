@@ -14,3 +14,21 @@ export function isUserInChat(
 
   return Boolean(statement.get(chatId, userId));
 }
+
+export function insertChatMember(
+  chatId: number,
+  userId: number,
+) {
+  const statement = database.prepare(`
+    INSERT INTO chat_members (
+      chatId,
+      userId
+    )
+    VALUES (?, ?)  
+  `);
+
+  return statement.run(
+    chatId,
+    userId,
+  );
+}
