@@ -10,7 +10,10 @@ import type {
 } from '../types/message.js';
 import { mapMessageRow } from '../mappers/message.js';
 import { requireAuth } from '../middleware/auth.js';
-import { isUserInChat } from '../db/chat-members.js'
+import { 
+  isUserInChat,
+  showChatForAllMembers, 
+} from '../db/chat-members.js'
 
 type MessagesRouterOptions = {
   broadcastMessageCreated: (message: MessageData) => void;
@@ -125,7 +128,9 @@ export function createMessagesRouter({
       return;
     }
 
-   const now = Date.now();
+    showChatForAllMembers(chatId);
+
+    const now = Date.now();
 
     const result = insertMessage(
       chatId,

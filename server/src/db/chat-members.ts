@@ -67,3 +67,15 @@ export function showChatForUser(
     userId,
   );
 }
+
+export function showChatForAllMembers(
+  chatId: number,
+) {
+  const statement = database.prepare(`
+    UPDATE chat_members
+    SET hiddenAt = NULL
+    WHERE chatId = ?  
+  `);
+
+  return statement.run(chatId);
+}

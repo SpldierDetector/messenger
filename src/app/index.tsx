@@ -1,5 +1,5 @@
 import { router, type Href, Redirect, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -77,6 +77,43 @@ export default function ChatListScreen() {
       token,
     ]),
   );
+
+  useEffect(() => {
+    if (
+      !isAuthenticated ||
+      !token
+    ) {
+      return;
+    }
+
+    const hasUnknownChat = messages.some(
+      (message) =>
+        !chats.some(
+          (chat) =>
+            chat.id === message.chatId,
+        )
+    );
+
+    if (!hasUnknownChat) {
+      return;
+    }
+
+    getChatsRequest(token)
+      .then((loadedChats) => {
+        setChats(loadedChats);
+      })
+      .catch((error) => {
+        console.error(
+          'Failed to refresh chats:',
+          error,
+        );
+      });
+  }, [
+    messages,
+    chats,
+    isAuthenticated,
+    token,
+  ]);
 
   if (isAuthLoading) {
     return null;

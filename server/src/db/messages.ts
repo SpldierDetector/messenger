@@ -36,6 +36,7 @@ export function getLatestMessagesByUserId(userId: number) {
     JOIN chat_members AS member
       ON member.chatId = message.chatId
       AND member.userId = ?
+      AND member.hiddenAt IS NULL
 
     WHERE message.id = (
       SELECT latestMessage.id
