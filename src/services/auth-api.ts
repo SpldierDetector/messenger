@@ -1,9 +1,11 @@
 import { API_BASE_URL } from '@/config/api';
+import { ApiError } from './api-error';
 
 import type {
   LoginRequest,
   LoginResponse,
   MeResponse,
+  RegisterRequest,
 } from '@/types/auth';
 
 export async function loginRequest(
@@ -57,4 +59,28 @@ export async function logoutRequest(token: string): Promise<void> {
   if (!response.ok) {
     throw new Error ('Failed to logout');
   }
+}
+
+export async function registerRequest(
+  data: RegisterRequest,
+): Promise<LoginResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/auth/register`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    },
+  );
+
+  if (!response.ok) {
+    throw new ApiError(
+      'Register request failed',
+      response.status,
+    );
+  }
+
+  return response.json();
 }

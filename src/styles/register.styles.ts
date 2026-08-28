@@ -20,7 +20,7 @@ export const styles = StyleSheet.create({
     color: '#AAAAAA',
     fontSize: 16,
     textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: 8,
   },
 
   input: {
@@ -32,7 +32,7 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 12,
   },
-  
+
   error: {
     color: '#FF6B6B',
     marginBottom: 12,
@@ -54,14 +54,14 @@ export const styles = StyleSheet.create({
   },
 
   secondaryButton: {
-  alignItems: 'center',
-  justifyContent: 'center',
-  minHeight: 44,
-  marginTop: 12,
-},
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+    marginTop: 12,
+  },
 
-secondaryButtonText: {
-  color: '#AAAAAA',
-  fontSize: 14,
-},
-})
+  secondaryButtonText: {
+    color: '#AAAAAA',
+    fontSize: 14,
+  },
+});

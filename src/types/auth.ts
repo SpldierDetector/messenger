@@ -16,3 +16,9 @@ export type LoginResponse = {
 export type MeResponse = {
   user: AuthUser;
 };
+
+export type RegisterRequest = {
+  name: string;
+  login: string;
+  password: string;
+};

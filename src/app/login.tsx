@@ -2,7 +2,6 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -89,6 +88,16 @@ export default function loginScreen() {
             Войти
           </Text>
         )}
+      </Pressable>
+
+      <Pressable
+        onPress={() => router.push('/register')}
+        disabled={isSubmitting}
+        style={styles.secondaryButton}
+      >
+        <Text style={styles.secondaryButtonText}>
+          Нет аккаунта? Зарегистрироваться
+        </Text>
       </Pressable>
     </View>
   );

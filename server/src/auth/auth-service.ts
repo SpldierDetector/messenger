@@ -1,13 +1,54 @@
-import { getUserByLogin } from '../db/users.js';
+import { 
+  getUserByLogin,
+  getUserById,
+  insertUser,
+} from '../db/users.js';
 import { mapUserRow } from '../mappers/user.js';
 import type { UserData, UserRow } from '../types/user.js';
-import { verifyPassword } from './password.js';
+import { verifyPassword, hashPassword } from './password.js';
 import { 
   deleteSession,
   getSessionByToken,
 } from '../db/sessions.js';
-import { getUserById } from '../db/users.js';
 import type { SessionRow } from '../types/session.js';
+
+export function registerUser(
+  name: string,
+  login: string,
+  password: string,
+): UserData | null {
+  const normalizedName = name.trim();
+
+  const normalizedLogin = login
+    .trim()
+    .toLowerCase();
+  
+  const existingUser = getUserByLogin(
+    normalizedLogin,
+  );
+
+  if (existingUser) {
+    return null;
+  }
+
+  const passwordHash = hashPassword(password);
+
+  const userId = insertUser(
+    normalizedName,
+    normalizedLogin,
+    passwordHash,
+  );
+
+  const row = getUserById(userId);
+
+  if (!row) {
+    throw new Error (
+      'Failed to load registered user',
+    );
+  }
+
+  return mapUserRow(row as UserRow)
+}
 
 export function authenticateUser(
   login: string,

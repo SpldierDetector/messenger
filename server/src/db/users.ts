@@ -16,7 +16,9 @@ export function getUserById(userId: number) {
   const statement = database.prepare(`
     SELECT
       id,
-      name
+      name,
+      login,
+      passwordHash
     FROM users
     WHERE id = ?
     LIMIT 1  
@@ -38,6 +40,29 @@ export function getUserByLogin(login: string) {
   `);
 
   return statement.get(login);
+}
+
+export function insertUser(
+  name: string,
+  login: string,
+  passwordHash: string,
+): number {
+  const statement = database.prepare(`
+    INSERT INTO users(
+      name,
+      login,
+      passwordHash
+    )
+    VALUES (?, ?, ?)
+  `);
+
+  const result = statement.run(
+    name,
+    login,
+    passwordHash,
+  );
+
+  return Number(result.lastInsertRowid);
 }
 
 export function searchUsers(

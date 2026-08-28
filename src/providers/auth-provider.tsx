@@ -10,11 +10,13 @@ import {
   getCurrentUserRequest,
   loginRequest,
   logoutRequest,
+  registerRequest,
 } from '@/services/auth-api';
 
 import type {
   AuthUser,
   LoginRequest,
+  RegisterRequest,
 } from '@/types/auth';
 
 import { 
@@ -29,6 +31,7 @@ type AuthContextData = {
   isAuthenticated: boolean;
   isAuthLoading: boolean;
   login: (data: LoginRequest) => Promise<void>;
+  register: (data: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -92,6 +95,17 @@ export function AuthProvider({
     setToken(response.token);
   }
 
+  async function register(data: RegisterRequest,) {
+    const response = await registerRequest(data);
+
+    await saveSessionToken(
+      response.token,
+    );
+
+    setUser(response.user);
+    setToken(response.token);
+  }
+
   async function logout() {
     try {
       if (token) {
@@ -115,6 +129,7 @@ export function AuthProvider({
         isAuthenticated,
         isAuthLoading,
         login,
+        register,
         logout,
       }}
     >
