@@ -8,6 +8,7 @@ import {
 
 import {
   createMessage,
+  editMessage as editMessageService,
   loadLatestMessages,
   loadMessageList,
 } from "@/services/messages-service";
@@ -24,6 +25,7 @@ type MessagesContextValue = {
   error: string | null;
   loadMessages: (chatId: number) => Promise<void>;
   loadLatestMessagePreviews: () => Promise<void>;
+  editMessage: (messageId: number, text: string,) => Promise<boolean>;
 };
 
 export const MessagesContext = createContext<MessagesContextValue | undefined>(
@@ -95,6 +97,44 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
     }
   }
 
+  async function editMessage(
+    messageId: number,
+    text: string,
+  ): Promise<boolean> {
+    if (!token || !user) {
+      return false;
+      }
+
+      try {
+        setError(null);
+
+      const updatedMessage =
+        await editMessageService(
+          messageId,
+          text,
+          token,
+          user.id,
+        );
+
+      updateMessageInState(
+        updatedMessage,
+      );
+
+      return true;
+    } catch (caughtError) {
+      console.error(
+        'Failed to edit message:',
+        caughtError,
+      );
+
+      setError(
+        'Не удалось изменить сообщение',
+      );
+
+      return false;
+    }
+  }
+
   function addMessageIfMissing(newMessage: MessageData) {
     setMessages((currentMessages) => {
       const alreadyExists = currentMessages.some(
@@ -106,6 +146,18 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       }
       return [...currentMessages, newMessage];
     });
+  }
+
+  function updateMessageInState(
+    updatedMessage: MessageData,
+  ) {
+    setMessages((currentMessages) =>
+      currentMessages.map((message) =>
+        message.id === updatedMessage.id
+          ? updatedMessage
+          : message,
+      ),
+    );
   }
 
   useEffect(() => {
@@ -121,6 +173,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       token,
       currentUserId: user.id,
       onMessageCreated: addMessageIfMissing,
+      onMessageUpdated: updateMessageInState,
     });
 
     return disconnectWebSocket;
@@ -131,6 +184,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
     value={{ 
       messages, 
       sendMessage,
+      editMessage,
       loadMessages,
       loadLatestMessagePreviews, 
       isLoaded,

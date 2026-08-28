@@ -10,6 +10,7 @@ type ConnectWebSocketOptions = {
   token: string;
   currentUserId: number;
   onMessageCreated: (message: MessageData) => void;
+  onMessageUpdated: (message: MessageData) => void;
 };
 
 type WebSocketEvent = {
@@ -21,6 +22,7 @@ export function connectWebSocket({
   token,
   currentUserId,
   onMessageCreated,
+  onMessageUpdated,
 }: ConnectWebSocketOptions) {
   let socket: WebSocket | null = null;
   let reconnectTimer: 
@@ -47,6 +49,18 @@ export function connectWebSocket({
           const mappedMessage = mapMessageApiData(apiMessage, currentUserId,);
 
           onMessageCreated(mappedMessage);
+        }
+
+        if (message.type === 'message_updated') {
+          const apiMessage =
+            message.data as MessageApiData;
+
+          const mappedMessage = mapMessageApiData(
+            apiMessage,
+            currentUserId,
+          );
+
+          onMessageUpdated(mappedMessage);
         }
       } catch (error) {
         console.error('Failed to parse WebSocket message:', error);

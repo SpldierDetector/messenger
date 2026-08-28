@@ -22,6 +22,7 @@ export default function ChatScreen() {
   const { 
     messages,
     sendMessage,
+    editMessage,
     loadMessages,
     isLoaded,
     isSending,
@@ -34,6 +35,8 @@ export default function ChatScreen() {
 
   const [chat, setChat] = useState<ChatData | null>(null);
   const [isChatLoaded, setIsChatLoaded] = useState(false);
+  const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     if (!Number.isFinite(chatId)) {
@@ -67,7 +70,7 @@ export default function ChatScreen() {
     );
   const [text, setText] = useState('');
   const listRef = useRef<FlatList>(null);
-  const isSendDisabled = !text.trim() || isSending;
+  const isSendDisabled = !text.trim() || isSending || isEditing;
 
   function handleBackPress() {
     if (router.canGoBack()) {
@@ -78,13 +81,54 @@ export default function ChatScreen() {
     router.replace('/');
   }
 
+  function handleStartEditing(
+    messageId: number,
+    messageText: string,
+  ) {
+    setEditingMessageId(messageId);
+    setText(messageText);
+  }
+
+  function handleCancelEditing() {
+    setEditingMessageId(null);
+    setText('');
+  }
+
   async function handleSend() {
-    if (!text.trim()) {
+    const normalizedText = text.trim();
+
+    if (!normalizedText) {
       return;
     }
-    
-    const wasSent = await sendMessage(chatId, text);
-    if (wasSent) {setText('');}
+
+    if (editingMessageId !== null) {
+      try {
+        setIsEditing(true);
+
+        const wasEdited = await editMessage(
+          editingMessageId,
+          normalizedText,
+        );
+
+        if (wasEdited) {
+          setText('');
+          setEditingMessageId(null);
+        }
+      } finally {
+        setIsEditing(false);
+      }
+
+      return;
+    }
+
+    const wasSent = await sendMessage(
+      chatId,
+      normalizedText,
+    );
+
+    if (wasSent) {
+      setText('');
+    }
   }
   
   if (!isChatLoaded) {
@@ -182,6 +226,16 @@ export default function ChatScreen() {
                   text={item.text}
                   time={formatMessageTime(item.createdAt)}
                   isOwn={item.isOwn}
+                  editedAt={item.editedAt}
+                  onLongPress={
+                    item.isOwn
+                      ? () =>
+                          handleStartEditing(
+                            item.id,
+                            item.text,
+                          )
+                      : undefined
+                  }
                 />
               </View>
             )
@@ -192,6 +246,32 @@ export default function ChatScreen() {
           <Text style={styles.errorText}>
             {error}
           </Text>
+        )}
+
+        {editingMessageId !== null && (
+          <View style={styles.editingBar}>
+            <View style={styles.editingInfo}>
+              <Text style={styles.editingTitle}>
+                Редактирование сообщения
+              </Text>
+
+              <Text
+                style={styles.editingText}
+                numberOfLines={1}
+              >
+                {text}
+              </Text>
+            </View>
+
+            <Pressable
+              onPress={handleCancelEditing}
+              style={styles.cancelEditButton}
+            >
+              <Text style={styles.cancelEditButtonText}>
+                ✕
+              </Text>
+            </Pressable>
+          </View>
         )}
 
         <View style={styles.inputRow}>
@@ -213,7 +293,11 @@ export default function ChatScreen() {
             disabled={isSendDisabled}
           >
             <Text style={styles.sendButtonText}>
-              {isSending ? '...' : 'Send'}
+              {isSending || isEditing
+                ? '...' 
+                : editingMessageId !== null
+                  ? 'Save'
+                  : 'Send'}
             </Text>
           </Pressable>
         </View>

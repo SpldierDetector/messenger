@@ -1,6 +1,7 @@
 import { API_BASE_URL } from '@/config/api';
 import type { MessageData } from '@/types/message';
 import type {
+  EditMessageRequest,
   MessageApiData,
   SendMessageRequest,
 } from '@/types/message-api';
@@ -53,6 +54,43 @@ export async function sendMessageRequest(
   }
 
   const message = (await response.json()) as MessageApiData;
+
+  return mapMessageApiData(
+    message,
+    currentUserId,
+  );
+}
+
+export async function editMessageRequest(
+  messageId: number,
+  text: string,
+  token: string,
+  currentUserId: number,
+): Promise<MessageData> {
+  const data: EditMessageRequest = {
+    text,
+  };
+
+  const response = await fetch(
+    `${API_BASE_URL}/messages/${messageId}`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      'Failed to edit message',
+    );
+  }
+
+  const message =
+    (await response.json()) as MessageApiData;
 
   return mapMessageApiData(
     message,

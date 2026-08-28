@@ -2,17 +2,18 @@ import { WebSocket, WebSocketServer } from 'ws';
 
 import { isUserInChat } from '../db/chat-members.js';
 import type { MessageData } from '../types/message.js';
-import type { 
-  AuthenticatedWebSocket, 
+import type {
+  AuthenticatedWebSocket,
   WebSocketEvent,
 } from '../types/websocket.js';
 
-export function broadcastMessageCreated(
+function broadcastToChatMembers(
   webSocketServer: WebSocketServer,
   message: MessageData,
+  eventType: string,
 ) {
   const event: WebSocketEvent<MessageData> = {
-    type: 'message_created',
+    type: eventType,
     data: message,
   };
 
@@ -37,8 +38,28 @@ export function broadcastMessageCreated(
       return;
     }
 
-    authenticatedClient.send(
-      serializedEvent,
-    );
+    authenticatedClient.send(serializedEvent);
   });
+}
+
+export function broadcastMessageCreated(
+  webSocketServer: WebSocketServer,
+  message: MessageData,
+) {
+  broadcastToChatMembers(
+    webSocketServer,
+    message,
+    'message_created',
+  );
+}
+
+export function broadcastMessageUpdated(
+  webSocketServer: WebSocketServer,
+  message: MessageData,
+) {
+  broadcastToChatMembers(
+    webSocketServer,
+    message,
+    'message_updated',
+  );
 }

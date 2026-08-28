@@ -5,6 +5,7 @@ export type MessageRow = {
   author: string;
   text: string;
   createdAt: number;
+  editedAt: number | null;
 };
 
 export type MessageData = {
@@ -14,9 +15,14 @@ export type MessageData = {
   author: string;
   text: string;
   createdAt: number;
+  editedAt: number | null;
 };
 
 export type SendMessageRequest = {
   chatId: number;
+  text: string;
+};
+
+export type EditMessageRequest = {
   text: string;
 };

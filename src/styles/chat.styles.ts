@@ -149,5 +149,39 @@ export const styles = StyleSheet.create({
     backgroundColor: '#1f1f1f',
     color: '#a9a9a9',
     fontSize: 12,
-  }
+  },
+  editingBar: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  borderLeftWidth: 3,
+  borderLeftColor: '#2563eb',
+  backgroundColor: '#161616',
+  borderRadius: 10,
+  paddingHorizontal: 12,
+  paddingVertical: 8,
+  marginTop: 8,
+},
+editingInfo: {
+  flex: 1,
+},
+editingTitle: {
+  color: '#60a5fa',
+  fontSize: 13,
+  fontWeight: '600',
+  marginBottom: 2,
+},
+editingText: {
+  color: '#a1a1aa',
+  fontSize: 13,
+},
+cancelEditButton: {
+  width: 36,
+  height: 36,
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+cancelEditButtonText: {
+  color: '#a1a1aa',
+  fontSize: 18,
+},
 });

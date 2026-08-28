@@ -5,6 +5,7 @@ export type MessageData = {
   author: string;
   text: string;
   createdAt: number;
+  editedAt: number | null;
   isOwn: boolean;
 }
 

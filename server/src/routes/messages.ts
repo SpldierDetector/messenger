@@ -1,11 +1,15 @@
 import { Router } from 'express';
 import {
   getLatestMessagesByUserId,
+  getMessageById,
   getMessagesByChatId,
   insertMessage,
+  updateMessage,
 } from '../db/messages.js';
 import type {
+  EditMessageRequest,
   MessageData,
+  MessageRow,
   SendMessageRequest,
 } from '../types/message.js';
 import { mapMessageRow } from '../mappers/message.js';
@@ -17,10 +21,12 @@ import {
 
 type MessagesRouterOptions = {
   broadcastMessageCreated: (message: MessageData) => void;
+  broadcastMessageUpdated: (message: MessageData) => void;
 };
 
 export function createMessagesRouter({
   broadcastMessageCreated,
+  broadcastMessageUpdated,
 }: MessagesRouterOptions) {
   const messagesRouter = Router();
 
@@ -148,12 +154,114 @@ export function createMessagesRouter({
       author: currentUser.name,
       text: text.trim(),
       createdAt: now,
+      editedAt: null,
     };
 
     broadcastMessageCreated(message);
 
     response.status(201).json(message);
   });
+
+  messagesRouter.patch(
+    '/:id',
+    requireAuth,
+    (request, response) => {
+      const messageId = Number(
+        request.params.id,
+      );
+
+      if (
+        !Number.isInteger(messageId) ||
+        messageId <= 0
+      ) {
+        response.status(400).json({
+          error: 'message id must be a positive integer',
+        });
+
+        return;
+      }
+
+      const { text } =
+        request.body as EditMessageRequest;
+
+      if (
+        typeof text !== 'string' ||
+        !text.trim()
+      ) {
+        response.status(400).json({
+          error: 'text must be a non-empty string',
+        });
+
+        return;
+      }
+
+      const currentUser = request.user;
+
+      if (!currentUser) {
+        response.status(401).json({
+          error: 'authorization required',
+        });
+
+        return;
+      }
+
+      const row = getMessageById(messageId);
+
+      if (!row) {
+        response.status(404).json({
+          error: 'message not found',
+        });
+
+        return;
+      }
+
+      const message = row as MessageRow;
+
+      const userIsChatMember = isUserInChat(
+        message.chatId,
+        currentUser.id,
+      );
+
+      if (!userIsChatMember) {
+        response.status(403).json({
+          error: 'forbidden',
+        });
+
+        return;
+      }
+
+      if (
+        message.senderId !== currentUser.id
+      ) {
+        response.status(403).json({
+          error: 'you can edit only your own messages',
+        });
+
+        return;
+      }
+
+      const normalizedText = text.trim();
+      const editedAt = Date.now();
+
+      updateMessage(
+        messageId,
+        normalizedText,
+        editedAt,
+      );
+
+      const updatedMessage: MessageData ={
+        ...message,
+        text: normalizedText,
+        editedAt,
+      };
+
+      broadcastMessageUpdated(
+        updatedMessage,
+      );
+
+      response.json(updatedMessage);
+    },
+  );
 
   return messagesRouter;
 }

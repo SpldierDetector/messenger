@@ -14,4 +14,9 @@ export type MessageApiData = {
     author: string;
     text: string;
     createdAt: number;
+    editedAt: number | null;
+};
+
+export type EditMessageRequest = {
+    text: string;
 };

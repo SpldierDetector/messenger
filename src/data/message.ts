@@ -9,6 +9,7 @@ export const messages: MessageData[] = [
     text: 'Привет! Как дела?',
     createdAt: Date.now(),
     isOwn: false,
+    editedAt: null,
   },
 
   {
@@ -19,6 +20,7 @@ export const messages: MessageData[] = [
     text: 'Привет! Всё отлично.',
     createdAt: Date.now(),
     isOwn: true,
+    editedAt: null,
   },
 
   {
@@ -29,6 +31,7 @@ export const messages: MessageData[] = [
     text: 'Продолжаем делать мессенджер?',
     createdAt: Date.now(),
     isOwn: false,
+    editedAt: null,
   },
 
   {
@@ -39,6 +42,7 @@ export const messages: MessageData[] = [
     text: 'До завтра?',
     createdAt: Date.now(),
     isOwn: false,
+    editedAt: null,
   },
 
   {
@@ -49,6 +53,7 @@ export const messages: MessageData[] = [
     text: 'Да, увидимся завтра.',
     createdAt: Date.now(),
     isOwn: true,
+    editedAt: null,
   },
 
   {
@@ -59,6 +64,7 @@ export const messages: MessageData[] = [
     text: 'Хорошо, договорились',
     createdAt: Date.now(),
     isOwn: false,
+    editedAt: null,
   },
   
   {
@@ -69,5 +75,6 @@ export const messages: MessageData[] = [
     text: 'Отлично, тогда так и сделаем.',
     createdAt: Date.now(),
     isOwn: true,
+    editedAt: null,
   },
 ];

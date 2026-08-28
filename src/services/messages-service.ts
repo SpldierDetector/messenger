@@ -1,4 +1,5 @@
 import {
+  editMessageRequest,
   getLatestMessagesRequest,
   getMessagesRequest,
   sendMessageRequest,
@@ -41,6 +42,20 @@ export async function createMessage(
       chatId,
       text,
     },
+    token,
+    currentUserId,
+  );
+}
+
+export async function editMessage(
+  messageId: number,
+  text: string,
+  token: string,
+  currentUserId: number,
+) {
+  return editMessageRequest(
+    messageId,
+    text,
     token,
     currentUserId,
   );

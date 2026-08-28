@@ -8,7 +8,8 @@ export function getMessagesByChatId(chatId: number) {
       message.senderId,
       sender.name AS author,
       message.text,
-      message.createdAt
+      message.createdAt,
+      message.editedAt
     FROM messages AS message
     JOIN users AS sender
       ON sender.id = message.senderId
@@ -27,7 +28,8 @@ export function getLatestMessagesByUserId(userId: number) {
       message.senderId,
       sender.name AS author,
       message.text,
-      message.createdAt
+      message.createdAt,
+      message.editedAt
     FROM messages AS message
 
     JOIN users AS sender
@@ -51,6 +53,26 @@ export function getLatestMessagesByUserId(userId: number) {
   `);
 
   return statement.all(userId);
+}
+
+export function getMessageById(messageId: number) {
+  const statement = database.prepare(`
+    SELECT
+      message.id,
+      message.chatId,
+      message.senderId,
+      sender.name AS author,
+      message.text,
+      message.createdAt,
+      message.editedAt
+    FROM messages AS message
+    JOIN users AS sender
+      ON sender.id = message.senderId
+    WHERE message.id = ?
+    LIMIT 1  
+  `);
+
+  return statement.get(messageId);
 }
 
 export function insertMessage(
@@ -83,3 +105,22 @@ export function insertMessage(
   );
 }
 
+export function updateMessage(
+  messageId: number,
+  text: string,
+  editedAt: number,
+) {
+  const statement = database.prepare(`
+    UPDATE messages
+    SET
+      text = ?,
+      editedAt = ?
+    WHERE id = ?  
+  `);
+
+  return statement.run(
+    text,
+    editedAt,
+    messageId,
+  );
+}
