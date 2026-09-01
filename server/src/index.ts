@@ -7,7 +7,11 @@ import { getUserBySessionToken } from './auth/auth-service.js';
 
 import { chatsRouter } from './routes/chats.js';
 import { createMessagesRouter } from './routes/messages.js';
-import { broadcastMessageCreated, broadcastMessageUpdated, } from './websocket/broadcast.js';
+import { 
+  broadcastMessageCreated, 
+  broadcastMessageUpdated,
+  broadcastMessageDeleted, 
+} from './websocket/broadcast.js';
 import { usersRouter } from './routes/users.js';
 import { authRouter } from './routes/auth.js';
 import type { AuthenticatedWebSocket } from './types/websocket.js'
@@ -44,6 +48,13 @@ const messagesRouter = createMessagesRouter({
 
   broadcastMessageUpdated: (message) => {
     broadcastMessageUpdated(
+      webSocketServer,
+      message,
+    );
+  },
+
+  broadcastMessageDeleted: (message) => {
+    broadcastMessageDeleted(
       webSocketServer,
       message,
     );

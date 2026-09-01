@@ -115,6 +115,8 @@ export default function ChatListScreen() {
     token,
   ]);
 
+  
+
   if (isAuthLoading) {
     return null;
   }

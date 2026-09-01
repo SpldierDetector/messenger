@@ -6,6 +6,7 @@ export type MessageData = {
   text: string;
   createdAt: number;
   editedAt: number | null;
+  deletedAt: number | null;
   isOwn: boolean;
 }
 

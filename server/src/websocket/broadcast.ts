@@ -63,3 +63,14 @@ export function broadcastMessageUpdated(
     'message_updated',
   );
 }
+
+export function broadcastMessageDeleted(
+  webSocketServer: WebSocketServer,
+  message: MessageData,
+) {
+  broadcastToChatMembers(
+    webSocketServer,
+    message,
+    'message_deleted',
+  );
+}

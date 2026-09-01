@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import {
+  deleteMessage,
   getLatestMessagesByUserId,
   getMessageById,
   getMessagesByChatId,
@@ -22,11 +23,13 @@ import {
 type MessagesRouterOptions = {
   broadcastMessageCreated: (message: MessageData) => void;
   broadcastMessageUpdated: (message: MessageData) => void;
+  broadcastMessageDeleted: (message: MessageData) => void;
 };
 
 export function createMessagesRouter({
   broadcastMessageCreated,
   broadcastMessageUpdated,
+  broadcastMessageDeleted,
 }: MessagesRouterOptions) {
   const messagesRouter = Router();
 
@@ -155,6 +158,7 @@ export function createMessagesRouter({
       text: text.trim(),
       createdAt: now,
       editedAt: null,
+      deletedAt: null,
     };
 
     broadcastMessageCreated(message);
@@ -217,6 +221,14 @@ export function createMessagesRouter({
 
       const message = row as MessageRow;
 
+      if (message.deletedAt !== null) {
+        response.status(409).json({
+          error: 'deleted message cannot be edited',
+        });
+
+        return;
+      }
+
       const userIsChatMember = isUserInChat(
         message.chatId,
         currentUser.id,
@@ -260,6 +272,98 @@ export function createMessagesRouter({
       );
 
       response.json(updatedMessage);
+    },
+  );
+
+  messagesRouter.delete(
+    '/:id',
+    requireAuth,
+    (request, response) => {
+      const messageId = Number(
+        request.params.id,
+      );
+
+      if (
+        !Number.isInteger(messageId) ||
+        messageId <= 0
+      ) {
+        response.status(400).json({
+          error: 'message id must be a positive integer',
+        });
+
+        return;
+      }
+
+      const currentUser = request.user;
+
+      if (!currentUser) {
+        response.status(401).json({
+          error: 'authorization required',
+        });
+
+        return;
+      }
+
+      const row = getMessageById(messageId);
+
+      if (!row) {
+        response.status(404).json({
+          error: 'message not found',
+        });
+
+        return;
+      }
+
+      const message = row as MessageRow;
+
+      const userIsChatMember = isUserInChat(
+        message.chatId,
+        currentUser.id,
+      );
+
+      if (!userIsChatMember) {
+        response.status(403).json({
+          error: 'forbidden',
+        });
+
+        return;
+      }
+
+      if (
+        message.senderId !== currentUser.id
+      ) {
+        response.status(403).json({
+          error: 'you can delete only your own messages',
+        });
+
+        return;
+      }
+
+      if (message.deletedAt !== null) {
+        response.status(409).json({
+          error: 'message already deleted',
+        });
+
+        return;
+      }
+
+      const deletedAt = Date.now();
+
+      deleteMessage(
+        messageId,
+        deletedAt,
+      );
+
+      const deletedMessage: MessageData = {
+        ...message,
+        deletedAt,
+      };
+
+      broadcastMessageDeleted(
+        deletedMessage,
+      );
+
+      response.json(deletedMessage);
     },
   );
 

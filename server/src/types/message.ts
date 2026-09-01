@@ -6,6 +6,7 @@ export type MessageRow = {
   text: string;
   createdAt: number;
   editedAt: number | null;
+  deletedAt: number | null;
 };
 
 export type MessageData = {
@@ -16,6 +17,7 @@ export type MessageData = {
   text: string;
   createdAt: number;
   editedAt: number | null;
+  deletedAt: number | null;
 };
 
 export type SendMessageRequest = {

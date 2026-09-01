@@ -11,6 +11,7 @@ database.exec(`
     text TEXT NOT NULL,
     createdAt INTEGER NOT NULL,
     editedAt INTEGER,
+    deletedAt INTEGER,
     isOwn INTEGER NOT NULL
   );
 `);
@@ -25,6 +26,9 @@ const hasSenderId = messageColumns.some(
 const hasEditedAt = messageColumns.some(
   (column) => column.name === 'editedAt',
 )
+const hasDeletedAt = messageColumns.some(
+  (column) => column.name === 'deletedAt',
+);
 
 const messageColumnsAfterMigration = database
   .prepare(`PRAGMA table_info(messages)`)
@@ -42,6 +46,13 @@ if (!hasEditedAt) {
   database.exec(`
     ALTER TABLE messages
     ADD COLUMN editedAt INTEGER  
+  `);
+}
+
+if (!hasDeletedAt) {
+  database.exec(`
+    ALTER TABLE messages
+    ADD COLUMN deletedAt INTEGER  
   `);
 }
 

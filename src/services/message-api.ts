@@ -98,6 +98,35 @@ export async function editMessageRequest(
   );
 }
 
+export async function deleteMessageRequest(
+  messageId: number,
+  token: string,
+  currentUserId: number,
+): Promise<MessageData> {
+  const response = await fetch(
+    `${API_BASE_URL}/messages/${messageId}`,
+    {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      'Failed to delete message',
+    );
+  }
+
+  const message = (await response.json()) as MessageApiData;
+
+  return mapMessageApiData(
+    message,
+    currentUserId,
+  );
+}
+
 export async function getLatestMessagesRequest(
   token: string,
   currentUserId: number,

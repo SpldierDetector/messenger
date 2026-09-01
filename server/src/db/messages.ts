@@ -9,7 +9,8 @@ export function getMessagesByChatId(chatId: number) {
       sender.name AS author,
       message.text,
       message.createdAt,
-      message.editedAt
+      message.editedAt,
+      message.deletedAt
     FROM messages AS message
     JOIN users AS sender
       ON sender.id = message.senderId
@@ -29,7 +30,8 @@ export function getLatestMessagesByUserId(userId: number) {
       sender.name AS author,
       message.text,
       message.createdAt,
-      message.editedAt
+      message.editedAt,
+      message.deletedAt
     FROM messages AS message
 
     JOIN users AS sender
@@ -44,6 +46,7 @@ export function getLatestMessagesByUserId(userId: number) {
       SELECT latestMessage.id
       FROM messages AS latestMessage
       WHERE latestMessage.chatId = message.chatId
+        AND latestMessage.deletedAt IS NULL
       ORDER BY 
         latestMessage.createdAt DESC, 
         latestMessage.id DESC
@@ -64,7 +67,8 @@ export function getMessageById(messageId: number) {
       sender.name AS author,
       message.text,
       message.createdAt,
-      message.editedAt
+      message.editedAt,
+      message.deletedAt
     FROM messages AS message
     JOIN users AS sender
       ON sender.id = message.senderId
@@ -121,6 +125,22 @@ export function updateMessage(
   return statement.run(
     text,
     editedAt,
+    messageId,
+  );
+}
+
+export function deleteMessage(
+  messageId: number,
+  deletedAt: number,
+) {
+  const statement = database.prepare(`
+    UPDATE messages
+    SET deletedAt = ?
+    WHERE id = ?
+  `);
+
+  return statement.run(
+    deletedAt,
     messageId,
   );
 }

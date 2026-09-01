@@ -184,4 +184,32 @@ cancelEditButtonText: {
   color: '#a1a1aa',
   fontSize: 18,
 },
+messageMenuRoot: {
+  flex: 1,
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+messageMenuBackdrop: {
+  ...StyleSheet.absoluteFill,
+  backgroundColor: 'rgba(0, 0, 0, 0.55)',
+},
+messageMenu: {
+  width: 240,
+  backgroundColor: '#1c1c1e',
+  borderRadius: 14,
+  paddingVertical: 6,
+},
+messageMenuItem: {
+  minHeight: 48,
+  justifyContent: 'center',
+  paddingHorizontal: 18,
+},
+messageMenuText: {
+  color: '#FFFFFF',
+  fontSize: 16,
+},
+deleteMessageMenuText: {
+  color: '#ff6b6b',
+  fontSize: 16,
+},
 });

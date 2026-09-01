@@ -8,6 +8,7 @@ import {
 
 import {
   createMessage,
+  deleteMessage as deleteMessageService,
   editMessage as editMessageService,
   loadLatestMessages,
   loadMessageList,
@@ -19,6 +20,7 @@ import type { MessageData } from "@/types/message";
 
 type MessagesContextValue = {
   messages: MessageData[];
+  deleteMessage: (messageId: number) => Promise<boolean>;
   sendMessage: (chatId: number, text: string) => Promise<boolean>;
   isLoaded: boolean;
   isSending: boolean;
@@ -70,6 +72,43 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
 
     setMessages(latestMessages);
     setIsLoaded(true);
+  }
+
+  async function refreshLatestMessagePreviews() {
+    if (!token || !user) {
+      return;
+    }
+
+    const latestMessages =
+      await loadLatestMessages(
+        token,
+        user.id,
+      );
+
+    setMessages((currentMessages) => {
+      const mergedMessages = [
+        ...currentMessages,
+      ];
+
+      for (const latestMessage of latestMessages) {
+        const existingIndex =
+          mergedMessages.findIndex(
+            (message) =>
+              message.id === latestMessage.id,
+          );
+
+        if (existingIndex >= 0) {
+          mergedMessages[existingIndex] =
+            latestMessage;
+        } else {
+          mergedMessages.push(
+            latestMessage,
+          );
+        }
+      }
+
+      return mergedMessages;
+    });
   }
 
   async function sendMessage(chatId: number, text: string): Promise<boolean> {
@@ -135,6 +174,41 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
     }
   }
 
+  async function deleteMessage(
+    messageId: number,
+  ): Promise<boolean> {
+    if (!token || !user) {
+      return false;
+    }
+
+    try {
+      setError(null);
+
+      const deletedMessage =
+        await deleteMessageService(
+          messageId,
+          token,
+          user.id
+        );
+
+      updateMessageInState(
+        deletedMessage,
+      );
+      return true;
+    } catch (caughtError) {
+      console.error(
+        'Failed to delete message:',
+        caughtError,
+      );
+
+      setError(
+        'Не удалось удалить сообщение',
+      );
+
+      return false;
+    }
+  }
+
   function addMessageIfMissing(newMessage: MessageData) {
     setMessages((currentMessages) => {
       const alreadyExists = currentMessages.some(
@@ -159,6 +233,15 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       ),
     );
   }
+  function handleMessageDeleted(
+    deletedMessage: MessageData,
+  ) {
+    updateMessageInState(
+      deletedMessage,
+    );
+
+    void refreshLatestMessagePreviews();
+  }
 
   useEffect(() => {
     if (!isAuthenticated || !user || !token) {
@@ -174,6 +257,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       currentUserId: user.id,
       onMessageCreated: addMessageIfMissing,
       onMessageUpdated: updateMessageInState,
+      onMessageDeleted: handleMessageDeleted,
     });
 
     return disconnectWebSocket;
@@ -185,6 +269,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       messages, 
       sendMessage,
       editMessage,
+      deleteMessage,
       loadMessages,
       loadLatestMessagePreviews, 
       isLoaded,

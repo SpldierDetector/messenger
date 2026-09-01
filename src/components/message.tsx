@@ -10,6 +10,7 @@ type MessageProps = {
   time: string;
   isOwn: boolean;
   editedAt: number | null;
+  deletedAt: number | null;
   onLongPress?: () => void;
 };
 
@@ -19,6 +20,7 @@ export function Message({
   time,
   isOwn,
   editedAt,
+  deletedAt,
   onLongPress,
 }: MessageProps) {
   return (
@@ -39,8 +41,13 @@ export function Message({
         </Text>
       )}
 
-      <Text style={styles.text}>
-        {text}
+      <Text style={[
+        styles.text,
+        deletedAt !== null && styles.deletedText,
+      ]}>
+        {deletedAt !== null
+          ? 'Сообщение удалено'
+          : text}
       </Text>
 
       <Text
@@ -52,7 +59,9 @@ export function Message({
         ]}
         numberOfLines={1}
       >
-        {editedAt ? 'изменено · ' : ''}
+        {editedAt && !deletedAt 
+          ? 'изменено · ' 
+          : ''}
         {time}
       </Text>
     </Pressable>
@@ -105,5 +114,10 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     backgroundColor: '#27272a',
     borderBottomLeftRadius: 3,
+  },
+
+  deletedText: {
+    color: '#a1a1aa',
+    fontStyle: 'italic',
   },
 });

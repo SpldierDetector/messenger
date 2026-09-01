@@ -11,6 +11,7 @@ type ConnectWebSocketOptions = {
   currentUserId: number;
   onMessageCreated: (message: MessageData) => void;
   onMessageUpdated: (message: MessageData) => void;
+  onMessageDeleted: (message: MessageData) => void;
 };
 
 type WebSocketEvent = {
@@ -23,6 +24,7 @@ export function connectWebSocket({
   currentUserId,
   onMessageCreated,
   onMessageUpdated,
+  onMessageDeleted,
 }: ConnectWebSocketOptions) {
   let socket: WebSocket | null = null;
   let reconnectTimer: 
@@ -61,6 +63,18 @@ export function connectWebSocket({
           );
 
           onMessageUpdated(mappedMessage);
+        }
+
+        if (message.type === 'message_deleted') {
+          const apiMessage = message.data as MessageApiData;
+
+          const mappedMessage =
+            mapMessageApiData(
+              apiMessage,
+              currentUserId,
+            );
+
+          onMessageDeleted(mappedMessage);
         }
       } catch (error) {
         console.error('Failed to parse WebSocket message:', error);

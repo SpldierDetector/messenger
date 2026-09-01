@@ -1,8 +1,18 @@
 import { getChatRequest } from '@/services/chat-api';
 import type { ChatData } from '@/types/chat';
+import type { MessageData } from '@/types/message';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { 
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  Text,
+  TextInput,
+  View
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Message } from '@/components/message';
@@ -23,6 +33,7 @@ export default function ChatScreen() {
     messages,
     sendMessage,
     editMessage,
+    deleteMessage,
     loadMessages,
     isLoaded,
     isSending,
@@ -37,6 +48,10 @@ export default function ChatScreen() {
   const [isChatLoaded, setIsChatLoaded] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [
+    selectedMessage,
+    setSelectedMessage,
+  ] = useState<MessageData | null>(null);
 
   useEffect(() => {
     if (!Number.isFinite(chatId)) {
@@ -63,10 +78,15 @@ export default function ChatScreen() {
   }, [chatId,isAuthenticated, token,]);
   
   const messageList = messages
-    .filter((message) => message.chatId === chatId)
+    .filter(
+      (message) => 
+        message.chatId === chatId &&
+        message.deletedAt === null,
+    )
     .sort(
       (firstMessage, secondMessage) =>
-        firstMessage.createdAt - secondMessage.createdAt
+        firstMessage.createdAt - 
+        secondMessage.createdAt,
     );
   const [text, setText] = useState('');
   const listRef = useRef<FlatList>(null);
@@ -227,14 +247,11 @@ export default function ChatScreen() {
                   time={formatMessageTime(item.createdAt)}
                   isOwn={item.isOwn}
                   editedAt={item.editedAt}
+                  deletedAt={item.deletedAt}
                   onLongPress={
-                    item.isOwn
-                      ? () =>
-                          handleStartEditing(
-                            item.id,
-                            item.text,
-                          )
-                      : undefined
+                    item.isOwn && item.deletedAt === null
+                      ? () => setSelectedMessage(item)
+                      : undefined                  
                   }
                 />
               </View>
@@ -242,6 +259,64 @@ export default function ChatScreen() {
           }}
         />
 
+        <Modal
+          visible={selectedMessage !== null}
+          transparent
+          animationType="fade"
+          onRequestClose={() =>
+            setSelectedMessage(null)
+          }
+        >
+          <View style={styles.messageMenuRoot}>
+            <Pressable
+              style={styles.messageMenuBackdrop}
+              onPress={() =>
+                setSelectedMessage(null)
+              }
+            />
+
+            <View style={styles.messageMenu}>
+              <Pressable
+                style={styles.messageMenuItem}
+                onPress={() =>{
+                  if (!selectedMessage) {
+                    return;
+                  }
+
+                  handleStartEditing(
+                    selectedMessage.id,
+                    selectedMessage.text,
+                  );
+
+                  setSelectedMessage(null);
+                }}
+              >
+                <Text style={styles.messageMenuText}>
+                  Редактировать
+                </Text>
+              </Pressable>
+              <Pressable
+                style={styles.messageMenuItem}
+                onPress={async () => {
+                  if (!selectedMessage) {
+                    return;
+                  }
+
+                  const messageId =
+                    selectedMessage.id;
+
+                  setSelectedMessage(null);
+
+                  await deleteMessage(messageId);
+                }}
+              >
+                <Text style={styles.deleteMessageMenuText}>
+                  Удалить
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
         {error && (
           <Text style={styles.errorText}>
             {error}

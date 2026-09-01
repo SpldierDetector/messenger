@@ -1,4 +1,5 @@
 import {
+  deleteMessageRequest,
   editMessageRequest,
   getLatestMessagesRequest,
   getMessagesRequest,
@@ -56,6 +57,18 @@ export async function editMessage(
   return editMessageRequest(
     messageId,
     text,
+    token,
+    currentUserId,
+  );
+}
+
+export async function deleteMessage(
+  messageId: number,
+  token: string,
+  currentUserId: number,
+) {
+  return deleteMessageRequest(
+    messageId,
     token,
     currentUserId,
   );
