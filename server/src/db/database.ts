@@ -1,7 +1,14 @@
 import { DatabaseSync } from 'node:sqlite';
-import { hashPassword } from '../auth/password.js'
+import { hashPassword } from '../auth/password.js';
 
 export const database = new DatabaseSync('voxa.db');
+
+database.exec(`
+  CREATE TABLE IF NOT EXISTS users(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL
+  )
+`)
 
 database.exec(`
   CREATE TABLE IF NOT EXISTS messages (
@@ -79,13 +86,6 @@ database.exec(`
     type TEXT NOT NULL DEFAULT 'direct'
   );
 `);
-
-database.exec(`
-  CREATE TABLE IF NOT EXISTS users(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL
-  )
-`)
 
 database.exec(`
   CREATE TABLE IF NOT EXISTS chat_members (
