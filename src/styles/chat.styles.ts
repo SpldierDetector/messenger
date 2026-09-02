@@ -212,4 +212,38 @@ deleteMessageMenuText: {
   color: '#ff6b6b',
   fontSize: 16,
 },
+replyingBar: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  borderLeftWidth: 3,
+  borderLeftColor: '#2563eb',
+  backgroundColor: '#161616',
+  borderRadius: 10,
+  paddingHorizontal: 12,
+  paddingVertical: 8,
+  marginTop: 8,
+},
+replyingInfo: {
+  flex: 1,
+},
+replyingTitle: {
+  color: '#60a5fa',
+  fontSize: 13,
+  fontWeight: '600',
+  marginBottom: 2,
+},
+replyingText: {
+  color: '#a1a1aa',
+  fontSize: 13,
+},
+cancelReplyButton: {
+  width: 36,
+  height: 36,
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+cancelReplyButtonText: {
+  color: '#a1a1aa',
+  fontSize: 18,
+},
 });

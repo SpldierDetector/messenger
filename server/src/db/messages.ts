@@ -10,7 +10,8 @@ export function getMessagesByChatId(chatId: number) {
       message.text,
       message.createdAt,
       message.editedAt,
-      message.deletedAt
+      message.deletedAt,
+      message.replyToMessageId
     FROM messages AS message
     JOIN users AS sender
       ON sender.id = message.senderId
@@ -31,7 +32,8 @@ export function getLatestMessagesByUserId(userId: number) {
       message.text,
       message.createdAt,
       message.editedAt,
-      message.deletedAt
+      message.deletedAt,
+      message.replyToMessageId
     FROM messages AS message
 
     JOIN users AS sender
@@ -68,7 +70,8 @@ export function getMessageById(messageId: number) {
       message.text,
       message.createdAt,
       message.editedAt,
-      message.deletedAt
+      message.deletedAt,
+      message.replyToMessageId
     FROM messages AS message
     JOIN users AS sender
       ON sender.id = message.senderId
@@ -86,6 +89,7 @@ export function insertMessage(
   text: string,
   createdAt: number,
   isOwn: boolean,
+  replyToMessageId: number | null,
 ) {
   const statement = database.prepare(`
     INSERT INTO messages (
@@ -94,9 +98,10 @@ export function insertMessage(
       author,
       text,
       createdAt,
-      isOwn
+      isOwn,
+      replyToMessageId
     )
-    VALUES (?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
 
   return statement.run(
@@ -106,6 +111,7 @@ export function insertMessage(
     text,
     createdAt,
     isOwn ? 1 : 0,
+    replyToMessageId,
   );
 }
 

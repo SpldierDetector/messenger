@@ -7,6 +7,7 @@ export type MessageRow = {
   createdAt: number;
   editedAt: number | null;
   deletedAt: number | null;
+  replyToMessageId: number | null;
 };
 
 export type MessageData = {
@@ -18,11 +19,13 @@ export type MessageData = {
   createdAt: number;
   editedAt: number | null;
   deletedAt: number | null;
+  replyToMessageId: number | null;
 };
 
 export type SendMessageRequest = {
   chatId: number;
   text: string;
+  replyToMessageId?: number | null;
 };
 
 export type EditMessageRequest = {

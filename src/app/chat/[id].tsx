@@ -3,7 +3,7 @@ import type { ChatData } from '@/types/chat';
 import type { MessageData } from '@/types/message';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { 
+import {
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Message } from '@/components/message';
+import { useAuth } from '@/providers/auth-provider';
 import { useMessages } from '@/providers/messages-provider';
 import { styles } from '@/styles/chat.styles';
 import {
@@ -23,7 +24,6 @@ import {
   formatMessageTime,
   isSameDay
 } from '@/utils/date';
-import { useAuth } from '@/providers/auth-provider';
 
 
 export default function ChatScreen() {
@@ -52,6 +52,7 @@ export default function ChatScreen() {
     selectedMessage,
     setSelectedMessage,
   ] = useState<MessageData | null>(null);
+  const [replyingMessage, setReplyingMessage] = useState<MessageData | null>(null);
 
   useEffect(() => {
     if (!Number.isFinite(chatId)) {
@@ -105,6 +106,7 @@ export default function ChatScreen() {
     messageId: number,
     messageText: string,
   ) {
+    setReplyingMessage(null);
     setEditingMessageId(messageId);
     setText(messageText);
   }
@@ -112,6 +114,19 @@ export default function ChatScreen() {
   function handleCancelEditing() {
     setEditingMessageId(null);
     setText('');
+  }
+
+  function handleStartReply(
+    message: MessageData,
+  ) {
+    setEditingMessageId(null);
+    setText('');
+    setReplyingMessage(message);
+    setSelectedMessage(null);
+  }
+
+  function handleCancelReply() {
+    setReplyingMessage(null);
   }
 
   async function handleSend() {
@@ -144,10 +159,12 @@ export default function ChatScreen() {
     const wasSent = await sendMessage(
       chatId,
       normalizedText,
+      replyingMessage?.id ?? null,
     );
 
     if (wasSent) {
       setText('');
+      setReplyingMessage(null);
     }
   }
   
@@ -249,7 +266,7 @@ export default function ChatScreen() {
                   editedAt={item.editedAt}
                   deletedAt={item.deletedAt}
                   onLongPress={
-                    item.isOwn && item.deletedAt === null
+                    item.deletedAt === null
                       ? () => setSelectedMessage(item)
                       : undefined                  
                   }
@@ -276,6 +293,22 @@ export default function ChatScreen() {
             />
 
             <View style={styles.messageMenu}>
+              <Pressable
+                style={styles.messageMenuItem}
+                onPress={() => {
+                  if (!selectedMessage) {
+                    return;
+                  }
+
+                  handleStartReply(
+                    selectedMessage,
+                  );
+                }}
+              >
+                <Text style={styles.messageMenuText}>
+                  Ответить
+                </Text>
+              </Pressable>
               <Pressable
                 style={styles.messageMenuItem}
                 onPress={() =>{
@@ -343,6 +376,32 @@ export default function ChatScreen() {
               style={styles.cancelEditButton}
             >
               <Text style={styles.cancelEditButtonText}>
+                ✕
+              </Text>
+            </Pressable>
+          </View>
+        )}
+
+        {replyingMessage !== null &&(
+          <View style={styles.replyingBar}>
+            <View style={styles.replyingInfo}>
+              <Text style={styles.replyingTitle}>
+                Ответ: {replyingMessage.author}
+              </Text>
+
+              <Text
+                style={styles.replyingText}
+                numberOfLines={1}
+              >
+                {replyingMessage.text}
+              </Text>
+            </View>
+
+            <Pressable
+              onPress={handleCancelReply}
+              style={styles.cancelReplyButton}
+            >
+              <Text style={styles.cancelReplyButtonText}>
                 ✕
               </Text>
             </Pressable>

@@ -1,5 +1,9 @@
 import { Router } from 'express';
 import {
+  isUserInChat,
+  showChatForAllMembers,
+} from '../db/chat-members.js';
+import {
   deleteMessage,
   getLatestMessagesByUserId,
   getMessageById,
@@ -7,18 +11,14 @@ import {
   insertMessage,
   updateMessage,
 } from '../db/messages.js';
+import { mapMessageRow } from '../mappers/message.js';
+import { requireAuth } from '../middleware/auth.js';
 import type {
   EditMessageRequest,
   MessageData,
   MessageRow,
   SendMessageRequest,
 } from '../types/message.js';
-import { mapMessageRow } from '../mappers/message.js';
-import { requireAuth } from '../middleware/auth.js';
-import { 
-  isUserInChat,
-  showChatForAllMembers, 
-} from '../db/chat-members.js'
 
 type MessagesRouterOptions = {
   broadcastMessageCreated: (message: MessageData) => void;
@@ -96,7 +96,11 @@ export function createMessagesRouter({
   });
 
   messagesRouter.post('/', requireAuth, (request, response) => {
-    const { chatId, text } = request.body as SendMessageRequest;
+    const { 
+      chatId,
+      text,
+      replyToMessageId = null,
+    } = request.body as SendMessageRequest;
 
     if (typeof chatId !== 'number') {
       response.status(400).json({
@@ -109,6 +113,21 @@ export function createMessagesRouter({
     if (typeof text !== 'string' || !text.trim()) {
       response.status(400).json({
         error: 'text must be a non-empty string',
+      });
+
+      return;
+    }
+
+    if (
+      replyToMessageId !== null &&
+      (
+        !Number.isInteger(replyToMessageId) ||
+        replyToMessageId <= 0
+      )
+    ) {
+      response.status(400).json({
+        error:
+        'replyToMessageId ust be a positive integer or null',
       });
 
       return;
@@ -137,6 +156,43 @@ export function createMessagesRouter({
       return;
     }
 
+    if (replyToMessageId !== null) {
+      const replyRow = getMessageById(
+        replyToMessageId,
+      );
+
+      if (!replyRow) {
+        response.status(404).json({
+          error: 'reply message not found',
+        });
+
+        return;
+      }
+
+      const replyMessage =
+        replyRow as MessageRow;
+
+      if (
+        replyMessage.chatId !== chatId
+      ) {
+        response.status(400).json({
+          error: 'reply message must belong to the same chat',
+        });
+
+        return;
+      }
+
+      if (
+        replyMessage.deletedAt !== null
+      ) {
+        response.status(409).json({
+          error: 'cannot reply to deleted message',
+        });
+
+        return;
+      }
+    }
+
     showChatForAllMembers(chatId);
 
     const now = Date.now();
@@ -148,6 +204,7 @@ export function createMessagesRouter({
       text.trim(),
       now,
       true,
+      replyToMessageId,
     );
 
     const message: MessageData = {
@@ -159,6 +216,7 @@ export function createMessagesRouter({
       createdAt: now,
       editedAt: null,
       deletedAt: null,
+      replyToMessageId,
     };
 
     broadcastMessageCreated(message);

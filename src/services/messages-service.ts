@@ -37,11 +37,13 @@ export async function createMessage(
   text: string,
   token: string,
   currentUserId: number,
+  replyToMessageId: number | null = null,
 ) {
   return sendMessageRequest(
     {
       chatId,
       text,
+      replyToMessageId,
     },
     token,
     currentUserId,

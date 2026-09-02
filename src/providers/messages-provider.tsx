@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 
+import { useAuth } from '@/providers/auth-provider';
 import {
   createMessage,
   deleteMessage as deleteMessageService,
@@ -14,14 +15,13 @@ import {
   loadMessageList,
 } from "@/services/messages-service";
 import { connectWebSocket } from "@/services/websocket-service";
-import { useAuth } from '@/providers/auth-provider';
 
 import type { MessageData } from "@/types/message";
 
 type MessagesContextValue = {
   messages: MessageData[];
   deleteMessage: (messageId: number) => Promise<boolean>;
-  sendMessage: (chatId: number, text: string) => Promise<boolean>;
+  sendMessage: (chatId: number, text: string, replyToMessageId?: number | null) => Promise<boolean>;
   isLoaded: boolean;
   isSending: boolean;
   error: string | null;
@@ -111,7 +111,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
     });
   }
 
-  async function sendMessage(chatId: number, text: string): Promise<boolean> {
+  async function sendMessage(chatId: number, text: string, replyToMessageId: number | null = null): Promise<boolean> {
     if (!token || !user) {
       return false;
     }
@@ -120,7 +120,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       setIsSending(true);
       setError(null);
 
-      const message = await createMessage(chatId, text, token, user.id,);
+      const message = await createMessage(chatId, text, token, user.id, replyToMessageId);
 
       addMessageIfMissing(message);
 
