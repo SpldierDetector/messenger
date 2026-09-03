@@ -1,6 +1,7 @@
 import {
   deleteMessageRequest,
   editMessageRequest,
+  forwardMessageRequest,
   getLatestMessagesRequest,
   getMessagesRequest,
   sendMessageRequest,
@@ -71,6 +72,20 @@ export async function deleteMessage(
 ) {
   return deleteMessageRequest(
     messageId,
+    token,
+    currentUserId,
+  );
+}
+
+export async function forwardMessage(
+  messageId: number,
+  targetChatId: number,
+  token: string,
+  currentUserId: number,
+) {
+  return forwardMessageRequest(
+    messageId,
+    targetChatId,
     token,
     currentUserId,
   );

@@ -20,6 +20,8 @@ database.exec(`
     editedAt INTEGER,
     deletedAt INTEGER,
     replyToMessageId INTEGER,
+    forwardedFromMessageId INTEGER,
+    forwardedFromAuthor TEXT,
     isOwn INTEGER NOT NULL
   );
 `);
@@ -33,13 +35,19 @@ const hasSenderId = messageColumns.some(
 );
 const hasEditedAt = messageColumns.some(
   (column) => column.name === 'editedAt',
-)
+);
 const hasDeletedAt = messageColumns.some(
   (column) => column.name === 'deletedAt',
 );
 const hasReplyToMessageId = messageColumns.some(
   (column) => column.name === 'replyToMessageId',
-)
+);
+const hasForwardedFromMessageId = messageColumns.some(
+  (column) => column.name === 'forwardedFromMessageId',
+);
+const hasForwardedFromAuthor = messageColumns.some(
+  (column) => column.name === 'forwardedFromAuthor',
+);
 
 const messageColumnsAfterMigration = database
   .prepare(`PRAGMA table_info(messages)`)
@@ -71,6 +79,20 @@ if (!hasReplyToMessageId) {
   database.exec(`
     ALTER TABLE messages
     ADD COLUMN replyToMessageId INTEGER  
+  `);
+}
+
+if (!hasForwardedFromMessageId) {
+  database.exec(`
+    ALTER TABLE messages
+    ADD COLUMN forwardedFromMessageId INTEGER  
+  `);
+}
+
+if (!hasForwardedFromAuthor) {
+  database.exec(`
+    ALTER TABLE messages
+    ADD COLUMN forwardedFromAuthor TEXT  
   `);
 }
 

@@ -18,6 +18,8 @@ export type MessageApiData = {
   editedAt: number | null;
   deletedAt: number | null;
   replyToMessageId: number | null;
+  forwardedFromMessageId: number | null;
+  forwardedFromAuthor: string | null;
 };
 
 export type EditMessageRequest = {

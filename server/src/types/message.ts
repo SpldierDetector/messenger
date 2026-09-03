@@ -8,6 +8,8 @@ export type MessageRow = {
   editedAt: number | null;
   deletedAt: number | null;
   replyToMessageId: number | null;
+  forwardedFromMessageId: number | null;
+  forwardedFromAuthor: string | null;
 };
 
 export type MessageData = {
@@ -20,6 +22,8 @@ export type MessageData = {
   editedAt: number | null;
   deletedAt: number | null;
   replyToMessageId: number | null;
+  forwardedFromMessageId: number | null;
+  forwardedFromAuthor: string | null;
 };
 
 export type SendMessageRequest = {
@@ -30,4 +34,8 @@ export type SendMessageRequest = {
 
 export type EditMessageRequest = {
   text: string;
+};
+
+export type ForwardMessageRequest = {
+  targetChatId: number,
 };

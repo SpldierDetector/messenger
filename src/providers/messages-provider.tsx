@@ -11,6 +11,7 @@ import {
   createMessage,
   deleteMessage as deleteMessageService,
   editMessage as editMessageService,
+  forwardMessage as forwardMessageService,
   loadLatestMessages,
   loadMessageList,
 } from "@/services/messages-service";
@@ -21,6 +22,7 @@ import type { MessageData } from "@/types/message";
 type MessagesContextValue = {
   messages: MessageData[];
   deleteMessage: (messageId: number) => Promise<boolean>;
+  forwardMessage: (messageId: number, targetChatId: number) => Promise<boolean>;
   sendMessage: (chatId: number, text: string, replyToMessageId?: number | null) => Promise<boolean>;
   isLoaded: boolean;
   isSending: boolean;
@@ -209,6 +211,44 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
     }
   }
 
+  async function forwardMessage(
+    messageId: number,
+    targetChatId: number,
+  ): Promise<boolean> {
+    if (!token || !user) {
+      return false;
+    }
+
+    try {
+      setError(null);
+
+      const forwardedMessage =
+        await forwardMessageService(
+          messageId,
+          targetChatId,
+          token,
+          user.id,
+        );
+      
+      addMessageIfMissing(
+        forwardedMessage,
+      );
+
+      return true;
+    } catch (caughtError) {
+      console.error(
+        'Failed to forward message:',
+        caughtError,
+      );
+
+      setError(
+        'Не удалось переслать сообщение',
+      );
+
+      return false;
+    }
+  }
+
   function addMessageIfMissing(newMessage: MessageData) {
     setMessages((currentMessages) => {
       const alreadyExists = currentMessages.some(
@@ -270,6 +310,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       sendMessage,
       editMessage,
       deleteMessage,
+      forwardMessage,
       loadMessages,
       loadLatestMessagePreviews, 
       isLoaded,

@@ -8,6 +8,7 @@ import {
   getLatestMessagesByUserId,
   getMessageById,
   getMessagesByChatId,
+  insertForwardedMessage,
   insertMessage,
   updateMessage,
 } from '../db/messages.js';
@@ -15,6 +16,7 @@ import { mapMessageRow } from '../mappers/message.js';
 import { requireAuth } from '../middleware/auth.js';
 import type {
   EditMessageRequest,
+  ForwardMessageRequest,
   MessageData,
   MessageRow,
   SendMessageRequest,
@@ -217,11 +219,150 @@ export function createMessagesRouter({
       editedAt: null,
       deletedAt: null,
       replyToMessageId,
+      forwardedFromMessageId: null,
+      forwardedFromAuthor: null,
     };
 
     broadcastMessageCreated(message);
 
     response.status(201).json(message);
+  });
+
+  messagesRouter.post('/:id/forward', requireAuth, (request, response) => {
+    const messageId = Number(request.params.id);
+
+    if (
+      !Number.isInteger(messageId) ||
+      messageId <= 0
+    ) {
+      response.status(400).json({
+        error:
+          'message id must be a positive integer',
+      });
+
+      return;
+    }
+
+    const {
+      targetChatId,
+    } = request.body as ForwardMessageRequest; 
+
+    if (
+      !Number.isInteger(targetChatId) ||
+      targetChatId <= 0
+    ) {
+      response.status(400).json({
+        error:
+          'targetChatId must be a positive integer',
+      });
+
+      return;
+    }
+
+    const currentUser = request.user;
+
+    if (!currentUser) {
+      response.status(401).json({
+        error: 'authorization required',
+      });
+
+      return;
+    }
+
+    const sourceRow = getMessageById(messageId);
+
+    if (!sourceRow) {
+      response.status(404).json({
+        error: 'message not found',
+      });
+
+      return;
+    }
+
+    const sourceMessage = sourceRow as MessageRow;
+
+    const userIsSourceChatMember =
+      isUserInChat(
+        sourceMessage.chatId,
+        currentUser.id,
+      );
+
+    if (!userIsSourceChatMember) {
+      response.status(403).json({
+        error: 'forbidden',
+      });
+
+      return;
+    }
+
+    if (sourceMessage.deletedAt !== null) {
+      response.status(409).json({
+        error: 'deleted message cannot be forwarded',
+      });
+
+      return;
+    }
+
+    const userIsTargetChatMember =
+      isUserInChat(
+        targetChatId,
+        currentUser.id,
+      );
+
+    if (!userIsTargetChatMember) {
+      response.status(403).json({
+        error: 'target chat access forbidden',
+      });
+
+      return;
+    }
+
+    const now = Date.now();
+
+    const forwardedFromMessageId =
+      sourceMessage.forwardedFromMessageId ??
+      sourceMessage.id;
+
+    const forwardedFromAuthor =
+      sourceMessage.forwardedFromAuthor ??
+      sourceMessage.author;
+
+    showChatForAllMembers(
+      targetChatId,
+    );
+
+    const result =
+      insertForwardedMessage(
+        targetChatId,
+        currentUser.id,
+        currentUser.name,
+        sourceMessage.text,
+        now,
+        forwardedFromMessageId,
+        forwardedFromAuthor,
+      );
+
+    const forwardedMessage: MessageData = {
+      id: Number(result.lastInsertRowid),
+      chatId: targetChatId,
+      senderId: currentUser.id,
+      author: currentUser.name,
+      text: sourceMessage.text,
+      createdAt: now,
+      editedAt: null,
+      deletedAt: null,
+      replyToMessageId: null,
+      forwardedFromMessageId,
+      forwardedFromAuthor,
+    };
+
+    broadcastMessageCreated(
+      forwardedMessage,
+    );
+
+    response.status(201).json(
+      forwardedMessage,
+    );
   });
 
   messagesRouter.patch(

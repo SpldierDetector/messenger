@@ -11,7 +11,9 @@ export function getMessagesByChatId(chatId: number) {
       message.createdAt,
       message.editedAt,
       message.deletedAt,
-      message.replyToMessageId
+      message.replyToMessageId,
+      message.forwardedFromMessageId,
+      message.forwardedFromAuthor
     FROM messages AS message
     JOIN users AS sender
       ON sender.id = message.senderId
@@ -33,7 +35,9 @@ export function getLatestMessagesByUserId(userId: number) {
       message.createdAt,
       message.editedAt,
       message.deletedAt,
-      message.replyToMessageId
+      message.replyToMessageId,
+      message.forwardedFromMessageId,
+      message.forwardedFromAuthor
     FROM messages AS message
 
     JOIN users AS sender
@@ -71,7 +75,9 @@ export function getMessageById(messageId: number) {
       message.createdAt,
       message.editedAt,
       message.deletedAt,
-      message.replyToMessageId
+      message.replyToMessageId,
+      message.forwardedFromMessageId,
+      message.forwardedFromAuthor
     FROM messages AS message
     JOIN users AS sender
       ON sender.id = message.senderId
@@ -113,6 +119,43 @@ export function insertMessage(
     isOwn ? 1 : 0,
     replyToMessageId,
   );
+}
+
+export function insertForwardedMessage(
+  chatId: number,
+  senderId: number,
+  author: string,
+  text: string,
+  createdAt: number,
+  forwardedFromMessageId: number,
+  forwardedFromAuthor: string,
+) {
+  const statement = database.prepare(`
+    INSERT INTO messages (
+      chatId,
+      senderId,
+      author,
+      text,
+      createdAt,
+      isOwn,
+      replyToMessageId,
+      forwardedFromMessageId,
+      forwardedFromAuthor
+    )  
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  return statement.run(
+    chatId,
+    senderId,
+    author,
+    text,
+    createdAt,
+    1,
+    null,
+    forwardedFromMessageId,
+    forwardedFromAuthor,
+  )
 }
 
 export function updateMessage(

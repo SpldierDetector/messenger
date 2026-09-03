@@ -127,6 +127,37 @@ export async function deleteMessageRequest(
   );
 }
 
+export async function forwardMessageRequest(
+  messageId: number,
+  targetChatId: number,
+  token: string,
+  currentUserId: number,
+): Promise<MessageData> {
+  const response = await fetch(
+    `${API_BASE_URL}/messages/${messageId}/forward`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        targetChatId,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      'Failed to forward message',
+    );
+  }
+
+  const message = (await response.json()) as MessageApiData;
+
+  return mapMessageApiData(message, currentUserId);
+}
+
 export async function getLatestMessagesRequest(
   token: string,
   currentUserId: number,
