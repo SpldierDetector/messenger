@@ -52,6 +52,10 @@ export default function ChatScreen() {
     selectedMessage,
     setSelectedMessage,
   ] = useState<MessageData | null>(null);
+  const [
+    isMessageMenuVisible,
+    setIsMessageMenuVisible,
+  ] = useState(false);
   const [replyingMessage, setReplyingMessage] = useState<MessageData | null>(null);
 
   useEffect(() => {
@@ -93,6 +97,17 @@ export default function ChatScreen() {
   const listRef = useRef<FlatList>(null);
   const isSendDisabled = !text.trim() || isSending || isEditing;
 
+  function handleOpenMessageMenu(
+    message: MessageData,
+  ) {
+    setSelectedMessage(message);
+    setIsMessageMenuVisible(true);;
+  }
+
+  function handleCloseMessageMenu() {
+    setIsMessageMenuVisible(false);
+  }
+
   function handleBackPress() {
     if (router.canGoBack()) {
       router.back();
@@ -122,7 +137,7 @@ export default function ChatScreen() {
     setEditingMessageId(null);
     setText('');
     setReplyingMessage(message);
-    setSelectedMessage(null);
+    handleCloseMessageMenu();
   }
 
   function handleCancelReply() {
@@ -237,6 +252,17 @@ export default function ChatScreen() {
           renderItem={({ item, index }) => {
             const previousMessage = messageList[index - 1];
 
+            const repliedMessage = 
+            item.replyToMessageId !== null
+              ? messages.find(
+                (message) =>
+                  message.id === item.replyToMessageId,
+              )
+              : undefined;
+
+            const hasReply =
+              item.replyToMessageId !== null;
+
             const shouldShowDate =
               !previousMessage ||
               !isSameDay(
@@ -265,9 +291,25 @@ export default function ChatScreen() {
                   isOwn={item.isOwn}
                   editedAt={item.editedAt}
                   deletedAt={item.deletedAt}
+                  replyAuthor={
+                    hasReply
+                      ? repliedMessage?.author ?? 'Ответ'
+                      : undefined
+                  }
+                  replyText={
+                    hasReply
+                      ? repliedMessage?.text ??
+                        'Исходное сообщение недоступно'
+                      : undefined
+                  }
+                  replyDeleted={
+                    repliedMessage
+                      ? repliedMessage.deletedAt !== null
+                      : false
+                  }
                   onLongPress={
                     item.deletedAt === null
-                      ? () => setSelectedMessage(item)
+                      ? () => handleOpenMessageMenu(item)
                       : undefined                  
                   }
                 />
@@ -277,19 +319,17 @@ export default function ChatScreen() {
         />
 
         <Modal
-          visible={selectedMessage !== null}
+          visible={isMessageMenuVisible}
           transparent
           animationType="fade"
-          onRequestClose={() =>
-            setSelectedMessage(null)
+          onRequestClose={
+            handleCloseMessageMenu
           }
         >
           <View style={styles.messageMenuRoot}>
             <Pressable
               style={styles.messageMenuBackdrop}
-              onPress={() =>
-                setSelectedMessage(null)
-              }
+              onPress={handleCloseMessageMenu}
             />
 
             <View style={styles.messageMenu}>
@@ -309,44 +349,49 @@ export default function ChatScreen() {
                   Ответить
                 </Text>
               </Pressable>
-              <Pressable
-                style={styles.messageMenuItem}
-                onPress={() =>{
-                  if (!selectedMessage) {
-                    return;
-                  }
+              {selectedMessage?.isOwn &&(
+                <Pressable
+                  style={styles.messageMenuItem}
+                  onPress={() =>{
+                    if (!selectedMessage) {
+                      return;
+                    }
 
-                  handleStartEditing(
-                    selectedMessage.id,
-                    selectedMessage.text,
-                  );
+                    handleStartEditing(
+                      selectedMessage.id,
+                      selectedMessage.text,
+                    );
 
-                  setSelectedMessage(null);
-                }}
-              >
-                <Text style={styles.messageMenuText}>
-                  Редактировать
-                </Text>
-              </Pressable>
-              <Pressable
-                style={styles.messageMenuItem}
-                onPress={async () => {
-                  if (!selectedMessage) {
-                    return;
-                  }
+                    handleCloseMessageMenu();
+                  }}
+                >
+                  <Text style={styles.messageMenuText}>
+                    Редактировать
+                  </Text>
+                </Pressable>
+              )}
 
-                  const messageId =
-                    selectedMessage.id;
+              {selectedMessage?.isOwn &&(
+                <Pressable
+                  style={styles.messageMenuItem}
+                  onPress={async () => {
+                    if (!selectedMessage) {
+                      return;
+                    }
 
-                  setSelectedMessage(null);
+                    const messageId =
+                      selectedMessage.id;
 
-                  await deleteMessage(messageId);
-                }}
-              >
-                <Text style={styles.deleteMessageMenuText}>
-                  Удалить
-                </Text>
-              </Pressable>
+                    handleCloseMessageMenu();
+
+                    await deleteMessage(messageId);
+                  }}
+                >
+                  <Text style={styles.deleteMessageMenuText}>
+                    Удалить
+                  </Text>
+                </Pressable>
+              )}
             </View>
           </View>
         </Modal>

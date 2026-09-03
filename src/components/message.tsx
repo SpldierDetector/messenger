@@ -2,6 +2,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  View,
 } from 'react-native';
 
 type MessageProps = {
@@ -11,6 +12,9 @@ type MessageProps = {
   isOwn: boolean;
   editedAt: number | null;
   deletedAt: number | null;
+  replyAuthor?: string;
+  replyText?: string;
+  replyDeleted?: boolean;
   onLongPress?: () => void;
 };
 
@@ -21,6 +25,9 @@ export function Message({
   isOwn,
   editedAt,
   deletedAt,
+  replyAuthor,
+  replyText,
+  replyDeleted,
   onLongPress,
 }: MessageProps) {
   return (
@@ -39,6 +46,23 @@ export function Message({
         <Text style={styles.author}>
           {author}
         </Text>
+      )}
+
+      {replyAuthor && (
+        <View style={styles.replyContainer}>
+          <Text style={styles.replyAuthor}>
+            {replyAuthor}
+          </Text>
+
+          <Text
+            style={styles.replyText}
+            numberOfLines={2}
+          >
+            {replyDeleted
+              ? 'Сообщение удалено'
+              : replyText}
+          </Text>
+        </View>
       )}
 
       <Text style={[
@@ -119,5 +143,27 @@ const styles = StyleSheet.create({
   deletedText: {
     color: '#a1a1aa',
     fontStyle: 'italic',
+  },
+
+  replyContainer: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#93c5fd',
+    backgroundColor: 'rgba(0, 0, 0, 0.18)',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    marginBottom: 8,
+  },
+
+  replyAuthor: {
+    color: '#bfdbfe',
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+
+  replyText: {
+    color: 'rgba(255, 255, 255, 0.75)',
+    fontSize: 13,
   },
 });
