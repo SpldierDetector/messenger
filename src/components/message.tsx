@@ -15,6 +15,7 @@ type MessageProps = {
   replyAuthor?: string;
   replyText?: string;
   replyDeleted?: boolean;
+  forwardedFromAuthor: string | null;
   onLongPress?: () => void;
 };
 
@@ -28,6 +29,7 @@ export function Message({
   replyAuthor,
   replyText,
   replyDeleted,
+  forwardedFromAuthor,
   onLongPress,
 }: MessageProps) {
   return (
@@ -45,6 +47,12 @@ export function Message({
       {!isOwn && (
         <Text style={styles.author}>
           {author}
+        </Text>
+      )}
+
+      {forwardedFromAuthor !== null && (
+        <Text style={styles.forwardedText}>
+          ↪ Переслано от {forwardedFromAuthor}
         </Text>
       )}
 
@@ -165,5 +173,12 @@ const styles = StyleSheet.create({
   replyText: {
     color: 'rgba(255, 255, 255, 0.75)',
     fontSize: 13,
+  },
+
+  forwardedText: {
+    color: '#93c5fd',
+    fontSize: 13,
+    fontWeight: '500',
+    marginBottom: 6,
   },
 });

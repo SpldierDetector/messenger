@@ -1,7 +1,7 @@
 import { getChatRequest } from '@/services/chat-api';
 import type { ChatData } from '@/types/chat';
 import type { MessageData } from '@/types/message';
-import { router, useLocalSearchParams } from 'expo-router';
+import { Href, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   FlatList,
@@ -142,6 +142,16 @@ export default function ChatScreen() {
 
   function handleCancelReply() {
     setReplyingMessage(null);
+  }
+
+  function handleStartForward(
+    messageId: number,
+  ) {
+    handleCloseMessageMenu();
+
+    router.push(
+      `/forward-message?messageId=${messageId}` as Href,
+    );
   }
 
   async function handleSend() {
@@ -307,6 +317,9 @@ export default function ChatScreen() {
                       ? repliedMessage.deletedAt !== null
                       : false
                   }
+                  forwardedFromAuthor={
+                    item.forwardedFromAuthor
+                  }
                   onLongPress={
                     item.deletedAt === null
                       ? () => handleOpenMessageMenu(item)
@@ -349,6 +362,24 @@ export default function ChatScreen() {
                   Ответить
                 </Text>
               </Pressable>
+
+              <Pressable
+                style={styles.messageMenuItem}
+                onPress={() => {
+                  if (!selectedMessage) {
+                    return;
+                  }
+
+                  handleStartForward(
+                    selectedMessage.id,
+                  );
+                }}
+                >
+                  <Text style={styles.messageMenuText}>
+                    Переслать
+                  </Text>
+                </Pressable>
+
               {selectedMessage?.isOwn &&(
                 <Pressable
                   style={styles.messageMenuItem}
