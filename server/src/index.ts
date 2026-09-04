@@ -4,17 +4,21 @@ import { createServer } from 'node:http';
 import { WebSocketServer } from 'ws';
 
 import { getUserBySessionToken } from './auth/auth-service.js';
+import { markMessageDelivered } from './db/message-receipts.js';
 
+import { authRouter } from './routes/auth.js';
 import { chatsRouter } from './routes/chats.js';
 import { createMessagesRouter } from './routes/messages.js';
-import { 
-  broadcastMessageCreated, 
-  broadcastMessageUpdated,
-  broadcastMessageDeleted, 
-} from './websocket/broadcast.js';
 import { usersRouter } from './routes/users.js';
-import { authRouter } from './routes/auth.js';
-import type { AuthenticatedWebSocket } from './types/websocket.js'
+import type {
+  AuthenticatedWebSocket,
+  MessageDeliveredEvent,
+} from './types/websocket.js';
+import {
+  broadcastMessageCreated,
+  broadcastMessageDeleted,
+  broadcastMessageUpdated,
+} from './websocket/broadcast.js';
 
 const app = express();
 const port = 3000;
@@ -94,6 +98,39 @@ webSocketServer.on('connection', (socket, request) => {
   authenticatedSocket.userId = user.id;
 
   console.log(`WebSocket client connected: user ${user.id}`);
+
+  authenticatedSocket.on(
+    'message',
+    (rawData) => {
+      let event: MessageDeliveredEvent;
+
+      try {
+        event = JSON.parse(
+          rawData.toString(),
+        ) as MessageDeliveredEvent;
+      } catch {
+        return;
+      }
+
+      if (
+        event.type !== 'message_delivered'
+      ) {
+        return;
+      }
+
+      const messageId = event.data?.messageId;
+
+      if (!Number.isInteger(messageId) || messageId <= 0) {
+        return;
+      }
+
+      markMessageDelivered(
+        messageId,
+        user.id,
+        Date.now(),
+      );
+    },
+  );
 
   authenticatedSocket.on('close', () => {
     console.log('WebSocket client disconnected: user ${user.id}');

@@ -149,6 +149,25 @@ if (!hasHiddenAt) {
 }
 
 database.exec(`
+  CREATE TABLE IF NOT EXISTS message_receipts (
+    messageId INTEGER NOT NULL,
+    userId INTEGER NOT NULL,
+    deliveredAt INTEGER,
+    readAt INTEGER,
+
+    PRIMARY KEY (messageId, userId),
+
+    FOREIGN KEY (messageId) REFERENCES messages(id),
+    FOREIGN KEY (userId) REFERENCES users(id)
+  )  
+`);
+
+database.exec(`
+  CREATE INDEX IF NOT EXISTS message_receipts_user_read_idx
+  ON message_receipts(userId, readAt)  
+`);
+
+database.exec(`
   CREATE TABLE IF NOT EXISTS sessions (
     token TEXT PRIMARY KEY,
     userId INTEGER NOT NULL,

@@ -1,7 +1,7 @@
 import { API_BASE_URL } from '@/config/api';
 import type { MessageData } from '@/types/message';
 import type { MessageApiData } from '@/types/message-api';
-import { mapMessageApiData } from '@/utils/map-message'
+import { mapMessageApiData } from '@/utils/map-message';
 
 const WEB_SOCKET_URL = API_BASE_URL.replace('http://', 'ws://');
 const RECONNECT_DELAY = 3000;
@@ -32,6 +32,26 @@ export function connectWebSocket({
     | null = null;
   let shouldReconnect = true;
 
+  function acknowledgeMessageDelivered(
+    messageId: number,
+  ) {
+    if (
+      !socket ||
+      socket.readyState !== WebSocket.OPEN
+    ) {
+      return;
+    }
+
+    socket.send(
+      JSON.stringify({
+        type: 'message_delivered',
+        data: {
+          messageId,
+        },
+      }),
+    );
+  }
+
   function connect() {
     const socketUrl = 
     `${WEB_SOCKET_URL}?token=${encodeURIComponent(token)}`;
@@ -51,6 +71,12 @@ export function connectWebSocket({
           const mappedMessage = mapMessageApiData(apiMessage, currentUserId,);
 
           onMessageCreated(mappedMessage);
+
+          if (!mappedMessage.isOwn) {
+            acknowledgeMessageDelivered(
+              mappedMessage.id,
+            );
+          }
         }
 
         if (message.type === 'message_updated') {

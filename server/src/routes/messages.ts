@@ -3,6 +3,7 @@ import {
   isUserInChat,
   showChatForAllMembers,
 } from '../db/chat-members.js';
+import { createMessageReceipts } from '../db/message-receipts.js';
 import {
   deleteMessage,
   getLatestMessagesByUserId,
@@ -209,6 +210,12 @@ export function createMessagesRouter({
       replyToMessageId,
     );
 
+    createMessageReceipts(
+      Number(result.lastInsertRowid),
+      chatId,
+      currentUser.id,
+    );
+
     const message: MessageData = {
       id: Number(result.lastInsertRowid),
       chatId,
@@ -341,6 +348,12 @@ export function createMessagesRouter({
         forwardedFromMessageId,
         forwardedFromAuthor,
       );
+
+    createMessageReceipts(
+      Number(result.lastInsertRowid),
+      targetChatId,
+      currentUser.id,
+    )
 
     const forwardedMessage: MessageData = {
       id: Number(result.lastInsertRowid),
