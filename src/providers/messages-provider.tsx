@@ -14,13 +14,18 @@ import {
   forwardMessage as forwardMessageService,
   loadLatestMessages,
   loadMessageList,
+  loadMessageReceipts,
 } from "@/services/messages-service";
 import { connectWebSocket } from "@/services/websocket-service";
 
-import type { MessageData } from "@/types/message";
+import type { 
+  MessageData,
+  MessageReceiptData,
+} from "@/types/message";
 
 type MessagesContextValue = {
   messages: MessageData[];
+  receipts: MessageReceiptData[];
   deleteMessage: (messageId: number) => Promise<boolean>;
   forwardMessage: (messageId: number, targetChatId: number) => Promise<boolean>;
   sendMessage: (chatId: number, text: string, replyToMessageId?: number | null) => Promise<boolean>;
@@ -44,6 +49,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
   const { isAuthenticated, token, user, } = useAuth();
 
   const [messages, setMessages] = useState<MessageData[]>([]);
+  const [receipts, setReceipts] = useState<MessageReceiptData[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,13 +59,30 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       return;
     }
 
-    const loadedMessages = await loadMessageList(chatId, token, user.id,);
+    const [loadedMessages, loadedReceipts] = await Promise.all([
+      loadMessageList(chatId, token, user.id),
+      loadMessageReceipts(chatId, token),
+    ]);
 
     setMessages((currentMessages) => [
       ...currentMessages.filter(
         (message: MessageData) => message.chatId !== chatId,
       ),
       ...loadedMessages,
+    ]);
+
+    const loadedMessageIds = new Set(
+      loadedMessages.map((message) => message.id),
+    );
+
+    setReceipts((currentReceipts) => [
+      ...currentReceipts.filter(
+        (receipt) =>
+          !loadedMessageIds.has(
+            receipt.messageId,
+          ),
+      ),
+      ...loadedReceipts,
     ]);
 
     setIsLoaded(true);
@@ -273,6 +296,33 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       ),
     );
   }
+
+  function updateReceiptInState(
+    updatedReceipt: MessageReceiptData,
+  ) {
+    setReceipts((currentReceipts) => {
+      const existingIndex = currentReceipts.findIndex(
+        (receipt) =>
+          receipt.messageId === updatedReceipt.messageId &&
+          receipt.userId === updatedReceipt.userId, 
+      );
+
+      if (existingIndex === -1) {
+        return [
+          ...currentReceipts,
+          updatedReceipt,
+        ];
+      }
+
+      return currentReceipts.map(
+        (receipt, index) =>
+          index === existingIndex
+            ? updatedReceipt
+            : receipt,
+      );
+    });
+  }
+
   function handleMessageDeleted(
     deletedMessage: MessageData,
   ) {
@@ -286,6 +336,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
   useEffect(() => {
     if (!isAuthenticated || !user || !token) {
       setMessages([]);
+      setReceipts([]);
       setIsLoaded(false);
       setError(null);
       
@@ -298,6 +349,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       onMessageCreated: addMessageIfMissing,
       onMessageUpdated: updateMessageInState,
       onMessageDeleted: handleMessageDeleted,
+      onMessageStatusUpdated: updateReceiptInState,
     });
 
     return disconnectWebSocket;
@@ -307,6 +359,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
     <MessagesContext.Provider 
     value={{ 
       messages, 
+      receipts,
       sendMessage,
       editMessage,
       deleteMessage,

@@ -3,6 +3,7 @@ import {
   editMessageRequest,
   forwardMessageRequest,
   getLatestMessagesRequest,
+  getMessageReceiptsRequest,
   getMessagesRequest,
   sendMessageRequest,
 } from '@/services/message-api';
@@ -25,6 +26,16 @@ export async function loadMessageList(
   currentUserId: number,
 ) {
   return getMessagesRequest(chatId, token, currentUserId,);
+}
+
+export async function loadMessageReceipts(
+  chatId: number,
+  token: string,
+) {
+  return getMessageReceiptsRequest(
+    chatId,
+    token,
+  );
 }
 
 export async function saveMessageList(

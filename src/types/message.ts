@@ -13,3 +13,10 @@ export type MessageData = {
   isOwn: boolean;
 }
 
+export type MessageReceiptData = {
+  messageId: number;
+  userId: number;
+  deliveredAt: number | null;
+  readAt: number | null;
+};
+

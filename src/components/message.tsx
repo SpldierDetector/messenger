@@ -16,6 +16,7 @@ type MessageProps = {
   replyText?: string;
   replyDeleted?: boolean;
   forwardedFromAuthor: string | null;
+  isDelivered: boolean;
   onLongPress?: () => void;
 };
 
@@ -30,6 +31,7 @@ export function Message({
   replyText,
   replyDeleted,
   forwardedFromAuthor,
+  isDelivered,
   onLongPress,
 }: MessageProps) {
   return (
@@ -82,20 +84,27 @@ export function Message({
           : text}
       </Text>
 
-      <Text
-        style={[
-          styles.time,
-          isOwn
-            ? styles.ownTime
-            : styles.otherTime,
-        ]}
-        numberOfLines={1}
-      >
-        {editedAt && !deletedAt 
-          ? 'изменено · ' 
-          : ''}
-        {time}
-      </Text>
+      <View style={styles.messageMeta}>
+        <Text
+          style={[
+            styles.time,
+            isOwn
+              ? styles.ownTime
+              : styles.otherTime,
+          ]}
+          numberOfLines={1}
+        >
+          {editedAt && !deletedAt 
+            ? 'изменено · ' 
+            : ''}
+          {time}
+        </Text>
+        {isOwn && deletedAt === null && (
+          <Text style={styles.deliveryStatus}>
+            {isDelivered ? '✓✓' : '✓'}
+          </Text>
+        )}
+      </View>
     </Pressable>
   );
 }
@@ -120,10 +129,21 @@ const styles = StyleSheet.create({
     color: 'white',
   },
 
-  time: {
-    fontSize: 12,
+  messageMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
     alignSelf: 'flex-end',
     marginTop: 4,
+  },
+
+  deliveryStatus: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 13,
+  },
+  
+  time: {
+    fontSize: 12,
     marginRight: 4,
     textAlign: 'right',
   },

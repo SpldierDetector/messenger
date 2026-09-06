@@ -1,5 +1,8 @@
 import { API_BASE_URL } from '@/config/api';
-import type { MessageData } from '@/types/message';
+import type { 
+  MessageData,
+  MessageReceiptData,
+} from '@/types/message';
 import type {
   EditMessageRequest,
   MessageApiData,
@@ -180,4 +183,34 @@ export async function getLatestMessagesRequest(
   return messages.map((message) =>
     mapMessageApiData(message, currentUserId),
   );
+}
+
+export async function getMessageReceiptsRequest(
+  chatId: number,
+  token: string,
+): Promise<MessageReceiptData[]> {
+  const response = await fetch(
+    `${API_BASE_URL}/messages/receipts?chatId=${chatId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+
+    console.error(
+      'Failed to load message receipts:',
+      response.status,
+      errorBody,
+    );
+
+    throw new Error(
+      `Failde to load message receipts: ${response.status}`,
+    );
+  }
+
+  return response.json();
 }

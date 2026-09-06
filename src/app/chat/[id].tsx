@@ -31,6 +31,7 @@ export default function ChatScreen() {
 
   const { 
     messages,
+    receipts,
     sendMessage,
     editMessage,
     deleteMessage,
@@ -262,6 +263,16 @@ export default function ChatScreen() {
           renderItem={({ item, index }) => {
             const previousMessage = messageList[index - 1];
 
+            const messageReceipt =
+              receipts.find(
+                (receipt) =>
+                  receipt.messageId === item.id,
+              );
+
+            const isDelivered =
+              messageReceipt?.deliveredAt !== null &&
+              messageReceipt?.deliveredAt !== undefined;
+
             const repliedMessage = 
             item.replyToMessageId !== null
               ? messages.find(
@@ -320,6 +331,7 @@ export default function ChatScreen() {
                   forwardedFromAuthor={
                     item.forwardedFromAuthor
                   }
+                  isDelivered={isDelivered}
                   onLongPress={
                     item.deletedAt === null
                       ? () => handleOpenMessageMenu(item)

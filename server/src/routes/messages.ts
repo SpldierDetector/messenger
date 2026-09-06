@@ -3,7 +3,10 @@ import {
   isUserInChat,
   showChatForAllMembers,
 } from '../db/chat-members.js';
-import { createMessageReceipts } from '../db/message-receipts.js';
+import { 
+  createMessageReceipts,
+  getMessageReceiptsByChatId,
+} from '../db/message-receipts.js';
 import {
   deleteMessage,
   getLatestMessagesByUserId,
@@ -56,6 +59,44 @@ export function createMessagesRouter({
     response.json(latestMessages);
   },
   );
+
+  messagesRouter.get('/receipts', requireAuth, (request, response) => {
+    const chatId = Number(request.query.chatId);
+
+    if (!Number.isInteger(chatId) || chatId <= 0) {
+      response.status(400).json({
+        error:
+          'chatId must be a positive integer',
+      });
+
+      return;
+    }
+
+    const currentUser = request.user;
+
+    if (!currentUser) {
+      response.status(401).json({
+        error: 'authorization required',
+      });
+
+      return;
+    }
+
+    const userIsChatMember = isUserInChat(chatId, currentUser.id);
+
+    if (!userIsChatMember) {
+      response.status(403).json({
+        error: 'forbidden',
+      });
+
+      return;
+    }
+
+    const receipts = getMessageReceiptsByChatId(chatId, currentUser.id);
+
+    response.json(receipts);
+  });
+
 
   messagesRouter.get('/', requireAuth, (request, response) => {
     const chatId = Number(request.query.chatId);

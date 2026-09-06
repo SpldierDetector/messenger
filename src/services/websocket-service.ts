@@ -1,5 +1,8 @@
 import { API_BASE_URL } from '@/config/api';
-import type { MessageData } from '@/types/message';
+import type { 
+  MessageData,
+  MessageReceiptData,
+} from '@/types/message';
 import type { MessageApiData } from '@/types/message-api';
 import { mapMessageApiData } from '@/utils/map-message';
 
@@ -12,6 +15,7 @@ type ConnectWebSocketOptions = {
   onMessageCreated: (message: MessageData) => void;
   onMessageUpdated: (message: MessageData) => void;
   onMessageDeleted: (message: MessageData) => void;
+  onMessageStatusUpdated: (receipt: MessageReceiptData) => void;
 };
 
 type WebSocketEvent = {
@@ -25,21 +29,21 @@ export function connectWebSocket({
   onMessageCreated,
   onMessageUpdated,
   onMessageDeleted,
+  onMessageStatusUpdated,
 }: ConnectWebSocketOptions) {
   let socket: WebSocket | null = null;
   let reconnectTimer: 
     | ReturnType<typeof setTimeout> 
     | null = null;
   let shouldReconnect = true;
+  const pendingDeliveryMessageIds = new Set<number>();
 
-  function acknowledgeMessageDelivered(
-    messageId: number,
-  ) {
+  function sendMessageDelivered(messageId: number) {
     if (
       !socket ||
       socket.readyState !== WebSocket.OPEN
     ) {
-      return;
+      return false;
     }
 
     socket.send(
@@ -50,6 +54,22 @@ export function connectWebSocket({
         },
       }),
     );
+
+    return true;
+  }
+  
+  function acknowledgeMessageDelivered(
+    messageId: number,
+  ) {
+    const wasSent = sendMessageDelivered(messageId);
+
+    if (wasSent) {
+      pendingDeliveryMessageIds.delete(messageId);
+
+      return;
+    }
+
+    pendingDeliveryMessageIds.add(messageId);
   }
 
   function connect() {
@@ -60,6 +80,14 @@ export function connectWebSocket({
 
     socket.onopen = () => {
       console.log('WebSocket connected');
+
+      for (const messageId of pendingDeliveryMessageIds) {
+        const wasSent = sendMessageDelivered(messageId);
+
+        if (wasSent) {
+          pendingDeliveryMessageIds.delete(messageId,);
+        }
+      }
     };
 
     socket.onmessage = (event) => {
@@ -101,6 +129,12 @@ export function connectWebSocket({
             );
 
           onMessageDeleted(mappedMessage);
+        }
+
+        if (message.type === 'message_status_updated') {
+          const receipt = message.data as MessageReceiptData;
+
+          onMessageStatusUpdated(receipt);
         }
       } catch (error) {
         console.error('Failed to parse WebSocket message:', error);

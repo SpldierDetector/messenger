@@ -36,6 +36,7 @@ export function markMessageDelivered(
     )
     WHERE messageId = ?
       AND userId = ?
+      AND deliveredAt IS NULL
   `);
 
   return statement.run(
@@ -74,5 +75,30 @@ export function markChatMessageRead(
     readAt,
     readAt,
     userId,
+  );
+}
+
+export function getMessageReceiptsByChatId(
+  chatId: number,
+  senderId: number,
+) {
+  const statement = database.prepare(`
+    SELECT
+      message_receipts.messageId,
+      message_receipts.userId,
+      message_receipts.deliveredAt,
+      message_receipts.readAt
+    FROM message_receipts
+    JOIN messages
+      ON messages.id =
+        message_receipts.messageId
+    WHERE messages.chatId = ?
+      AND messages.senderId = ?
+    ORDER BY message_receipts.messageId ASC  
+  `);
+
+  return statement.all(
+    chatId,
+    senderId,
   );
 }

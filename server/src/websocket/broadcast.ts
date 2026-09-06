@@ -42,6 +42,48 @@ function broadcastToChatMembers(
   });
 }
 
+export function broadcastMessageStatusUpdated(
+  webSocketServer: WebSocketServer,
+  senderId: number,
+  messageId: number,
+  userId: number,
+  deliveredAt: number | null,
+  readAt: number | null,
+) {
+  const event: WebSocketEvent<{
+    messageId: number;
+    userId: number;
+    deliveredAt: number | null;
+    readAt: number | null;
+  }> = {
+    type: 'message_status_updated',
+    data: {
+      messageId,
+      userId,
+      deliveredAt,
+      readAt,
+    },
+  };
+
+  const serializedEvent = JSON.stringify(event);
+
+  webSocketServer.clients.forEach(
+    (client) => {
+      const authenticatedClient = client as AuthenticatedWebSocket;
+
+      if (authenticatedClient.readyState !== WebSocket.OPEN) {
+        return;
+      }
+
+      if (authenticatedClient.userId !== senderId) {
+        return;
+      }
+
+      authenticatedClient.send(serializedEvent);
+    },
+  );
+}
+
 export function broadcastMessageCreated(
   webSocketServer: WebSocketServer,
   message: MessageData,

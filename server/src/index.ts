@@ -5,6 +5,8 @@ import { WebSocketServer } from 'ws';
 
 import { getUserBySessionToken } from './auth/auth-service.js';
 import { markMessageDelivered } from './db/message-receipts.js';
+import { getMessageById } from './db/messages.js';
+import type { MessageRow } from './types/message.js';
 
 import { authRouter } from './routes/auth.js';
 import { chatsRouter } from './routes/chats.js';
@@ -18,6 +20,7 @@ import {
   broadcastMessageCreated,
   broadcastMessageDeleted,
   broadcastMessageUpdated,
+  broadcastMessageStatusUpdated,
 } from './websocket/broadcast.js';
 
 const app = express();
@@ -124,10 +127,33 @@ webSocketServer.on('connection', (socket, request) => {
         return;
       }
 
-      markMessageDelivered(
+      const deliveredAt = Date.now();
+      
+      const result = markMessageDelivered(
         messageId,
         user.id,
-        Date.now(),
+        deliveredAt,
+      );
+
+      if (result.changes === 0) {
+        return;
+      }
+
+      const messageRow = getMessageById(messageId);
+
+      if (!messageRow) {
+        return;
+      }
+
+      const message = messageRow as MessageRow;
+
+      broadcastMessageStatusUpdated(
+        webSocketServer,
+        message.senderId,
+        messageId,
+        user.id,
+        deliveredAt,
+        null,
       );
     },
   );
