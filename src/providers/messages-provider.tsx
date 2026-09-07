@@ -39,6 +39,7 @@ type MessagesContextValue = {
   error: string | null;
   loadMessages: (chatId: number) => Promise<void>;
   loadLatestMessagePreviews: () => Promise<void>;
+  markChatRead: (chatId: number) => void;
   editMessage: (messageId: number, text: string,) => Promise<boolean>;
 };
 
@@ -166,6 +167,13 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
         caughtError,
       );
     }
+  }
+
+  function markChatRead(chatId: number) {
+    webSocketConnectionRef.current
+      ?.markChatRead(
+        chatId,
+      );
   }
 
   async function sendMessage(chatId: number, text: string, replyToMessageId: number | null = null): Promise<boolean> {
@@ -408,7 +416,8 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       deleteMessage,
       forwardMessage,
       loadMessages,
-      loadLatestMessagePreviews, 
+      loadLatestMessagePreviews,
+      markChatRead, 
       isLoaded,
       isSending,
       error,

@@ -4,6 +4,7 @@
 node_modules/
 
 #Database
+voxa.db
 server/voxa.db
 
 # Expo

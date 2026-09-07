@@ -15,3 +15,10 @@ export type MessageDeliveredEvent = {
     messageId: number;
   };
 };
+
+export type ChatReadEvent = {
+  type: 'chat_read';
+  data: {
+    chatId: number;
+  };
+};

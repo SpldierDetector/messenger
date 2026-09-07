@@ -29,6 +29,9 @@ export type WebSocketConnection = {
   acknowledgeMessageDelivered: (
     messageId: number,
   ) => void;
+  markChatRead: (
+    chatId: number,
+  ) => void;
 };
 
 export function connectWebSocket({
@@ -79,6 +82,22 @@ export function connectWebSocket({
     }
 
     pendingDeliveryMessageIds.add(messageId);
+  }
+
+  function markChatRead(chatId: number) {
+    if (
+      !socket ||
+      socket.readyState !== WebSocket.OPEN
+    ) {
+      return;
+    }
+
+    socket.send(
+      JSON.stringify({
+        type: 'chat_read',
+        data: {chatId},
+      }),
+    );
   }
 
   function connect() {
@@ -185,5 +204,6 @@ export function connectWebSocket({
   return {
     disconnect,
     acknowledgeMessageDelivered,
+    markChatRead,
   };
 }

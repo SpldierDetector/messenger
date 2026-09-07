@@ -46,7 +46,7 @@ export function markMessageDelivered(
   );
 }
 
-export function markChatMessageRead(
+export function markChatMessagesRead(
   chatId: number,
   userId: number,
   readAt: number,
@@ -68,14 +68,26 @@ export function markChatMessageRead(
         SELECT id
         FROM messages
         WHERE chatId = ?
+          AND deletedAt IS NULL
       )
+    RETURNING
+      messageId,
+      userId,
+      deliveredAt,
+      readAt
   `);
 
-  return statement.run(
+  return statement.all(
     readAt,
     readAt,
     userId,
-  );
+    chatId,
+  ) as Array<{
+    messageId: number;
+    userId: number;
+    deliveredAt: number | null;
+    readAt: number | null;
+  }>;
 }
 
 export function getMessageReceiptsByChatId(

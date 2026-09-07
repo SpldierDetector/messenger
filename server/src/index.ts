@@ -4,23 +4,28 @@ import { createServer } from 'node:http';
 import { WebSocketServer } from 'ws';
 
 import { getUserBySessionToken } from './auth/auth-service.js';
-import { markMessageDelivered } from './db/message-receipts.js';
+import {
+  markChatMessagesRead,
+  markMessageDelivered,
+} from './db/message-receipts.js';
 import { getMessageById } from './db/messages.js';
 import type { MessageRow } from './types/message.js';
 
+import { isUserInChat } from './db/chat-members.js';
 import { authRouter } from './routes/auth.js';
 import { chatsRouter } from './routes/chats.js';
 import { createMessagesRouter } from './routes/messages.js';
 import { usersRouter } from './routes/users.js';
 import type {
   AuthenticatedWebSocket,
+  ChatReadEvent,
   MessageDeliveredEvent,
 } from './types/websocket.js';
 import {
   broadcastMessageCreated,
   broadcastMessageDeleted,
-  broadcastMessageUpdated,
   broadcastMessageStatusUpdated,
+  broadcastMessageUpdated,
 } from './websocket/broadcast.js';
 
 const app = express();
@@ -105,22 +110,23 @@ webSocketServer.on('connection', (socket, request) => {
   authenticatedSocket.on(
     'message',
     (rawData) => {
-      let event: MessageDeliveredEvent;
+      let event: 
+        | MessageDeliveredEvent
+        | ChatReadEvent;
 
       try {
         event = JSON.parse(
           rawData.toString(),
-        ) as MessageDeliveredEvent;
+        ) as 
+          | MessageDeliveredEvent
+          | ChatReadEvent;
       } catch {
         return;
       }
 
       if (
-        event.type !== 'message_delivered'
+        event.type === 'message_delivered'
       ) {
-        return;
-      }
-
       const messageId = event.data?.messageId;
 
       if (!Number.isInteger(messageId) || messageId <= 0) {
@@ -155,11 +161,63 @@ webSocketServer.on('connection', (socket, request) => {
         deliveredAt,
         null,
       );
-    },
-  );
+
+      return;
+    }
+
+    if (event.type ==='chat_read') {
+      const chatId = event.data?.chatId;
+
+      if (
+        !Number.isInteger(chatId) ||
+        chatId <= 0
+      ) {
+        return;
+      }
+
+      const userIsChatMember =
+        isUserInChat(
+          chatId,
+          user.id,
+        );
+
+      if (!userIsChatMember) {
+        return;
+      }
+
+      const readAt = Date.now();
+
+      const updatedReceipts =
+        markChatMessagesRead(
+          chatId,
+          user.id,
+          readAt,
+        );
+      
+      for (
+        const receipt of updatedReceipts
+      ) {
+        const messageRow =
+          getMessageById(receipt.messageId);
+
+        if (!messageRow) {continue}
+
+        const message = messageRow as MessageRow;
+
+        broadcastMessageStatusUpdated(
+          webSocketServer,
+          message.senderId,
+          receipt.messageId,
+          receipt.userId,
+          receipt.deliveredAt,
+          receipt.readAt,
+        );
+      }
+    }
+  });
 
   authenticatedSocket.on('close', () => {
-    console.log('WebSocket client disconnected: user ${user.id}');
+    console.log(`WebSocket client disconnected: user ${user.id}`);
   });
 });
 
