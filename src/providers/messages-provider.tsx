@@ -3,6 +3,7 @@ import {
   type ReactNode,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -15,10 +16,14 @@ import {
   loadLatestMessages,
   loadMessageList,
   loadMessageReceipts,
+  loadPendingDeliveryMessages,
 } from "@/services/messages-service";
-import { connectWebSocket } from "@/services/websocket-service";
+import {
+  connectWebSocket,
+  type WebSocketConnection,
+} from "@/services/websocket-service";
 
-import type { 
+import type {
   MessageData,
   MessageReceiptData,
 } from "@/types/message";
@@ -53,6 +58,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const webSocketConnectionRef = useRef<WebSocketConnection | null>(null);
 
   async function loadMessages(chatId: number) {
     if (!token || !user) {
@@ -134,6 +140,32 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
 
       return mergedMessages;
     });
+  }
+
+  async function syncPendingDeliveryMessages() {
+    if (!token || !user) {
+      return;
+    }
+
+    try{
+      const pendingMessages =
+        await loadPendingDeliveryMessages(
+          token,
+          user.id,
+        );
+
+      for (const message of pendingMessages) {
+        addMessageIfMissing(message);
+
+        webSocketConnectionRef.current
+          ?.acknowledgeMessageDelivered(message.id);
+      }
+    } catch (caughtError) {
+      console.error(
+        'Failed to sync pending delivery messages:',
+        caughtError,
+      );
+    }
   }
 
   async function sendMessage(chatId: number, text: string, replyToMessageId: number | null = null): Promise<boolean> {
@@ -340,19 +372,30 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       setIsLoaded(false);
       setError(null);
       
+      webSocketConnectionRef.current = null;
+
       return;
     }
 
-    const disconnectWebSocket = connectWebSocket({
+    const webSocketConnection = connectWebSocket({
       token,
       currentUserId: user.id,
       onMessageCreated: addMessageIfMissing,
       onMessageUpdated: updateMessageInState,
       onMessageDeleted: handleMessageDeleted,
       onMessageStatusUpdated: updateReceiptInState,
+      onConnected: () => {void syncPendingDeliveryMessages()},
     });
 
-    return disconnectWebSocket;
+    webSocketConnectionRef.current = webSocketConnection;
+
+    return () => {
+      if (webSocketConnectionRef.current === webSocketConnection) {
+        webSocketConnectionRef.current = null;
+      }
+
+      webSocketConnection.disconnect();
+    };
   }, [isAuthenticated, user?.id, token]);
 
   return (

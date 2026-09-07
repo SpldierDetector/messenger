@@ -5,6 +5,7 @@ import {
   getLatestMessagesRequest,
   getMessageReceiptsRequest,
   getMessagesRequest,
+  getPendingDeliveryMessagesRequest,
   sendMessageRequest,
 } from '@/services/message-api';
 import { saveMessages } from "@/services/message-storage";
@@ -35,6 +36,16 @@ export async function loadMessageReceipts(
   return getMessageReceiptsRequest(
     chatId,
     token,
+  );
+}
+
+export async function loadPendingDeliveryMessages(
+  token: string,
+  currentUserId: number,
+) {
+  return getPendingDeliveryMessagesRequest(
+    token,
+    currentUserId,
   );
 }
 

@@ -64,6 +64,44 @@ export function getLatestMessagesByUserId(userId: number) {
   return statement.all(userId);
 }
 
+export function getPendingDeliveryMessagesByUserId(
+  userId: number,
+) {
+  const statement = database.prepare(`
+    SELECT
+      message.id,
+      message.chatId,
+      message.senderId,
+      sender.name AS author,
+      message.text,
+      message.createdAt,
+      message.editedAt,
+      message.deletedAt,
+      message.replyToMessageId,
+      message.forwardedFromMessageId,
+      message.forwardedFromAuthor
+    FROM message_receipts AS receipt
+    
+    JOIN messages AS message
+      ON message.id = receipt.messageId
+
+    JOIN users AS sender
+      ON sender.id = message.senderId
+
+    WHERE receipt.userId = ?
+      AND receipt.deliveredAt IS NULL
+      AND message.deletedAt IS NULL
+
+    ORDER BY
+      message.createdAt ASC,
+      message.id ASC
+  `);
+
+  return statement.all(
+    userId,
+  );
+}
+
 export function getMessageById(messageId: number) {
   const statement = database.prepare(`
     SELECT

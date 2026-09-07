@@ -3,7 +3,7 @@ import {
   isUserInChat,
   showChatForAllMembers,
 } from '../db/chat-members.js';
-import { 
+import {
   createMessageReceipts,
   getMessageReceiptsByChatId,
 } from '../db/message-receipts.js';
@@ -12,6 +12,7 @@ import {
   getLatestMessagesByUserId,
   getMessageById,
   getMessagesByChatId,
+  getPendingDeliveryMessagesByUserId,
   insertForwardedMessage,
   insertMessage,
   updateMessage,
@@ -58,6 +59,27 @@ export function createMessagesRouter({
     
     response.json(latestMessages);
   },
+  );
+
+  messagesRouter.get(
+    '/pending-delivery',
+    requireAuth,
+    (request, response) => {
+      const currentUser = request.user;
+
+      if (!currentUser) {
+        response.status(401).json({
+          error: 'authorization required',
+        });
+
+        return;
+      }
+
+      const pendingMessages = 
+        getPendingDeliveryMessagesByUserId(currentUser.id);
+
+        response.json(pendingMessages);
+    },
   );
 
   messagesRouter.get('/receipts', requireAuth, (request, response) => {

@@ -1,5 +1,5 @@
 import { API_BASE_URL } from '@/config/api';
-import type { 
+import type {
   MessageData,
   MessageReceiptData,
 } from '@/types/message';
@@ -213,4 +213,41 @@ export async function getMessageReceiptsRequest(
   }
 
   return response.json();
+}
+
+export async function getPendingDeliveryMessagesRequest(
+  token: string,
+  currentUserId: number,
+): Promise<MessageData[]> {
+  const response = await fetch(
+    `${API_BASE_URL}/messages/pending-delivery`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+
+    console.error(
+      'Failed to load pending delivery messages:',
+      response.status,
+      errorBody,
+    );
+
+    throw new Error(
+      `Failed to load pending delivery messages: ${response.status}`,
+    );
+  }
+
+  const messages = (await response.json()) as MessageApiData[];
+
+  return messages.map((message) =>
+    mapMessageApiData(
+      message,
+      currentUserId,
+    ),
+  );
 }

@@ -1,5 +1,5 @@
 import { API_BASE_URL } from '@/config/api';
-import type { 
+import type {
   MessageData,
   MessageReceiptData,
 } from '@/types/message';
@@ -16,11 +16,19 @@ type ConnectWebSocketOptions = {
   onMessageUpdated: (message: MessageData) => void;
   onMessageDeleted: (message: MessageData) => void;
   onMessageStatusUpdated: (receipt: MessageReceiptData) => void;
+  onConnected?: () => void;
 };
 
 type WebSocketEvent = {
   type: string;
   data: unknown;
+};
+
+export type WebSocketConnection = {
+  disconnect: () => void;
+  acknowledgeMessageDelivered: (
+    messageId: number,
+  ) => void;
 };
 
 export function connectWebSocket({
@@ -30,7 +38,8 @@ export function connectWebSocket({
   onMessageUpdated,
   onMessageDeleted,
   onMessageStatusUpdated,
-}: ConnectWebSocketOptions) {
+  onConnected,
+}: ConnectWebSocketOptions): WebSocketConnection {
   let socket: WebSocket | null = null;
   let reconnectTimer: 
     | ReturnType<typeof setTimeout> 
@@ -88,6 +97,8 @@ export function connectWebSocket({
           pendingDeliveryMessageIds.delete(messageId,);
         }
       }
+
+      onConnected?.();
     };
 
     socket.onmessage = (event) => {
@@ -161,13 +172,18 @@ export function connectWebSocket({
 
   connect();
 
-    return function disconnectWebSocket() {
-      shouldReconnect = false;
+  function disconnect() {
+    shouldReconnect = false;
 
-      if (reconnectTimer) {
-        clearTimeout(reconnectTimer);
-      }
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+    }
 
-      socket?.close();
-    };
+    socket?.close();
+  }
+
+  return {
+    disconnect,
+    acknowledgeMessageDelivered,
+  };
 }
