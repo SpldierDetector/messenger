@@ -1,10 +1,11 @@
 import {
   createContext,
-  type ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useRef,
   useState,
+  type ReactNode,
 } from "react";
 
 import { useAuth } from '@/providers/auth-provider';
@@ -169,12 +170,12 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
     }
   }
 
-  function markChatRead(chatId: number) {
-    webSocketConnectionRef.current
-      ?.markChatRead(
-        chatId,
-      );
-  }
+  const markChatRead = useCallback(
+    (chatId: number) => {
+      webSocketConnectionRef.current?.markChatRead(chatId);
+    },
+    [],
+  );
 
   async function sendMessage(chatId: number, text: string, replyToMessageId: number | null = null): Promise<boolean> {
     if (!token || !user) {

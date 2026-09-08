@@ -1,8 +1,13 @@
 import { getChatRequest } from '@/services/chat-api';
 import type { ChatData } from '@/types/chat';
 import type { MessageData } from '@/types/message';
-import { Href, router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import {
+  Href,
+  router,
+  useFocusEffect,
+  useLocalSearchParams,
+} from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -38,6 +43,7 @@ export default function ChatScreen() {
     loadMessages,
     isLoaded,
     isSending,
+    markChatRead,
     error
   } = useMessages();
 
@@ -82,6 +88,27 @@ export default function ChatScreen() {
         setIsChatLoaded(true);
       });
   }, [chatId,isAuthenticated, token,]);
+
+  useFocusEffect(
+    useCallback(() => {
+      isChatFocusedRef.current = true;
+      
+      if (
+        Number.isFinite(chatId) &&
+        isAuthenticated
+      ) {
+        markChatRead(chatId);
+      }
+
+      return () => {
+        isChatFocusedRef.current = false;
+      };
+    },  [
+      chatId,
+      isAuthenticated,
+      markChatRead,
+    ]), 
+  );
   
   const messageList = messages
     .filter(
@@ -94,9 +121,32 @@ export default function ChatScreen() {
         firstMessage.createdAt - 
         secondMessage.createdAt,
     );
+  const latestMessage = messageList[messageList.length - 1];
   const [text, setText] = useState('');
   const listRef = useRef<FlatList>(null);
+  const isChatFocusedRef = useRef(false);
   const isSendDisabled = !text.trim() || isSending || isEditing;
+
+  useEffect(() => {
+    if (
+      !isChatFocusedRef.current ||
+      !isAuthenticated ||
+      !Number.isFinite(chatId) ||
+      !latestMessage ||
+      latestMessage.isOwn
+    ) {
+      return;
+    }
+
+    markChatRead(
+      chatId,
+    );
+  }, [
+    chatId,
+    isAuthenticated,
+    latestMessage?.id,
+    markChatRead,
+  ]);
 
   function handleOpenMessageMenu(
     message: MessageData,
@@ -273,6 +323,10 @@ export default function ChatScreen() {
               messageReceipt?.deliveredAt !== null &&
               messageReceipt?.deliveredAt !== undefined;
 
+            const isRead =
+              messageReceipt?.readAt !== null &&
+              messageReceipt?.readAt !== undefined;
+
             const repliedMessage = 
             item.replyToMessageId !== null
               ? messages.find(
@@ -332,6 +386,7 @@ export default function ChatScreen() {
                     item.forwardedFromAuthor
                   }
                   isDelivered={isDelivered}
+                  isRead={isRead}
                   onLongPress={
                     item.deletedAt === null
                       ? () => handleOpenMessageMenu(item)

@@ -17,6 +17,7 @@ type MessageProps = {
   replyDeleted?: boolean;
   forwardedFromAuthor: string | null;
   isDelivered: boolean;
+  isRead: boolean;
   onLongPress?: () => void;
 };
 
@@ -32,6 +33,7 @@ export function Message({
   replyDeleted,
   forwardedFromAuthor,
   isDelivered,
+  isRead,
   onLongPress,
 }: MessageProps) {
   return (
@@ -100,7 +102,12 @@ export function Message({
           {time}
         </Text>
         {isOwn && deletedAt === null && (
-          <Text style={styles.deliveryStatus}>
+          <Text 
+          style={[
+            styles.deliveryStatus,
+            isDelivered && styles.doubleCheck,
+            isRead && styles.readStatus,  
+          ]}>
             {isDelivered ? '✓✓' : '✓'}
           </Text>
         )}
@@ -140,6 +147,14 @@ const styles = StyleSheet.create({
   deliveryStatus: {
     color: 'rgba(255, 255, 255, 0.7)',
     fontSize: 13,
+  },
+
+  doubleCheck: {
+    letterSpacing: -3,
+  },
+
+  readStatus: {
+    color: '#4ade80',
   },
   
   time: {
@@ -201,4 +216,5 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginBottom: 6,
   },
+
 });
