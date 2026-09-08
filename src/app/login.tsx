@@ -9,6 +9,7 @@ import {
 import { router } from 'expo-router';
 import { useAuth } from '@/providers/auth-provider';
 import { styles } from '@/styles/login.styles';
+import { ApiError } from '@/services/api-error';
 
 export default function loginScreen() {
   const { login } = useAuth();
@@ -35,9 +36,35 @@ export default function loginScreen() {
 
       router.replace('/');
     } catch (caughtError) {
-      console.error('Login failed:', caughtError);
+      if (
+        caughtError instanceof ApiError &&
+        caughtError.status === 401
+      ) {
+        setError('Неверный логин или пароль');
 
-      setError('Неверный логин или пароль');
+        return;
+      }
+
+      if (caughtError instanceof TypeError) {
+        console.log(
+          'Login request failed: server is unavailable',
+        );
+
+        setError(
+          'Не удалось подключиться к серверу',
+        );
+
+        return;
+      }
+
+      console.error(
+        'Unexpected login error',
+        caughtError,
+      );
+
+      setError(
+        'Не удалось выполнить вход',
+      );
     } finally {
       setIsSubmitting(false);
     }

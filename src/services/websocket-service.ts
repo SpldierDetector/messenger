@@ -113,7 +113,7 @@ export function connectWebSocket({
         const wasSent = sendMessageDelivered(messageId);
 
         if (wasSent) {
-          pendingDeliveryMessageIds.delete(messageId,);
+          pendingDeliveryMessageIds.delete(messageId);
         }
       }
 
@@ -171,19 +171,24 @@ export function connectWebSocket({
       }
     };
 
-    socket.onerror = (error) => {
-      console.error('WebSocket error:', error);
+    socket.onerror = () => {
+      console.log(
+        'WebSocket connection error. Waiting for reconnect...',
+      );
     };
 
     socket.onclose = () => {
-      console.log('WebSocket disconnect');
-
       if (!shouldReconnect) {
+      console.log('WebSocket disconnect');
+      
         return;
       }
 
+      console.log(
+        `WebSocket disconnected. Reconnecting in ${RECONNECT_DELAY / 1000}s...`
+      )
+
       reconnectTimer = setTimeout(() => {
-        console.log("Reconnecting WebSocket...");
         connect();
       }, RECONNECT_DELAY);
     };

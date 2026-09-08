@@ -23,7 +23,10 @@ export async function loginRequest(
   );
 
   if (!response.ok) {
-    throw new Error('Failed to login');
+    throw new ApiError(
+      'Login request failed',
+      response.status,
+    );
   }
 
   return response.json();
@@ -42,7 +45,10 @@ export async function getCurrentUserRequest(
   );
 
   if (!response.ok){
-    throw new Error('Failed to load current user');
+    throw new ApiError(
+      'Failed to load current user',
+      response.status,
+    );
   }
 
   return response.json();
@@ -57,7 +63,10 @@ export async function logoutRequest(token: string): Promise<void> {
   });
 
   if (!response.ok) {
-    throw new Error ('Failed to logout');
+    throw new ApiError(
+      'Failed to logout',
+      response.status,
+    );
   }
 }
 

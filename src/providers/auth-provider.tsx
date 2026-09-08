@@ -25,6 +25,8 @@ import {
   saveSessionToken,
 } from '@/services/session-storage';
 
+import { ApiError } from '@/services/api-error';
+
 type AuthContextData = {
   user: AuthUser | null;
   token: string | null;
@@ -59,7 +61,7 @@ export function AuthProvider({
       try {
         const savedToken =
           await getSessionToken();
-        
+
         if (!savedToken) {
           return;
         }
@@ -72,12 +74,27 @@ export function AuthProvider({
         setToken(savedToken);
         setUser(response.user);
       } catch (error) {
+        if (
+          error instanceof ApiError &&
+          error.status === 401
+        ) {
+          await deleteSessionToken();
+
+          return;
+        }
+
+        if (error instanceof TypeError) {
+          console.log(
+            'Failed to restore session: server is unavailable',
+          );
+
+          return;
+        }
+
         console.error(
-          'Failed to restore session:',
+          'Unexpected session restore error:',
           error,
         );
-
-        await deleteSessionToken();
       } finally {
         setIsAuthLoading(false);
       }
@@ -112,7 +129,29 @@ export function AuthProvider({
         await logoutRequest(token);
       }
     } catch (error) {
-      console.error('Logout failed:', error);
+      if (error instanceof TypeError) {
+        console.log(
+          'Logout request failed: server is unavailable',
+        );
+
+        return;
+      }
+
+      if (
+        error instanceof ApiError &&
+        error.status === 401
+      ) {
+        console.log(
+          'Logout request skipped: session is already invalid',
+        );
+
+        return;
+      }
+
+      console.error(
+        'Unexpected logout error:',
+        error,
+      );
     } finally {
       await deleteSessionToken();
 
