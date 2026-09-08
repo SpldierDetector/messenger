@@ -202,8 +202,8 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
         currentCounts.filter(
           (count) =>
             count.chatId !== chatId,
-        ) 
-      )
+        ), 
+      );
     },
     [],
   );
@@ -366,8 +366,34 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       return;
     }
 
-    void refreshUnreadCounts();
-  }
+    setUnreadCounts((currentCounts) => {
+      const existingCount = currentCounts.find(
+        (count) =>
+          count.chatId === newMessage.chatId,
+      );
+
+      if (!existingCount) {
+        return [
+          ...currentCounts,
+          {
+            chatId: newMessage.chatId,
+            unreadCount: 1,
+          },
+        ];
+      }
+
+      return currentCounts.map(
+        (count) =>
+          count.chatId === newMessage.chatId
+          ? {
+            ...count,
+            unreadCount:
+              count.unreadCount + 1,
+          }
+        : count,
+        );
+      });
+    } 
 
   function updateMessageInState(
     updatedMessage: MessageData,
