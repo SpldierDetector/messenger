@@ -2,6 +2,7 @@ import { API_BASE_URL } from '@/config/api';
 import type {
   MessageData,
   MessageReceiptData,
+  UnreadMessageCount,
 } from '@/types/message';
 import type {
   EditMessageRequest,
@@ -250,4 +251,33 @@ export async function getPendingDeliveryMessagesRequest(
       currentUserId,
     ),
   );
+}
+
+export async function getUnreadMessageCountsRequest(
+  token: string,
+): Promise<UnreadMessageCount[]> {
+  const response = await fetch(
+    `${API_BASE_URL}/messages/unread-counts`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+
+    console.error(
+      'Failed to load unread message counts:',
+      response.status,
+      errorBody,
+    );
+
+    throw new Error(
+      `Failed to load unread message counts: ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<UnreadMessageCount[]>;
 }

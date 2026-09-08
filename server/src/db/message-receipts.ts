@@ -90,6 +90,31 @@ export function markChatMessagesRead(
   }>;
 }
 
+export function getUnreadMessageCountsByUserId(
+  userId: number,
+) {
+  const statement = database.prepare(`
+    SELECT
+      messages.chatId AS chatId,
+      COUNT(*) AS unreadCount 
+    FROM message_receipts
+    JOIN messages
+      ON messages.id = message_receipts.messageId
+    WHERE message_receipts.userId = ?
+      AND message_receipts.readAt IS NULL
+      AND messages.deletedAt IS NULL
+    GROUP BY messages.chatId
+    ORDER BY messages.chatId ASC 
+  `);
+
+  return statement.all(
+    userId,
+  ) as Array<{
+    chatId: number;
+    unreadCount: number;
+  }>;
+}
+
 export function getMessageReceiptsByChatId(
   chatId: number,
   senderId: number,

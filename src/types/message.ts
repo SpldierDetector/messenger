@@ -20,3 +20,7 @@ export type MessageReceiptData = {
   readAt: number | null;
 };
 
+export type UnreadMessageCount = {
+  chatId: number;
+  unreadCount: number;
+}

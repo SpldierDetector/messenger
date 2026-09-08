@@ -6,10 +6,11 @@ import {
   getMessageReceiptsRequest,
   getMessagesRequest,
   getPendingDeliveryMessagesRequest,
+  getUnreadMessageCountsRequest,
   sendMessageRequest,
 } from '@/services/message-api';
 import { saveMessages } from "@/services/message-storage";
-import type { MessageData } from "@/types/message";
+import type { MessageData, UnreadMessageCount } from "@/types/message";
 
 export async function loadLatestMessages(
   token: string,
@@ -110,5 +111,13 @@ export async function forwardMessage(
     targetChatId,
     token,
     currentUserId,
+  );
+}
+
+export async function loadUnreadMessageCounts(
+  token: string,
+): Promise<UnreadMessageCount[]> {
+  return getUnreadMessageCountsRequest(
+    token,
   );
 }

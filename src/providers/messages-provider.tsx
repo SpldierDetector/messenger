@@ -18,6 +18,7 @@ import {
   loadMessageList,
   loadMessageReceipts,
   loadPendingDeliveryMessages,
+  loadUnreadMessageCounts,
 } from "@/services/messages-service";
 import {
   connectWebSocket,
@@ -27,11 +28,13 @@ import {
 import type {
   MessageData,
   MessageReceiptData,
+  UnreadMessageCount,
 } from "@/types/message";
 
 type MessagesContextValue = {
   messages: MessageData[];
   receipts: MessageReceiptData[];
+  unreadCounts: UnreadMessageCount[];
   deleteMessage: (messageId: number) => Promise<boolean>;
   forwardMessage: (messageId: number, targetChatId: number) => Promise<boolean>;
   sendMessage: (chatId: number, text: string, replyToMessageId?: number | null) => Promise<boolean>;
@@ -57,6 +60,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
 
   const [messages, setMessages] = useState<MessageData[]>([]);
   const [receipts, setReceipts] = useState<MessageReceiptData[]>([]);
+  const [unreadCounts, setUnreadCounts] = useState<UnreadMessageCount[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -170,9 +174,36 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
     }
   }
 
+  const refreshUnreadCounts = useCallback(
+    async () => {
+      if (!token) {
+        return;
+      }
+
+      try {
+        const counts = await loadUnreadMessageCounts(token);
+
+        setUnreadCounts(counts);
+      } catch (caughtError) {
+        console.error(
+          'Failed to load unread message counts:',
+          caughtError,
+        );
+      }
+    },
+    [token],
+  );
+  
   const markChatRead = useCallback(
     (chatId: number) => {
       webSocketConnectionRef.current?.markChatRead(chatId);
+
+      setUnreadCounts((currentCounts) =>
+        currentCounts.filter(
+          (count) =>
+            count.chatId !== chatId,
+        ) 
+      )
     },
     [],
   );
@@ -326,6 +357,18 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
     });
   }
 
+  function handleMessageCreated(
+    newMessage: MessageData,
+  ) {
+    addMessageIfMissing(newMessage);
+
+    if (newMessage.senderId === user?.id) {
+      return;
+    }
+
+    void refreshUnreadCounts();
+  }
+
   function updateMessageInState(
     updatedMessage: MessageData,
   ) {
@@ -380,6 +423,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       setReceipts([]);
       setIsLoaded(false);
       setError(null);
+      setUnreadCounts([]);
       
       webSocketConnectionRef.current = null;
 
@@ -389,11 +433,14 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
     const webSocketConnection = connectWebSocket({
       token,
       currentUserId: user.id,
-      onMessageCreated: addMessageIfMissing,
+      onMessageCreated: handleMessageCreated,
       onMessageUpdated: updateMessageInState,
       onMessageDeleted: handleMessageDeleted,
       onMessageStatusUpdated: updateReceiptInState,
-      onConnected: () => {void syncPendingDeliveryMessages()},
+      onConnected: () => {
+        void syncPendingDeliveryMessages();
+        void refreshUnreadCounts();
+      },
     });
 
     webSocketConnectionRef.current = webSocketConnection;
@@ -412,6 +459,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
     value={{ 
       messages, 
       receipts,
+      unreadCounts,
       sendMessage,
       editMessage,
       deleteMessage,

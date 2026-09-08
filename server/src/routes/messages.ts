@@ -6,6 +6,7 @@ import {
 import {
   createMessageReceipts,
   getMessageReceiptsByChatId,
+  getUnreadMessageCountsByUserId,
 } from '../db/message-receipts.js';
 import {
   deleteMessage,
@@ -79,6 +80,28 @@ export function createMessagesRouter({
         getPendingDeliveryMessagesByUserId(currentUser.id);
 
         response.json(pendingMessages);
+    },
+  );
+
+  messagesRouter.get(
+    '/unread-counts',
+    requireAuth,
+    (request, response) => {
+      const currentUser = request.user;
+
+      if (!currentUser) {
+        response.status(401).json({
+          error: 'authorization required',
+        });
+
+        return;
+      }
+
+      const unreadCounts = getUnreadMessageCountsByUserId(
+        currentUser.id,
+      );
+
+      response.json(unreadCounts);
     },
   );
 

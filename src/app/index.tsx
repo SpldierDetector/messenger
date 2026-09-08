@@ -1,4 +1,4 @@
-import { router, type Href, Redirect, useFocusEffect } from 'expo-router';
+import { Redirect, router, useFocusEffect, type Href } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -6,25 +6,21 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { styles } from '@/styles/index.styles';
 
 import { ChatPreview } from '@/components/chat-preview';
+import { useAuth } from '@/providers/auth-provider';
 import { useMessages } from '@/providers/messages-provider';
 import { deleteChatRequest, getChatsRequest } from '@/services/chat-api';
 import type { ChatData } from '@/types/chat';
 import { sortChatsByLatestMessage } from '@/utils/chat';
 import { formatChatPreviewDate } from '@/utils/date';
 import { getLastMessage } from '@/utils/message';
-import { useAuth } from '@/providers/auth-provider';
 
 
 export default function ChatListScreen() {
   const [chats, setChats] = useState<ChatData[]>([]);
-  const [menuChat, setMenuChat] = 
-    useState<ChatData | null>(null);
-  const [chatToDelete, setChatToDelete] =
-    useState<ChatData | null>(null);
-  const [isDeleting, setIsDeleting] =
-    useState(false);
-  const [deleteError, setDeleteError] =
-    useState<string | null>(null);
+  const [menuChat, setMenuChat] = useState<ChatData | null>(null);
+  const [chatToDelete, setChatToDelete] = useState<ChatData | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
 
   const { 
@@ -36,6 +32,7 @@ export default function ChatListScreen() {
 
   const { 
     messages, 
+    unreadCounts,
     loadLatestMessagePreviews, 
   } = useMessages();
 
@@ -215,6 +212,10 @@ export default function ChatListScreen() {
         renderItem={({ item }) => {
           const lastMessage = getLastMessage(messages, item.id);
           
+          const unreadCount = unreadCounts.find(
+            (count) => count.chatId === item.id,
+          )?.unreadCount ?? 0;
+
           return (
             <View style={styles.chatRow}>
               <Pressable
@@ -231,6 +232,7 @@ export default function ChatListScreen() {
                   lastMessage={lastMessage?.text ?? 'Нет сообщений'}
                   time={lastMessage ? formatChatPreviewDate(lastMessage.createdAt) : ''}
                   isOnline={item.isOnline}
+                  unreadCount={unreadCount}
                 />
               </Pressable>
               <Pressable
