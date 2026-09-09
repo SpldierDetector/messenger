@@ -39,6 +39,8 @@ export default function ChatScreen() {
     messages,
     receipts,
     typingUserIdsByChat,
+    onlineByChat,
+    lastSeenByChat,
     sendMessage,
     editMessage,
     deleteMessage,
@@ -57,6 +59,9 @@ export default function ChatScreen() {
   const [isChatLoaded, setIsChatLoaded] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const realtimeIsOnline = onlineByChat[chatId];
+  const isCompanionOnline = realtimeIsOnline ?? chat?.isOnline ?? false;
+  const companionLastSeenAt = lastSeenByChat[chatId] ?? chat?.lastSeenAt?? null;
   const [
     selectedMessage,
     setSelectedMessage,
@@ -287,6 +292,57 @@ export default function ChatScreen() {
       }, TYPING_STOP_DELAY);
   }
 
+  function formatLastSeen(
+    lastSeenAt: number | null,
+  ) {
+    if (!lastSeenAt) {
+      return 'offline';
+    }
+
+    const now = new Date();
+    const lastSeenDate = new Date(lastSeenAt);
+    
+    const sameDay =
+      now.getFullYear() === lastSeenDate.getFullYear() &&
+      now.getMonth() === lastSeenDate.getMonth() &&
+      now.getDate() === lastSeenDate.getDate();
+
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+
+    const wasYesterday =
+      yesterday.getFullYear() === lastSeenDate.getFullYear() &&
+      yesterday.getMonth() === lastSeenDate.getMonth() &&
+      yesterday.getDate() === lastSeenDate.getDate();
+
+    const time =
+      lastSeenDate.toLocaleTimeString(
+        'ru-RU',
+        {
+          hour: '2-digit',
+          minute: '2-digit',
+        },
+      );
+    if (sameDay) {
+      return `был сегодня в ${time}`;
+    }
+
+    if (wasYesterday) {
+      return `был вчера в ${time}`;
+    }
+
+    const date =
+      lastSeenDate.toLocaleDateString(
+        'ru-RU',
+        {
+          day: 'numeric',
+          month: 'long',
+        },
+      );
+
+    return `был ${date} в ${time}`;
+  }
+
   async function handleSend() {
     const normalizedText = text.trim();
 
@@ -377,11 +433,11 @@ export default function ChatScreen() {
           <View style={styles.headerInfo}>
             <Text style={styles.headerTitle}>{chat.name}</Text>
             <Text style={styles.headerStatus}>
-              {isCompanionTyping
-                ? 'печатает...'
-                : chat.isOnline
-                  ? 'online'
-                  : 'offline'}
+              {!isCompanionOnline
+                ? formatLastSeen(companionLastSeenAt)
+                : isCompanionTyping
+                  ? 'печатает...'
+                  : 'online'}
             </Text>
           </View>
 

@@ -91,3 +91,19 @@ export function searchUsers(
     searchPattern,
   );
 }
+
+export function updateUserLastSeenAt(
+  userId: number,
+  lastSeenAt: number,
+) {
+  const statement = database.prepare(`
+    UPDATE users
+    SET lastSeenAt = ?
+    WHERE id = ?  
+  `);
+
+  return statement.run(
+    lastSeenAt,
+    userId,
+  )
+}

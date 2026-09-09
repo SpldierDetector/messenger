@@ -224,6 +224,10 @@ const hasPasswordHash = userColumns.some(
   (column) => column.name === 'passwordHash',
 );
 
+const hasLastSeenAt = userColumns.some(
+  (column) => column.name === 'lastSeenAt',
+);
+
 if (!hasLogin) {
   database.exec(`
     ALTER TABLE users
@@ -235,6 +239,13 @@ if (!hasPasswordHash) {
   database.exec(`
     ALTER TABLE users
     ADD COLUMN passwordHash TEXT  
+  `);
+}
+
+if (!hasLastSeenAt) {
+  database.exec(`
+    ALTER TABLE users
+    ADD COLUMN lastSeenAt INTEGER  
   `);
 }
 

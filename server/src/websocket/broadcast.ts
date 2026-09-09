@@ -179,6 +179,7 @@ export function broadcastUserPresence(
   webSocketServer: WebSocketServer,
   userId: number,
   isOnline: boolean,
+  lastSeenAt: number | null,
 ) {
   const chatIds = getChatIdsByUserId(userId);
 
@@ -187,12 +188,14 @@ export function broadcastUserPresence(
       chatId: number;
       userId: number;
       isOnline: boolean;
+      lastSeenAt: number | null;
     }> = {
       type: 'user_presence_updated',
       data: {
         chatId,
         userId,
         isOnline,
+        lastSeenAt,
       },
     };
 

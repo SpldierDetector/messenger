@@ -33,6 +33,7 @@ export default function ChatListScreen() {
   const { 
     messages, 
     unreadCounts,
+    onlineByChat,
     loadLatestMessagePreviews, 
   } = useMessages();
 
@@ -211,6 +212,8 @@ export default function ChatListScreen() {
         keyExtractor={(chat) => chat.id.toString()}
         renderItem={({ item }) => {
           const lastMessage = getLastMessage(messages, item.id);
+          const realtimeIsOnline = onlineByChat[item.id];
+          const isOnline = realtimeIsOnline ?? item.isOnline;
           
           const unreadCount = unreadCounts.find(
             (count) => count.chatId === item.id,
@@ -231,7 +234,7 @@ export default function ChatListScreen() {
                   name={item.name}
                   lastMessage={lastMessage?.text ?? 'Нет сообщений'}
                   time={lastMessage ? formatChatPreviewDate(lastMessage.createdAt) : ''}
-                  isOnline={item.isOnline}
+                  isOnline={isOnline}
                   unreadCount={unreadCount}
                 />
               </Pressable>

@@ -36,6 +36,7 @@ export type UserPresenceEventData = {
   chatId: number;
   userId: number;
   isOnline: boolean;
+  lastSeenAt: number | null;
 };
 
 export type WebSocketConnection = {

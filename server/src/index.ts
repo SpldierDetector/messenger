@@ -9,6 +9,7 @@ import {
   markMessageDelivered,
 } from './db/message-receipts.js';
 import { getMessageById } from './db/messages.js';
+import { updateUserLastSeenAt } from './db/users.js';
 import type { MessageRow } from './types/message.js';
 
 import { isUserInChat } from './db/chat-members.js';
@@ -123,6 +124,7 @@ webSocketServer.on('connection', (socket, request) => {
       webSocketServer,
       user.id,
       true,
+      null,
     );
   }
 
@@ -280,10 +282,18 @@ webSocketServer.on('connection', (socket, request) => {
     const userIsStillOnline = isUserOnline(user.id);
 
     if (!userIsStillOnline) {
+      const lastSeenAt = Date.now();
+
+      updateUserLastSeenAt(
+        user.id,
+        lastSeenAt,
+      );
+    
       broadcastUserPresence(
         webSocketServer,
         user.id,
         false,
+        lastSeenAt,
       );
     }
     

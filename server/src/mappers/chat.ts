@@ -15,6 +15,8 @@ export function mapChatRow(
     isOnline:
       isOnline ??
       Boolean(chat.isOnline),
+    lastSeenAt:
+      chat.otherUserLastSeenAt,
     type: chat.type,
   };
 }

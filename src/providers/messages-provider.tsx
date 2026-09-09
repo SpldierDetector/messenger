@@ -39,6 +39,7 @@ type MessagesContextValue = {
   unreadCounts: UnreadMessageCount[];
   typingUserIdsByChat: Record<number, number[]>;
   onlineByChat: Record<number, boolean>;
+  lastSeenByChat: Record<number, number | null>;
   deleteMessage: (messageId: number) => Promise<boolean>;
   forwardMessage: (messageId: number, targetChatId: number) => Promise<boolean>;
   sendMessage: (chatId: number, text: string, replyToMessageId?: number | null) => Promise<boolean>;
@@ -72,6 +73,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
   const [error, setError] = useState<string | null>(null);
   const [typingUserIdsByChat, setTypingUserIdsByChat] = useState<Record<number, number[]>>({});
   const [onlineByChat, setOnlineByChat] = useState<Record<number, boolean>>({});
+  const [lastSeenByChat, setLastSeenByChat] = useState<Record<number, number | null>>({});
   const webSocketConnectionRef = useRef<WebSocketConnection | null>(null);
 
   async function loadMessages(chatId: number) {
@@ -480,6 +482,14 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       }),
     );
 
+    setLastSeenByChat(
+      (currentLastSeen) => ({
+        ...currentLastSeen,
+        [data.chatId]:
+          data.lastSeenAt,
+      }),
+    );
+
     if (data.isOnline) {
       return;
     }
@@ -558,6 +568,8 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       setError(null);
       setUnreadCounts([]);
       setTypingUserIdsByChat({});
+      setOnlineByChat({});
+      setLastSeenByChat({});
       
       webSocketConnectionRef.current = null;
 
@@ -599,6 +611,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       unreadCounts,
       typingUserIdsByChat,
       onlineByChat,
+      lastSeenByChat,
       sendMessage,
       editMessage,
       deleteMessage,
