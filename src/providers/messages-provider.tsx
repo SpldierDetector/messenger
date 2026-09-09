@@ -22,6 +22,7 @@ import {
 } from "@/services/messages-service";
 import {
   connectWebSocket,
+  type TypingEventData,
   type WebSocketConnection,
 } from "@/services/websocket-service";
 
@@ -35,6 +36,7 @@ type MessagesContextValue = {
   messages: MessageData[];
   receipts: MessageReceiptData[];
   unreadCounts: UnreadMessageCount[];
+  typingUserIdsByChat: Record<number, number[]>;
   deleteMessage: (messageId: number) => Promise<boolean>;
   forwardMessage: (messageId: number, targetChatId: number) => Promise<boolean>;
   sendMessage: (chatId: number, text: string, replyToMessageId?: number | null) => Promise<boolean>;
@@ -45,6 +47,8 @@ type MessagesContextValue = {
   loadLatestMessagePreviews: () => Promise<void>;
   markChatRead: (chatId: number) => void;
   editMessage: (messageId: number, text: string,) => Promise<boolean>;
+  startTyping: (chatId: number) => void;
+  stopTyping: (chatId: number) => void;
 };
 
 export const MessagesContext = createContext<MessagesContextValue | undefined>(
@@ -64,6 +68,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [typingUserIdsByChat, setTypingUserIdsByChat] = useState<Record<number, number[]>>({});
   const webSocketConnectionRef = useRef<WebSocketConnection | null>(null);
 
   async function loadMessages(chatId: number) {
@@ -204,6 +209,22 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
             count.chatId !== chatId,
         ), 
       );
+    },
+    [],
+  );
+
+  const startTyping = useCallback(
+    (chatId: number) => {
+      webSocketConnectionRef.current
+        ?.startTyping(chatId);
+    },
+    [],
+  );
+
+  const stopTyping = useCallback(
+    (chatId: number) => {
+      webSocketConnectionRef.current
+        ?.stopTyping(chatId);
     },
     [],
   );
@@ -393,7 +414,58 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
         : count,
         );
       });
-    } 
+  } 
+
+  function handleTypingStarted(
+    data: TypingEventData,
+  ) {
+    setTypingUserIdsByChat(
+      (currentTypingUsers) => {
+        const currentUserIds =
+          currentTypingUsers[data.chatId] ?? [];
+
+        if (
+          currentUserIds.includes(data.userId)
+        ) {
+          return currentTypingUsers;
+        }
+
+        return {
+          ...currentTypingUsers,
+          [data.chatId]: [
+            ...currentUserIds,
+            data.userId,
+          ],
+        };
+      },
+    );
+  }
+
+  function handleTypingStopped(
+    data: TypingEventData,
+  ) {
+    setTypingUserIdsByChat(
+      (currentTypingUsers) => {
+        const currentUserIds = 
+          currentTypingUsers[data.chatId] ?? [];
+
+        if (
+          !currentUserIds.includes(data.userId)
+        ) {
+          return currentTypingUsers;
+        }
+
+        return {
+          ...currentTypingUsers,
+          [data.chatId]:
+            currentUserIds.filter(
+              (userId) =>
+                userId !== data.userId,
+            )
+        }
+      }
+    )
+  }
 
   function updateMessageInState(
     updatedMessage: MessageData,
@@ -450,6 +522,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       setIsLoaded(false);
       setError(null);
       setUnreadCounts([]);
+      setTypingUserIdsByChat({});
       
       webSocketConnectionRef.current = null;
 
@@ -463,6 +536,8 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       onMessageUpdated: updateMessageInState,
       onMessageDeleted: handleMessageDeleted,
       onMessageStatusUpdated: updateReceiptInState,
+      onTypingStarted: handleTypingStarted,
+      onTypingStopped: handleTypingStopped,
       onConnected: () => {
         void syncPendingDeliveryMessages();
         void refreshUnreadCounts();
@@ -486,6 +561,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       messages, 
       receipts,
       unreadCounts,
+      typingUserIdsByChat,
       sendMessage,
       editMessage,
       deleteMessage,
@@ -493,6 +569,8 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       loadMessages,
       loadLatestMessagePreviews,
       markChatRead, 
+      startTyping,
+      stopTyping,
       isLoaded,
       isSending,
       error,

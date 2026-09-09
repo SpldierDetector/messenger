@@ -116,3 +116,58 @@ export function broadcastMessageDeleted(
     'message_deleted',
   );
 }
+
+export function broadcastTypingEvent(
+  webSocketServer: WebSocketServer,
+  chatId: number,
+  userId: number,
+  eventType:
+    | 'typing_started'
+    | 'typing_stopped',
+) {
+  const event: WebSocketEvent<{
+    chatId: number;
+    userId: number;
+  }> = {
+    type: eventType,
+    data: {
+      chatId,
+      userId,
+    },
+  };
+
+  const serializedEvent = JSON.stringify(event);
+  
+  webSocketServer.clients.forEach(
+    (client) => {
+      const authenticatedClient = client as AuthenticatedWebSocket;
+
+      if (
+        authenticatedClient.readyState !==
+        WebSocket.OPEN
+      ) {
+        return;
+      }
+
+      if (
+        authenticatedClient.userId === userId
+      ) {
+        return;
+      }
+
+      const userIsChatMember =
+        isUserInChat(
+          chatId,
+          authenticatedClient.userId,
+        );
+
+      if (!userIsChatMember) {
+        return;
+      }
+
+      authenticatedClient.send(
+        serializedEvent,
+      );
+    },
+  );
+}

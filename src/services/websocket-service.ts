@@ -16,6 +16,8 @@ type ConnectWebSocketOptions = {
   onMessageUpdated: (message: MessageData) => void;
   onMessageDeleted: (message: MessageData) => void;
   onMessageStatusUpdated: (receipt: MessageReceiptData) => void;
+  onTypingStarted: (data: TypingEventData) => void;
+  onTypingStopped: (data: TypingEventData) => void;
   onConnected?: () => void;
 };
 
@@ -24,12 +26,23 @@ type WebSocketEvent = {
   data: unknown;
 };
 
+export type TypingEventData = {
+  chatId: number;
+  userId: number;
+}
+
 export type WebSocketConnection = {
   disconnect: () => void;
   acknowledgeMessageDelivered: (
     messageId: number,
   ) => void;
   markChatRead: (
+    chatId: number,
+  ) => void;
+  startTyping: (
+    chatId: number,
+  ) => void;
+  stopTyping: (
     chatId: number,
   ) => void;
 };
@@ -41,6 +54,8 @@ export function connectWebSocket({
   onMessageUpdated,
   onMessageDeleted,
   onMessageStatusUpdated,
+  onTypingStarted,
+  onTypingStopped,
   onConnected,
 }: ConnectWebSocketOptions): WebSocketConnection {
   let socket: WebSocket | null = null;
@@ -97,6 +112,43 @@ export function connectWebSocket({
         type: 'chat_read',
         data: {chatId},
       }),
+    );
+  }
+
+  function sendTypingEvent(
+    chatId: number,
+    type:
+      | 'typing_started'
+      | 'typing_stopped',
+  ) {
+    if (
+      !socket ||
+      socket.readyState !== WebSocket.OPEN
+    ) {
+      return;
+    }
+
+    socket.send(
+      JSON.stringify({
+        type,
+        data: {
+          chatId,
+        },
+      }),
+    );
+  }
+
+  function startTyping(chatId: number) {
+    sendTypingEvent(
+      chatId,
+      'typing_started',
+    );
+  }
+
+  function stopTyping(chatId: number) {
+    sendTypingEvent(
+      chatId,
+      'typing_stopped',
     );
   }
 
@@ -166,6 +218,18 @@ export function connectWebSocket({
 
           onMessageStatusUpdated(receipt);
         }
+
+        if (message.type === 'typing_started') {
+          const typingData = message.data as TypingEventData;
+
+          onTypingStarted(typingData);
+        }
+
+        if (message.type === 'typing_stopped') {
+          const typingData = message.data as TypingEventData;
+
+          onTypingStopped(typingData);
+        }
       } catch (error) {
         console.error('Failed to parse WebSocket message:', error);
       }
@@ -210,5 +274,7 @@ export function connectWebSocket({
     disconnect,
     acknowledgeMessageDelivered,
     markChatRead,
+    startTyping,
+    stopTyping,
   };
 }

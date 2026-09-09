@@ -22,3 +22,17 @@ export type ChatReadEvent = {
     chatId: number;
   };
 };
+
+export type TypingStartedEvent = {
+  type: 'typing_started';
+  data: {
+    chatId: number;
+  };
+};
+
+export type TypingStoppedEvent = {
+  type: 'typing_stopped';
+  data: {
+    chatId: number;
+  };
+};

@@ -32,11 +32,13 @@ import {
 
 
 export default function ChatScreen() {
+  const TYPING_STOP_DELAY = 1500;
   const { id } = useLocalSearchParams();
 
   const { 
     messages,
     receipts,
+    typingUserIdsByChat,
     sendMessage,
     editMessage,
     deleteMessage,
@@ -44,13 +46,13 @@ export default function ChatScreen() {
     isLoaded,
     isSending,
     markChatRead,
+    startTyping,
+    stopTyping,
     error
   } = useMessages();
 
   const { token, isAuthenticated } = useAuth();
-
   const chatId = Number(id);
-
   const [chat, setChat] = useState<ChatData | null>(null);
   const [isChatLoaded, setIsChatLoaded] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
@@ -64,6 +66,12 @@ export default function ChatScreen() {
     setIsMessageMenuVisible,
   ] = useState(false);
   const [replyingMessage, setReplyingMessage] = useState<MessageData | null>(null);
+  const [text, setText] = useState('');
+  const listRef = useRef<FlatList>(null);
+  const isChatFocusedRef = useRef(false);
+  const typingStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isTypingRef = useRef(false);
+  const isCompanionTyping = (typingUserIdsByChat[chatId]?.length ?? 0) > 0;
 
   useEffect(() => {
     if (!Number.isFinite(chatId)) {
@@ -102,11 +110,27 @@ export default function ChatScreen() {
 
       return () => {
         isChatFocusedRef.current = false;
+
+        if (typingStopTimerRef.current) {
+          clearTimeout(typingStopTimerRef.current);
+
+          typingStopTimerRef.current = null;
+        }
+
+        if (
+          Number.isFinite(chatId) &&
+          isTypingRef.current
+        ) {
+          stopTyping(chatId);
+
+          isTypingRef.current = false;
+        }
       };
     },  [
       chatId,
       isAuthenticated,
       markChatRead,
+      stopTyping,
     ]), 
   );
   
@@ -122,9 +146,6 @@ export default function ChatScreen() {
         secondMessage.createdAt,
     );
   const latestMessage = messageList[messageList.length - 1];
-  const [text, setText] = useState('');
-  const listRef = useRef<FlatList>(null);
-  const isChatFocusedRef = useRef(false);
   const isSendDisabled = !text.trim() || isSending || isEditing;
 
   useEffect(() => {
@@ -178,6 +199,8 @@ export default function ChatScreen() {
   }
 
   function handleCancelEditing() {
+    handleStopTyping();
+    
     setEditingMessageId(null);
     setText('');
   }
@@ -185,6 +208,8 @@ export default function ChatScreen() {
   function handleStartReply(
     message: MessageData,
   ) {
+    handleStopTyping();
+
     setEditingMessageId(null);
     setText('');
     setReplyingMessage(message);
@@ -205,12 +230,71 @@ export default function ChatScreen() {
     );
   }
 
+  function handleStopTyping() {
+    if (typingStopTimerRef.current) {
+      clearTimeout(
+        typingStopTimerRef.current,
+      );
+
+      typingStopTimerRef.current = null;
+    }
+
+    if (!isTypingRef.current) {
+      return;
+    }
+
+    stopTyping(chatId);
+
+    isTypingRef.current = false;
+  }
+
+  function handleTextChange(
+    value: string,
+  ) {
+    setText(value);
+
+    if (
+      !isAuthenticated ||
+      !Number.isFinite(chatId)
+    ) {
+      return;
+    }
+
+    if (!value.trim()) {
+      handleStopTyping();
+
+      return;
+    }
+
+    if (!isTypingRef.current) {
+      startTyping(chatId);
+
+      isTypingRef.current = true;
+    }
+
+    if (typingStopTimerRef.current) {
+      clearTimeout(
+        typingStopTimerRef.current,
+      );
+    }
+
+    typingStopTimerRef.current =
+      setTimeout(() => {
+        stopTyping(chatId);
+
+        isTypingRef.current = false;
+        typingStopTimerRef.current = null;
+      }, TYPING_STOP_DELAY);
+  }
+
   async function handleSend() {
     const normalizedText = text.trim();
 
     if (!normalizedText) {
       return;
     }
+
+    handleStopTyping();
 
     if (editingMessageId !== null) {
       try {
@@ -293,7 +377,11 @@ export default function ChatScreen() {
           <View style={styles.headerInfo}>
             <Text style={styles.headerTitle}>{chat.name}</Text>
             <Text style={styles.headerStatus}>
-              {chat.isOnline ? 'online' : 'offline'}
+              {isCompanionTyping
+                ? 'печатает...'
+                : chat.isOnline
+                  ? 'online'
+                  : 'offline'}
             </Text>
           </View>
 
@@ -554,7 +642,7 @@ export default function ChatScreen() {
         <View style={styles.inputRow}>
           <TextInput 
             value={text}
-            onChangeText={setText}
+            onChangeText={handleTextChange}
             placeholder="Написать сообщение..."
             placeholderTextColor='gray'
             style={styles.input}

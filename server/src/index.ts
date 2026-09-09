@@ -20,12 +20,15 @@ import type {
   AuthenticatedWebSocket,
   ChatReadEvent,
   MessageDeliveredEvent,
+  TypingStartedEvent,
+  TypingStoppedEvent,
 } from './types/websocket.js';
 import {
   broadcastMessageCreated,
   broadcastMessageDeleted,
   broadcastMessageStatusUpdated,
   broadcastMessageUpdated,
+  broadcastTypingEvent,
 } from './websocket/broadcast.js';
 
 const app = express();
@@ -112,14 +115,18 @@ webSocketServer.on('connection', (socket, request) => {
     (rawData) => {
       let event: 
         | MessageDeliveredEvent
-        | ChatReadEvent;
+        | ChatReadEvent
+        | TypingStartedEvent
+        | TypingStoppedEvent;
 
       try {
         event = JSON.parse(
           rawData.toString(),
         ) as 
           | MessageDeliveredEvent
-          | ChatReadEvent;
+          | ChatReadEvent
+          | TypingStartedEvent
+          | TypingStoppedEvent;
       } catch {
         return;
       }
@@ -213,6 +220,39 @@ webSocketServer.on('connection', (socket, request) => {
           receipt.readAt,
         );
       }
+    }
+
+    if (
+      event.type === 'typing_started' ||
+      event.type === 'typing_stopped'
+    ) {
+      const chatId = event.data?.chatId;
+
+      if (
+        !Number.isInteger(chatId) ||
+        chatId <= 0
+      ) {
+        return;
+      }
+
+      const userIsChatMember =
+        isUserInChat(
+          chatId,
+          user.id,
+        );
+
+      if (!userIsChatMember) {
+        return;
+      }
+
+      broadcastTypingEvent(
+        webSocketServer,
+        chatId,
+        user.id,
+        event.type,
+      );
+
+      return;
     }
   });
 
