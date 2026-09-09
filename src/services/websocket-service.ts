@@ -18,6 +18,7 @@ type ConnectWebSocketOptions = {
   onMessageStatusUpdated: (receipt: MessageReceiptData) => void;
   onTypingStarted: (data: TypingEventData) => void;
   onTypingStopped: (data: TypingEventData) => void;
+  onUserPresenceUpdated: (data: UserPresenceEventData) => void;
   onConnected?: () => void;
 };
 
@@ -30,6 +31,12 @@ export type TypingEventData = {
   chatId: number;
   userId: number;
 }
+
+export type UserPresenceEventData = {
+  chatId: number;
+  userId: number;
+  isOnline: boolean;
+};
 
 export type WebSocketConnection = {
   disconnect: () => void;
@@ -56,6 +63,7 @@ export function connectWebSocket({
   onMessageStatusUpdated,
   onTypingStarted,
   onTypingStopped,
+  onUserPresenceUpdated,
   onConnected,
 }: ConnectWebSocketOptions): WebSocketConnection {
   let socket: WebSocket | null = null;
@@ -229,6 +237,15 @@ export function connectWebSocket({
           const typingData = message.data as TypingEventData;
 
           onTypingStopped(typingData);
+        }
+
+        if (
+          message.type === 
+          'user_presence_updated'
+        ) {
+          const presenceData = message.data as UserPresenceEventData;
+
+          onUserPresenceUpdated(presenceData);
         }
       } catch (error) {
         console.error('Failed to parse WebSocket message:', error);

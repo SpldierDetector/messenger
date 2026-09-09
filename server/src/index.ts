@@ -29,7 +29,13 @@ import {
   broadcastMessageStatusUpdated,
   broadcastMessageUpdated,
   broadcastTypingEvent,
+  broadcastUserPresence,
 } from './websocket/broadcast.js';
+import {
+  addUserConnection,
+  isUserOnline,
+  removeUserConnection,
+} from './websocket/presence.js';
 
 const app = express();
 const port = 3000;
@@ -107,6 +113,18 @@ webSocketServer.on('connection', (socket, request) => {
     socket as AuthenticatedWebSocket;
 
   authenticatedSocket.userId = user.id;
+
+  const userWasOnline = isUserOnline(user.id);
+
+  addUserConnection(user.id);
+
+  if (!userWasOnline) {
+    broadcastUserPresence(
+      webSocketServer,
+      user.id,
+      true,
+    );
+  }
 
   console.log(`WebSocket client connected: user ${user.id}`);
 
@@ -257,6 +275,18 @@ webSocketServer.on('connection', (socket, request) => {
   });
 
   authenticatedSocket.on('close', () => {
+    removeUserConnection(user.id);
+
+    const userIsStillOnline = isUserOnline(user.id);
+
+    if (!userIsStillOnline) {
+      broadcastUserPresence(
+        webSocketServer,
+        user.id,
+        false,
+      );
+    }
+    
     console.log(`WebSocket client disconnected: user ${user.id}`);
   });
 });

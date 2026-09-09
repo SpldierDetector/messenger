@@ -23,6 +23,7 @@ import {
 import {
   connectWebSocket,
   type TypingEventData,
+  type UserPresenceEventData,
   type WebSocketConnection,
 } from "@/services/websocket-service";
 
@@ -37,6 +38,7 @@ type MessagesContextValue = {
   receipts: MessageReceiptData[];
   unreadCounts: UnreadMessageCount[];
   typingUserIdsByChat: Record<number, number[]>;
+  onlineByChat: Record<number, boolean>;
   deleteMessage: (messageId: number) => Promise<boolean>;
   forwardMessage: (messageId: number, targetChatId: number) => Promise<boolean>;
   sendMessage: (chatId: number, text: string, replyToMessageId?: number | null) => Promise<boolean>;
@@ -69,6 +71,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [typingUserIdsByChat, setTypingUserIdsByChat] = useState<Record<number, number[]>>({});
+  const [onlineByChat, setOnlineByChat] = useState<Record<number, boolean>>({});
   const webSocketConnectionRef = useRef<WebSocketConnection | null>(null);
 
   async function loadMessages(chatId: number) {
@@ -467,6 +470,38 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
     )
   }
 
+  function handleUserPresenceUpdated(
+    data: UserPresenceEventData,
+  ) {
+    setOnlineByChat(
+      (currentPresence) => ({
+        ...currentPresence,
+        [data.chatId]: data.isOnline,
+      }),
+    );
+
+    if (data.isOnline) {
+      return;
+    }
+
+    setTypingUserIdsByChat(
+      (currentTypingUsers) => {
+        const currentUserIds =
+          currentTypingUsers[data.chatId] ?? [];
+
+        const nextUserIds =
+          currentUserIds.filter(
+            (userId) => userId !== data.userId,
+          );
+
+        return {
+          ...currentTypingUsers,
+          [data.chatId]: nextUserIds,
+        };
+      },
+    );
+  }
+
   function updateMessageInState(
     updatedMessage: MessageData,
   ) {
@@ -538,6 +573,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       onMessageStatusUpdated: updateReceiptInState,
       onTypingStarted: handleTypingStarted,
       onTypingStopped: handleTypingStopped,
+      onUserPresenceUpdated: handleUserPresenceUpdated,
       onConnected: () => {
         void syncPendingDeliveryMessages();
         void refreshUnreadCounts();
@@ -562,6 +598,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       receipts,
       unreadCounts,
       typingUserIdsByChat,
+      onlineByChat,
       sendMessage,
       editMessage,
       deleteMessage,

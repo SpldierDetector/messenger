@@ -1,18 +1,19 @@
 import { Router } from 'express';
-import { 
-  createDirectChat,
-  getChatById,
-  getChatsByUserId,
-  getDirectChatBetweenUsers,
-} from '../db/chats.js';
-import { mapChatRow } from '../mappers/chat.js';
-import { requireAuth } from '../middleware/auth.js';
-import { getUserById } from '../db/users.js';
 import {
   hideChatForUser,
   isUserInChat,
   showChatForUser,
 } from '../db/chat-members.js';
+import {
+  createDirectChat,
+  getChatById,
+  getChatsByUserId,
+  getDirectChatBetweenUsers,
+} from '../db/chats.js';
+import { getUserById } from '../db/users.js';
+import { mapChatRow } from '../mappers/chat.js';
+import { requireAuth } from '../middleware/auth.js';
+import { isUserOnline } from '../websocket/presence.js';
 
 export const chatsRouter = Router();
 
@@ -28,7 +29,13 @@ chatsRouter.get('/', requireAuth, (request, response) => {
   }
   const rows = getChatsByUserId(user.id);
 
-  const chats = rows.map(mapChatRow);
+  const chats = rows.map(
+    (row) => 
+      mapChatRow(
+        row,
+        isUserOnline(row.otherUserId),
+      ),
+  );
 
   response.json(chats);
 });
@@ -93,7 +100,10 @@ chatsRouter.post(
       );
       
       response.json(
-        mapChatRow(existingRow),
+        mapChatRow(
+          existingRow,
+          isUserOnline(existingRow.otherUserId),
+        ),
       );
 
       return;
@@ -114,7 +124,10 @@ chatsRouter.post(
     }
 
     response.status(201).json(
-      mapChatRow(createdRow),
+      mapChatRow(
+        createdRow,
+        isUserOnline(createdRow.otherUserId),
+      ),
     );
   },
 );
@@ -150,7 +163,10 @@ chatsRouter.get('/:id', requireAuth, (request, response) => {
     return;
   }
 
-  const chat = mapChatRow(row);
+  const chat = mapChatRow(
+    row,
+    isUserOnline(row.otherUserId),
+  );
 
   response.json(chat)
 });

@@ -1,6 +1,9 @@
 import { WebSocket, WebSocketServer } from 'ws';
 
-import { isUserInChat } from '../db/chat-members.js';
+import {
+  getChatIdsByUserId,
+  isUserInChat
+} from '../db/chat-members.js';
 import type { MessageData } from '../types/message.js';
 import type {
   AuthenticatedWebSocket,
@@ -170,4 +173,63 @@ export function broadcastTypingEvent(
       );
     },
   );
+}
+
+export function broadcastUserPresence(
+  webSocketServer: WebSocketServer,
+  userId: number,
+  isOnline: boolean,
+) {
+  const chatIds = getChatIdsByUserId(userId);
+
+  for (const { chatId } of chatIds) {
+    const event: WebSocketEvent<{
+      chatId: number;
+      userId: number;
+      isOnline: boolean;
+    }> = {
+      type: 'user_presence_updated',
+      data: {
+        chatId,
+        userId,
+        isOnline,
+      },
+    };
+
+    const serializedEvent = JSON.stringify(event);
+
+    webSocketServer.clients.forEach(
+      (client) => {
+        const authenticatedClient =
+          client as AuthenticatedWebSocket;
+
+        if (
+          authenticatedClient.readyState !==
+          WebSocket.OPEN
+        ) {
+          return;
+        }
+
+        if (
+          authenticatedClient.userId ===
+          userId
+        ) {
+          return;
+        }
+
+        const userIsChatMember =
+          isUserInChat(
+            chatId,
+            authenticatedClient.userId,
+          );
+        
+        if (!userIsChatMember) {
+          return;
+        }
+        authenticatedClient.send(
+          serializedEvent,
+        );
+      },
+    );
+  }
 }

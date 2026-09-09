@@ -79,3 +79,19 @@ export function showChatForAllMembers(
 
   return statement.run(chatId);
 }
+
+export function getChatIdsByUserId(
+  userId: number,
+) {
+  const statement = database.prepare(`
+    SELECT chatId
+    FROM chat_members
+    WHERE userId = ?
+  `);
+
+  return statement.all(
+    userId,
+  ) as Array<{
+    chatId: number;
+  }>;
+}

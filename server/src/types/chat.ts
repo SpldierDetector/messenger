@@ -4,6 +4,7 @@ export type ChatType =
 
 export type ChatRow = {
   id: number;
+  otherUserId: number;
   name: string;
   isOnline: number;
   type: ChatType;

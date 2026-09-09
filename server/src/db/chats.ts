@@ -1,6 +1,6 @@
-import { database } from './database.js';
-import { insertChatMember } from './chat-members.js'; 
 import type { ChatRow } from '../types/chat.js';
+import { insertChatMember } from './chat-members.js';
+import { database } from './database.js';
 
 export function getChatsByUserId(
   userId: number,
@@ -8,6 +8,7 @@ export function getChatsByUserId(
   const statement = database.prepare(`
     SELECT
       chat.id,
+      otherUser.id AS otherUserId,
       otherUser.name,
       chat.isOnline,
       chat.type
@@ -31,7 +32,7 @@ export function getChatsByUserId(
   return statement.all(
     userId,
     userId,
-  );
+  ) as ChatRow[];
 }
 
 export function getChatById(
@@ -41,6 +42,7 @@ export function getChatById(
   const statement = database.prepare (`
     SELECT
       chat.id,
+      otherUser.id AS otherUserId,
       otherUser.name,
       chat.isOnline,
       chat.type
@@ -66,7 +68,7 @@ export function getChatById(
     userId,
     userId,
     chatId,
-  );
+  ) as ChatRow | undefined;
 }
 
 export function getDirectChatBetweenUsers(
@@ -76,6 +78,7 @@ export function getDirectChatBetweenUsers(
   const statement = database.prepare(`
     SELECT
       chat.id,
+      otherUser.id AS otherUserId,
       otherUser.name,
       chat.isOnline,
       chat.type
