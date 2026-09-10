@@ -1,6 +1,6 @@
 import { database } from './database.js';
 
-export function getMessagesByChatId(chatId: number) {
+export function getMessagesByChatId(chatId: number, userId: number) {
   const statement = database.prepare(`
     SELECT
       message.id,
@@ -15,13 +15,30 @@ export function getMessagesByChatId(chatId: number) {
       message.forwardedFromMessageId,
       message.forwardedFromAuthor
     FROM messages AS message
+
     JOIN users AS sender
       ON sender.id = message.senderId
+
+    JOIN chat_members AS member
+      ON member.chatId = message.chatId
+      AND member.userId = ?
+
+    LEFT JOIN message_hidden_for_users AS hidden
+      ON hidden.messageId = message.id
+      AND hidden.userId = ?
+
     WHERE message.chatId = ?
+      AND hidden.messageId IS NULL
+      AND (
+        member.clearedBeforeMessageId IS NULL
+        OR message.id >
+          member.clearedBeforeMessageId
+      )
+
     ORDER BY message.createdAt ASC
   `);
 
-  return statement.all(chatId);
+  return statement.all(userId, userId, chatId);
 }
 
 export function getLatestMessagesByUserId(userId: number) {
@@ -53,6 +70,19 @@ export function getLatestMessagesByUserId(userId: number) {
       FROM messages AS latestMessage
       WHERE latestMessage.chatId = message.chatId
         AND latestMessage.deletedAt IS NULL
+        AND (
+          member.clearedBeforeMessageId IS NULL
+          OR latestMessage.id >
+            member.clearedBeforeMessageId
+        )
+
+        AND NOT Exists (
+          SELECT 1
+          FROM message_hidden_for_users AS hidden
+          WHERE hidden.messageId = latestMessage.id
+            AND hidden.userId = member.userId
+        )
+
       ORDER BY 
         latestMessage.createdAt DESC, 
         latestMessage.id DESC
@@ -88,9 +118,22 @@ export function getPendingDeliveryMessagesByUserId(
     JOIN users AS sender
       ON sender.id = message.senderId
 
+    JOIN chat_members AS member
+      ON member.chatId = message.chatId
+      AND member.userId = receipt.userId
+
+    LEFT JOIN message_hidden_for_users AS hidden
+      ON hidden.messageId = message.id
+      AND hidden.userId = receipt.userId
+
     WHERE receipt.userId = ?
       AND receipt.deliveredAt IS NULL
       AND message.deletedAt IS NULL
+      AND hidden.messageId IS NULL
+      AND (
+        member.clearedBeforeMessageId IS NULL
+        OR message.id > member.clearedBeforeMessageId
+      )
 
     ORDER BY
       message.createdAt ASC,
@@ -229,5 +272,27 @@ export function deleteMessage(
   return statement.run(
     deletedAt,
     messageId,
+  );
+}
+
+export function hideMessageForUser(
+  messageId: number,
+  userId: number,
+  hiddenAt: number,
+) {
+  const statement = database.prepare(`
+    INSERT OR IGNORE INTO
+      message_hidden_for_users (
+        messageId,
+        userId,
+        hiddenAt
+      )
+    VALUES (?, ?, ?)  
+  `);
+
+  return statement.run(
+    messageId,
+    userId,
+    hiddenAt,
   );
 }

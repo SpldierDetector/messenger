@@ -131,6 +131,27 @@ export async function deleteMessageRequest(
   );
 }
 
+export async function deleteMessageForMeRequest(
+  messageId: number,
+  token: string,
+): Promise<void> {
+  const response = await fetch(
+    `${API_BASE_URL}/messages/${messageId}/for-me`,
+    {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      'Failed to delete message for current user',
+    );
+  }
+}
+
 export async function forwardMessageRequest(
   messageId: number,
   targetChatId: number,

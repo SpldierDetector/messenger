@@ -44,6 +44,7 @@ export default function ChatScreen() {
     sendMessage,
     editMessage,
     deleteMessage,
+    deleteMessageForMe,
     loadMessages,
     isLoaded,
     isSending,
@@ -612,7 +613,26 @@ export default function ChatScreen() {
                   </Text>
                 </Pressable>
               )}
+              
+              <Pressable
+                style={styles.messageMenuItem}
+                onPress={async () => {
+                  if (!selectedMessage) {
+                    return;
+                  }
 
+                  const messageId = selectedMessage.id;
+
+                  handleCloseMessageMenu();
+
+                  await deleteMessageForMe(messageId);
+                }}
+              >
+                <Text style={styles.deleteMessageMenuText}>
+                  Удалить у меня
+                </Text>
+              </Pressable>
+              
               {selectedMessage?.isOwn &&(
                 <Pressable
                   style={styles.messageMenuItem}
@@ -630,7 +650,7 @@ export default function ChatScreen() {
                   }}
                 >
                   <Text style={styles.deleteMessageMenuText}>
-                    Удалить
+                    Удалить у всех
                   </Text>
                 </Pressable>
               )}

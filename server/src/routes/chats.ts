@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import {
+  clearChatHistoryForUser,
   hideChatForUser,
+  hideChatWithHistoryForUser,
   isUserInChat,
   showChatForUser,
 } from '../db/chat-members.js';
@@ -172,6 +174,54 @@ chatsRouter.get('/:id', requireAuth, (request, response) => {
 });
 
 chatsRouter.delete(
+  '/:id/history',
+  requireAuth,
+  (request, response) => {
+    const chatId = Number(request.params.id);
+
+    if (
+      !Number.isInteger(chatId) ||
+      chatId <= 0
+    ) {
+      response.status(400).json({
+        error: 
+        'chat id must be a positive integer',
+      });
+
+      return;
+    }
+
+    const currentUser = request.user;
+
+    if (!currentUser) {
+      response.status(401).json({
+        error: 'authorization required',
+      });
+
+      return;
+    }
+
+    const userIsChatMember =
+      isUserInChat(chatId, currentUser.id);
+
+    if (!userIsChatMember) {
+      response.status(404).json({
+        error: 'chat not found',
+      });
+
+      return;
+    }
+
+    clearChatHistoryForUser(
+      chatId,
+      currentUser.id,
+    );
+
+    response.status(204).send();
+  },
+);
+
+chatsRouter.delete(
   '/:id',
   requireAuth,
   (request, response) => {
@@ -211,6 +261,57 @@ chatsRouter.delete(
     }
 
     hideChatForUser(
+      chatId,
+      currentUser.id,
+    );
+
+    response.status(204).send();
+  },
+);
+
+chatsRouter.delete(
+  '/:id/with-history',
+  requireAuth,
+  (request, response) => {
+    const chatId = Number(request.params.id);
+
+    const currentUser = request.user;
+
+    if (!currentUser) {
+      response.status(401).json({
+        error: 'authorization required',
+      });
+
+      return;
+    }
+
+    if (
+      !Number.isInteger(chatId) ||
+      chatId <= 0
+    ) {
+      response.status(400).json({
+        error: 
+        'chat id must be a positive integer',
+      });
+
+      return;
+    }
+
+    const userIsChatMember =
+      isUserInChat(
+        chatId,
+        currentUser.id,
+      );
+    
+    if (!userIsChatMember) {
+      response.status(404).json({
+        error: 'chat not found',
+      });
+
+      return;
+    }
+
+    hideChatWithHistoryForUser(
       chatId,
       currentUser.id,
     );

@@ -8,17 +8,23 @@ import { styles } from '@/styles/index.styles';
 import { ChatPreview } from '@/components/chat-preview';
 import { useAuth } from '@/providers/auth-provider';
 import { useMessages } from '@/providers/messages-provider';
-import { deleteChatRequest, getChatsRequest } from '@/services/chat-api';
+import {
+  deleteChatRequest,
+  deleteChatWithHistoryRequest,
+  getChatsRequest
+} from '@/services/chat-api';
 import type { ChatData } from '@/types/chat';
 import { sortChatsByLatestMessage } from '@/utils/chat';
 import { formatChatPreviewDate } from '@/utils/date';
 import { getLastMessage } from '@/utils/message';
 
+type ChatDeleteMode = | 'hide' | 'with-history';
 
 export default function ChatListScreen() {
   const [chats, setChats] = useState<ChatData[]>([]);
   const [menuChat, setMenuChat] = useState<ChatData | null>(null);
   const [chatToDelete, setChatToDelete] = useState<ChatData | null>(null);
+  const [chatDeleteMode, setChatDeleteMode] = useState<ChatDeleteMode>('hide');
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
@@ -35,6 +41,7 @@ export default function ChatListScreen() {
     unreadCounts,
     typingUserIdsByChat,
     onlineByChat,
+    clearChatHistoryLocally,
     loadLatestMessagePreviews, 
   } = useMessages();
 
@@ -131,13 +138,14 @@ export default function ChatListScreen() {
     router.replace('/login');
   }
 
-  function handleDeleteMenuPress() {
+  function handleDeleteMenuPress(mode: ChatDeleteMode) {
     if (!menuChat) {
       return;
     }
 
     setDeleteError(null);
     setChatToDelete(menuChat);
+    setChatDeleteMode(mode);
     setMenuChat(null);
   }
 
@@ -153,15 +161,31 @@ export default function ChatListScreen() {
       setIsDeleting(true);
       setDeleteError(null);
 
-      await deleteChatRequest(
-        chatToDelete.id,
-        token,
-      );
+      if (
+        chatDeleteMode ===
+        'with-history'
+      ) {
+        await deleteChatWithHistoryRequest(
+          chatToDelete.id,
+          token,
+        );
 
-      setChats((currentChats) => currentChats.filter(
-        (chat) =>
-          chat.id !== chatToDelete.id,
-      ));
+        clearChatHistoryLocally(
+          chatToDelete.id,
+        );
+      } else {
+        await deleteChatRequest(
+          chatToDelete.id,
+          token,
+        );
+      }
+
+      setChats((currentChats) =>
+        currentChats.filter(
+          (chat) =>
+            chat.id !== chatToDelete.id,
+        ),
+      );
 
       setChatToDelete(null);
     } catch (error) {
@@ -171,7 +195,10 @@ export default function ChatListScreen() {
       );
 
       setDeleteError(
-        'Не удалось удалить чат',
+        chatDeleteMode ===
+          'with-history'
+          ? 'Не удалось удалить чат с историей'
+          : 'Не удалось удалить чат',
       );
     } finally {
       setIsDeleting(false);
@@ -287,9 +314,9 @@ export default function ChatListScreen() {
             </Text>
 
             <Pressable
-              onPress={
-                handleDeleteMenuPress
-              }
+              onPress={() => {
+                handleDeleteMenuPress('hide')
+              }}
               style={({ pressed }) => [
                 styles.contextMenuItem,
                 pressed &&
@@ -302,6 +329,24 @@ export default function ChatListScreen() {
                 }
               >
                 Удалить чат
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                handleDeleteMenuPress('with-history');
+              }}
+              style={({ pressed }) => [
+                styles.contextMenuItem,
+                pressed &&
+                  styles.contextMenuItemPressed,
+              ]}
+            >
+              <Text
+                style={
+                  styles.deleteMenuText
+                }
+              >
+                Удалить чат с историей
               </Text>
             </Pressable>
           </View>
@@ -328,12 +373,10 @@ export default function ChatListScreen() {
           />
 
           <View style={styles.confirmDialog}>
-            <Text
-              style={
-                styles.confirmTitle
-              }
-            >
-              Удалить чат?
+            <Text style={styles.confirmTitle}>
+              {chatDeleteMode === 'with-history'
+                ? 'Удалить чат с историей'
+                : 'Удалить чат?'}
             </Text>
 
             <Text
@@ -341,9 +384,22 @@ export default function ChatListScreen() {
                 styles.confirmDescription
               }
             >
-              Чат с {chatToDelete?.name}
-              {' '}исчезнет из вашего списка.
-              История сообщений сохранится.
+              {chatDeleteMode === 'with-history' ? (
+                <>
+                  Чат с {chatToDelete?.name}
+                  {' '}исчезнет из вашего списка.
+                  История сообщений будет удалена
+                  только у вас и не восстановится
+                  при повторном открытии чата.
+                  У собеседника история сохранится.
+                </>
+              ) : (
+                <>
+                  Чат с {chatToDelete?.name}
+                  {' '}исчезнет из вашего списка.
+                  История сообщений сохранится.
+                </>
+              )}
             </Text>
 
             {deleteError ? (

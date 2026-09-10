@@ -65,10 +65,25 @@ export function markChatMessagesRead(
     WHERE userId = ?
       AND readAt IS NULL
       AND messageId IN (
-        SELECT id
-        FROM messages
-        WHERE chatId = ?
-          AND deletedAt IS NULL
+        SELECT message.id
+        FROM messages AS message
+
+        JOIN chat_members AS member
+          ON member.chatId = message.chatId
+          AND member.userId = ?
+
+        LEFT JOIN message_hidden_for_users AS hidden
+          ON hidden.messageId = message.id
+          AND hidden.userId = ?
+
+        WHERE message.chatId = ?
+          AND message.deletedAt IS NULL
+          AND hidden.messageId IS NULL
+          AND (
+            member.clearedBeforeMessageId IS NULL
+            OR message.id >
+              member.clearedBeforeMessageId
+          )
       )
     RETURNING
       messageId,
@@ -80,6 +95,8 @@ export function markChatMessagesRead(
   return statement.all(
     readAt,
     readAt,
+    userId,
+    userId,
     userId,
     chatId,
   ) as Array<{
@@ -95,16 +112,33 @@ export function getUnreadMessageCountsByUserId(
 ) {
   const statement = database.prepare(`
     SELECT
-      messages.chatId AS chatId,
-      COUNT(*) AS unreadCount 
-    FROM message_receipts
-    JOIN messages
-      ON messages.id = message_receipts.messageId
-    WHERE message_receipts.userId = ?
-      AND message_receipts.readAt IS NULL
-      AND messages.deletedAt IS NULL
-    GROUP BY messages.chatId
-    ORDER BY messages.chatId ASC 
+      message.chatId AS chatId,
+      COUNT(*) AS unreadCount
+    FROM message_receipts AS receipt
+
+    JOIN messages AS message
+      ON message.id = receipt.messageId
+
+    JOIN chat_members AS member
+      ON member.chatId = message.chatId
+      AND member.userId = receipt.userId
+
+    LEFT JOIN message_hidden_for_users AS hidden
+      ON hidden.messageId = message.id
+      AND hidden.userId = receipt.userId
+
+    WHERE receipt.userId = ?
+      AND receipt.readAt IS NULL
+      AND message.deletedAt IS NULL
+      AND hidden.messageId IS NULL
+      AND (
+        member.clearedBeforeMessageId IS NULL
+        OR message.id >
+          member.clearedBeforeMessageId
+      )
+
+    GROUP BY message.chatId
+    ORDER BY message.chatId ASC
   `);
 
   return statement.all(
@@ -121,20 +155,38 @@ export function getMessageReceiptsByChatId(
 ) {
   const statement = database.prepare(`
     SELECT
-      message_receipts.messageId,
-      message_receipts.userId,
-      message_receipts.deliveredAt,
-      message_receipts.readAt
-    FROM message_receipts
-    JOIN messages
-      ON messages.id =
-        message_receipts.messageId
-    WHERE messages.chatId = ?
-      AND messages.senderId = ?
-    ORDER BY message_receipts.messageId ASC  
+      receipt.messageId,
+      receipt.userId,
+      receipt.deliveredAt,
+      receipt.readAt
+    FROM message_receipts AS receipt
+
+    JOIN messages AS message
+      ON message.id = receipt.messageId
+
+    JOIN chat_members AS member
+      ON member.chatId = message.chatId
+      AND member.userId = ?
+
+    LEFT JOIN message_hidden_for_users AS hidden
+      ON hidden.messageId = message.id
+      AND hidden.userId = ?
+
+    WHERE message.chatId = ?
+      AND message.senderId = ?
+      AND hidden.messageId IS NULL
+      AND (
+        member.clearedBeforeMessageId IS NULL
+        OR message.id >
+          member.clearedBeforeMessageId
+      )
+
+    ORDER BY receipt.messageId ASC
   `);
 
   return statement.all(
+    senderId,
+    senderId,
     chatId,
     senderId,
   );

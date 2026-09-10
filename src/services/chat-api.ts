@@ -123,3 +123,61 @@ export async function deleteChatRequest(
     );
   }
 }
+
+export async function clearChatHistoryRequest(
+  chatId: number,
+  token: string,
+): Promise<void> {
+  const response = await fetch(
+    `${API_BASE_URL}/chats/${chatId}/history`,
+    {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+
+    console.error(
+      'Failed to clear chat history:',
+      response.status,
+      errorBody,
+    );
+
+    throw new Error(
+      `Failed to clear chat history: ${response.status}`,
+    );
+  }
+}
+
+export async function deleteChatWithHistoryRequest(
+  chatId: number,
+  token: string,
+): Promise<void> {
+  const response = await fetch(
+    `${API_BASE_URL}/chats/${chatId}/with-history`,
+    {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+
+    console.error(
+      'Failed to delete chat with history:',
+      response.status,
+      errorBody,
+    );
+
+    throw new Error(
+      `Failed to delete chat with history: ${response.status}`,
+    );
+  }
+}

@@ -141,10 +141,24 @@ const hasHiddenAt = chatMemberColumns.some(
   (column) => column.name === 'hiddenAt',
 );
 
+const hasClearedBeforeMessageId =
+  chatMemberColumns.some(
+    (column) =>
+      column.name ===
+      'clearedBeforeMessageId',
+  )
+
 if (!hasHiddenAt) {
   database.exec(`
     ALTER TABLE chat_members
     ADD COLUMN hiddenAt INTEGER
+  `);
+}
+
+if (!hasClearedBeforeMessageId) {
+  database.exec(`
+    ALTER TABLE chat_members
+    ADD COLUMN clearedBeforeMessageId INTEGER  
   `);
 }
 
@@ -159,6 +173,19 @@ database.exec(`
 
     FOREIGN KEY (messageId) REFERENCES messages(id),
     FOREIGN KEY (userId) REFERENCES users(id)
+  )  
+`);
+
+database.exec(`
+  CREATE TABLE IF NOT EXISTS message_hidden_for_users (
+    messageId INTEGER NOT NULL,
+    userId INTEGER NOT NULL,
+    hiddenAt INTEGER NOT NULL,
+
+    PRIMARY KEY (messageId, userId),
+
+    FOREIGN KEY (messageId) REFERENCES messages(id),
+    FOREIGN KeY (userId) REFERENCES users(id)
   )  
 `);
 

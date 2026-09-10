@@ -11,6 +11,7 @@ import {
 import { useAuth } from '@/providers/auth-provider';
 import {
   createMessage,
+  deleteMessageForMe as deleteMessageForMeService,
   deleteMessage as deleteMessageService,
   editMessage as editMessageService,
   forwardMessage as forwardMessageService,
@@ -41,6 +42,8 @@ type MessagesContextValue = {
   onlineByChat: Record<number, boolean>;
   lastSeenByChat: Record<number, number | null>;
   deleteMessage: (messageId: number) => Promise<boolean>;
+  deleteMessageForMe: (messageId: number) => Promise<boolean>;
+  clearChatHistoryLocally: (chatId: number) => void;
   forwardMessage: (messageId: number, targetChatId: number) => Promise<boolean>;
   sendMessage: (chatId: number, text: string, replyToMessageId?: number | null) => Promise<boolean>;
   isLoaded: boolean;
@@ -332,6 +335,109 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
     }
   }
 
+  async function deleteMessageForMe(
+    messageId: number,
+  ): Promise<boolean> {
+    if (!token) {
+      return false;
+    }
+
+    try {
+      setError(null);
+
+      await deleteMessageForMeService(
+        messageId,
+        token,
+      );
+
+      setMessages((currentMessages) =>
+        currentMessages.filter(
+          (message) =>
+            message.id !== messageId,
+        ),
+      );
+
+      setReceipts((currentReceipts) =>
+        currentReceipts.filter(
+          (receipt) =>
+            receipt.messageId !== messageId,
+        ), 
+      );
+
+      void refreshLatestMessagePreviews();
+
+      return true;
+    } catch (caughtError) {
+      console.error(
+        'Failed to delete message for current user:',
+        caughtError,
+      );
+
+      setError(
+        'Не удалось удалить сообщение',
+      );
+
+      return false;
+    }
+  }
+
+  function clearChatHistoryLocally(
+    chatId: number,
+  ) {
+    const messageIdsToRemove = new Set(
+      messages
+        .filter(
+          (message) => message.chatId === chatId,
+        )
+        .map(
+          (message) => message.id,
+        ),
+    );
+
+    setMessages((currentMessages) =>
+      currentMessages.filter(
+        (message) => message.chatId !== chatId,
+      ),
+    );
+
+    setReceipts((currentReceipts) =>
+      currentReceipts.filter(
+        (receipt) =>
+          !messageIdsToRemove.has(receipt.messageId),
+      ),
+    );
+
+    setReceipts((currentReceipts) =>
+      currentReceipts.filter(
+        (receipt) => !messageIdsToRemove.has(receipt.messageId),
+      ),
+    );
+
+    setUnreadCounts((currentCounts) =>
+      currentCounts.filter(
+        (count) => count.chatId !== chatId,
+      ),
+    );
+
+    setTypingUserIdsByChat(
+      (currentTypingUsers) => {
+        if (
+          !(chatId in currentTypingUsers)
+        ) {
+          return currentTypingUsers;
+        }
+
+        const nextTypingUsers = {
+          ...currentTypingUsers,
+        };
+
+        delete nextTypingUsers[chatId];
+
+        return nextTypingUsers;
+      },
+    );
+  }
+
   async function forwardMessage(
     messageId: number,
     targetChatId: number,
@@ -615,6 +721,8 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       sendMessage,
       editMessage,
       deleteMessage,
+      deleteMessageForMe,
+      clearChatHistoryLocally,
       forwardMessage,
       loadMessages,
       loadLatestMessagePreviews,

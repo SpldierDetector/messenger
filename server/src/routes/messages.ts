@@ -14,6 +14,7 @@ import {
   getMessageById,
   getMessagesByChatId,
   getPendingDeliveryMessagesByUserId,
+  hideMessageForUser,
   insertForwardedMessage,
   insertMessage,
   updateMessage,
@@ -177,7 +178,7 @@ export function createMessagesRouter({
       return;
     }
 
-    const rows = getMessagesByChatId(chatId);
+    const rows = getMessagesByChatId(chatId, currentUser.id);
 
     const chatMessages = rows.map(mapMessageRow);
 
@@ -573,6 +574,70 @@ export function createMessagesRouter({
     },
   );
 
+  messagesRouter.delete(
+    '/:id/for-me',
+    requireAuth,
+    (request, response) => {
+      const messageId = Number(request.params.id);
+
+      if (
+        !Number.isInteger(messageId) ||
+        messageId <= 0
+      ) {
+        response.status(400).json({
+          error: 
+            "message id must be a positive integer",
+        });
+
+        return;
+      }
+
+      const currentUser = request.user;
+
+      if (!currentUser) {
+        response.status(401).json({
+          error: 'authorization required',
+        });
+
+        return;
+      }
+
+      const row = getMessageById(messageId);
+
+      if (!row) {
+        response.status(404).json({
+          error: 'message not found',
+        });
+
+        return;
+      }
+
+      const message = row as MessageRow;
+
+      const userIsChatMember = 
+        isUserInChat(
+          message.chatId,
+          currentUser.id,
+        );
+
+      if (!userIsChatMember) {
+        response.status(403).json({
+          error: 'forbidden',
+        });
+
+        return;
+      }
+
+      hideMessageForUser(
+        messageId,
+        currentUser.id,
+        Date.now(),
+      );
+
+      response.status(204).send()
+    },
+  );
+  
   messagesRouter.delete(
     '/:id',
     requireAuth,
