@@ -5,6 +5,7 @@ type ChatPreviewProps = {
   lastMessage: string,
   time: string,
   isOnline: boolean,
+  isTyping: boolean,
   unreadCount: number,
 };
 
@@ -13,6 +14,7 @@ export function ChatPreview({
   lastMessage,
   time,
   isOnline,
+  isTyping,
   unreadCount,
 }: ChatPreviewProps){
   return (
@@ -28,7 +30,16 @@ export function ChatPreview({
           </View>
             
           <View style={styles.bottomRow}>
-            <Text style={styles.lastMessage} numberOfLines={1}>{lastMessage}</Text>
+            <Text 
+              style={
+                isTyping
+                  ? styles.typingText
+                  : styles.lastMessage
+                } 
+                numberOfLines={1}
+              >
+                {isTyping ? 'печатает...' : lastMessage}
+              </Text>
               {isOnline && (<View style={styles.onlineDot} />)}
 
               {unreadCount > 0 && (
@@ -118,4 +129,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
+  typingText: {
+    flex: 1,
+    color: '#22c55e',
+    fontSize: 14,
+    fontWeight: '500',
+  }
 });
