@@ -140,7 +140,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
   ): Promise<void> {
     const query = search.trim();
 
-    if (!token || !query) {
+    if (!token || !user || !query) {
       clearMessageSearch();
       return;
     }
@@ -156,6 +156,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
         chatId,
         query,
         token,
+        user.id,
       );
 
       if (

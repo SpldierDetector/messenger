@@ -307,6 +307,7 @@ export async function searchMessagesRequest(
   chatId: number,
   search: string,
   token: string,
+  currentUserId: number,
 ): Promise<MessageData[]> {
   const params = new URLSearchParams({
     chatId: chatId.toString(),
@@ -336,5 +337,12 @@ export async function searchMessagesRequest(
     );
   }
 
-  return response.json();
+  const messages = (await response.json()) as MessageApiData[];
+
+  return messages.map((message) => 
+    mapMessageApiData(
+      message,
+      currentUserId,
+    ),
+  );
 }

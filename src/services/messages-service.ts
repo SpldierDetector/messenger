@@ -18,11 +18,13 @@ export async function searchMessages(
   chatId: number,
   search: string,
   token: string,
+  currentUserId: number,
 ) {
   return searchMessagesRequest(
     chatId,
     search,
     token,
+    currentUserId,
   );
 }
 
