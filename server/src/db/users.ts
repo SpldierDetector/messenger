@@ -1,3 +1,4 @@
+import { getSearchTerms } from '../utils/search.js';
 import { database } from './database.js';
 
 export function getUsers() {
@@ -69,26 +70,53 @@ export function searchUsers(
   search: string,
   currentUserId: number,
 ) {
+  const searchTerms =
+    getSearchTerms(search);
+
+  if (searchTerms.length === 0) {
+    return [];
+  }
+
+  const searchConditions =
+    searchTerms
+      .map(
+        () => `
+          (
+            instr(
+              normalize_search(name),
+              ?
+            ) > 0
+            OR instr(
+              normalize_search(login),
+              ?
+            ) > 0
+          )
+        `,
+      )
+      .join(' AND ');
+
   const statement = database.prepare(`
     SELECT
       id,
       name
     FROM users
     WHERE id != ?
-      AND (
-        LOWER(name) LIKE LOWER(?)
-        OR LOWER(login) LIKE LOWER(?)  
-      )  
+      AND ${searchConditions}
     ORDER BY name ASC
     LIMIT 20
   `);
 
-  const searchPattern = `%${search}%`;
+  const searchParameters =
+    searchTerms.flatMap(
+      (term) => [
+        term,
+        term,
+      ],
+    );
 
   return statement.all(
     currentUserId,
-    searchPattern,
-    searchPattern,
+    ...searchParameters,
   );
 }
 

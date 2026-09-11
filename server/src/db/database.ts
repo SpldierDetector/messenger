@@ -1,7 +1,22 @@
 import { DatabaseSync } from 'node:sqlite';
 import { hashPassword } from '../auth/password.js';
+import { normalizeSearchText } from '../utils/search.js';
 
 export const database = new DatabaseSync('voxa.db');
+
+database.function(
+  'normalize_search',
+  {
+    deterministic: true,
+  },
+  (value) => {
+    if (typeof value !== 'string') {
+      return '';
+    }
+
+    return normalizeSearchText(value);
+  },
+);
 
 database.exec(`
   CREATE TABLE IF NOT EXISTS users(
