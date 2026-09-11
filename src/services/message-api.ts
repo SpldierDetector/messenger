@@ -302,3 +302,39 @@ export async function getUnreadMessageCountsRequest(
 
   return response.json() as Promise<UnreadMessageCount[]>;
 }
+
+export async function searchMessagesRequest(
+  chatId: number,
+  search: string,
+  token: string,
+): Promise<MessageData[]> {
+  const params = new URLSearchParams({
+    chatId: chatId.toString(),
+    search,
+  });
+
+  const response = await fetch(
+    `${API_BASE_URL}/messages/search?${params.toString()}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+
+    console.error(
+      'Failed to search messages',
+      response.status,
+      errorBody,
+    );
+
+    throw new Error(
+      `Failed to search messages: ${response.status}`,
+    );
+  }
+
+  return response.json();
+}

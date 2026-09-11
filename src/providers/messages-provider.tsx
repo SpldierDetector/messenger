@@ -20,6 +20,7 @@ import {
   loadMessageReceipts,
   loadPendingDeliveryMessages,
   loadUnreadMessageCounts,
+  searchMessages as searchMessagesService,
 } from "@/services/messages-service";
 import {
   connectWebSocket,
@@ -49,6 +50,11 @@ type MessagesContextValue = {
   isLoaded: boolean;
   isSending: boolean;
   error: string | null;
+  messageSearchResults: MessageData[];
+  isSearchingMessages: boolean;
+  messageSearchError: string | null;
+  searchMessagesInChat: (chatId: number, search: string) => Promise<void>;
+  clearMessageSearch: () => void;
   loadMessages: (chatId: number) => Promise<void>;
   loadLatestMessagePreviews: () => Promise<void>;
   markChatRead: (chatId: number) => void;
@@ -77,6 +83,10 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
   const [typingUserIdsByChat, setTypingUserIdsByChat] = useState<Record<number, number[]>>({});
   const [onlineByChat, setOnlineByChat] = useState<Record<number, boolean>>({});
   const [lastSeenByChat, setLastSeenByChat] = useState<Record<number, number | null>>({});
+  const [messageSearchResults, setMessageSearchResults] = useState<MessageData[]>([]);
+  const [isSearchingMessages, setIsSearchingMessages] = useState(false);
+  const [messageSearchError, setMessageSearchError] = useState<string | null>(null);
+  const messageSearchRequestIdRef = useRef(0);
   const webSocketConnectionRef = useRef<WebSocketConnection | null>(null);
 
   async function loadMessages(chatId: number) {
@@ -122,6 +132,69 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
 
     setMessages(latestMessages);
     setIsLoaded(true);
+  }
+
+  async function searchMessagesInChat(
+    chatId: number,
+    search: string
+  ): Promise<void> {
+    const query = search.trim();
+
+    if (!token || !query) {
+      clearMessageSearch();
+      return;
+    }
+
+    const requestId = ++messageSearchRequestIdRef.current;
+
+    try {
+      setIsSearchingMessages(true);
+      setMessageSearchError(null);
+      setMessageSearchResults([]);
+
+      const results = await searchMessagesService(
+        chatId,
+        query,
+        token,
+      );
+
+      if (
+        requestId !==
+        messageSearchRequestIdRef.current
+      ) {
+        return;
+      }
+
+      setMessageSearchResults(results);
+    } catch (caughtError) {
+      if (
+        requestId !==
+        messageSearchRequestIdRef.current
+      ) {
+        return;
+      }
+
+      console.error('Failed to search messages:', caughtError);
+
+      setMessageSearchError(
+        'Не удалось выполнить поиск сообщений',
+      );
+    } finally {
+      if (
+        requestId ===
+        messageSearchRequestIdRef.current
+      ) {
+        setIsSearchingMessages(false);
+      }
+    }
+  }
+
+  function clearMessageSearch() {
+    ++messageSearchRequestIdRef.current;
+
+    setMessageSearchResults([]);
+    setIsSearchingMessages(false),
+    setMessageSearchError(null);
   }
 
   async function refreshLatestMessagePreviews() {
@@ -673,9 +746,14 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       setIsLoaded(false);
       setError(null);
       setUnreadCounts([]);
+      setMessageSearchResults([]);
+      setIsSearchingMessages(false);
+      setMessageSearchError(null);
       setTypingUserIdsByChat({});
       setOnlineByChat({});
       setLastSeenByChat({});
+
+      ++messageSearchRequestIdRef.current;
       
       webSocketConnectionRef.current = null;
 
@@ -713,6 +791,11 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
     <MessagesContext.Provider 
     value={{ 
       messages, 
+      messageSearchResults,
+      isSearchingMessages,
+      messageSearchError,
+      searchMessagesInChat,
+      clearMessageSearch,
       receipts,
       unreadCounts,
       typingUserIdsByChat,

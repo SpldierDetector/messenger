@@ -1,3 +1,4 @@
+import { getSearchTerms } from '../utils/search.js';
 import { database } from './database.js';
 
 export function getMessagesByChatId(chatId: number, userId: number) {
@@ -39,6 +40,80 @@ export function getMessagesByChatId(chatId: number, userId: number) {
   `);
 
   return statement.all(userId, userId, chatId);
+}
+
+export function searchMessagesByChatId(
+  chatId: number,
+  userId: number,
+  search: string,
+) {
+  const searchTerms = getSearchTerms(search);
+
+  if (searchTerms.length === 0) {
+    return [];
+  }
+
+  const searchConditions =
+    searchTerms
+      .map(
+        () => `
+          instr(
+            normalize_search(message.text),
+            ?
+          ) > 0
+        `,
+      )
+      .join(' AND ');
+  
+  const statement = database.prepare(`
+    SELECT
+      message.id,
+      message.chatId,
+      message.senderId,
+      sender.name AS author,
+      message.text,
+      message.createdAt,
+      message.editedAt,
+      message.deletedAt,
+      message.replyToMessageId,
+      message.forwardedFromMessageId,
+      message.forwardedFromAuthor
+    FROM messages AS message
+
+    JOIN users AS sender
+      ON sender.id = message.senderId
+
+    JOIN chat_members AS member
+      ON member.chatId = message.chatId
+      AND member.userId = ?
+
+    LEFT JOIN message_hidden_for_users AS hidden
+      ON hidden.messageId = message.id
+      AND hidden.userId = ?
+
+    WHERE message.chatId = ?
+      AND message.deletedAt IS NULL
+      AND hidden.messageId IS NULL
+      AND (
+        member.clearedBeforeMessageId IS NULL
+        OR message.id >
+          member.clearedBeforeMessageId
+      )
+      AND ${searchConditions}
+
+    ORDER BY
+      message.createdAt DESC,
+      message.id DESC
+
+    LIMIT 100
+  `);
+
+  return statement.all(
+    userId,
+    userId,
+    chatId,
+    ...searchTerms,
+  );
 }
 
 export function getLatestMessagesByUserId(userId: number) {

@@ -246,4 +246,48 @@ cancelReplyButtonText: {
   color: '#a1a1aa',
   fontSize: 18,
 },
+searchButton: {
+  width: 42,
+  height: 42,
+  borderRadius: 21,
+  backgroundColor: '#27272a',
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginRight: 8,
+},
+searchButtonText: {
+  fontSize: 18,
+},
+searchButtonPressed: {
+  opacity: 0.7,
+},
+searchInput: {
+  flex: 1,
+  height: 42,
+  color: 'white',
+  backgroundColor: '#18181b',
+  borderWidth: 1,
+  borderColor: '#3f3f46',
+  borderRadius: 21,
+  paddingHorizontal: 16,
+},
+closeSearchButton: {
+  width: 42,
+  height: 42,
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginLeft: 8,
+},
+closeSearchButtonText: {
+  color: "#a1a1aa",
+  fontSize: 20,
+},
+searchStatus: {
+  alignItems: 'center',
+  paddingVertical: 6
+},
+searchStatusText: {
+  color: '#a1a1aa',
+  fontSize: 13,
+}
 });

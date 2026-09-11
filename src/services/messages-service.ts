@@ -8,10 +8,23 @@ import {
   getMessagesRequest,
   getPendingDeliveryMessagesRequest,
   getUnreadMessageCountsRequest,
+  searchMessagesRequest,
   sendMessageRequest,
 } from '@/services/message-api';
 import { saveMessages } from "@/services/message-storage";
 import type { MessageData, UnreadMessageCount } from "@/types/message";
+
+export async function searchMessages(
+  chatId: number,
+  search: string,
+  token: string,
+) {
+  return searchMessagesRequest(
+    chatId,
+    search,
+    token,
+  );
+}
 
 export async function loadLatestMessages(
   token: string,

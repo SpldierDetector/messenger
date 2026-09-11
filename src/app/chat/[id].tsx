@@ -33,6 +33,7 @@ import {
 
 export default function ChatScreen() {
   const TYPING_STOP_DELAY = 1500;
+  const MESSAGE_SEARCH_DELAY = 400;
   const { id } = useLocalSearchParams();
 
   const { 
@@ -41,11 +42,16 @@ export default function ChatScreen() {
     typingUserIdsByChat,
     onlineByChat,
     lastSeenByChat,
+    messageSearchResults,
+    isSearchingMessages,
+    messageSearchError,
     sendMessage,
     editMessage,
     deleteMessage,
     deleteMessageForMe,
     loadMessages,
+    searchMessagesInChat,
+    clearMessageSearch,
     isLoaded,
     isSending,
     markChatRead,
@@ -73,6 +79,9 @@ export default function ChatScreen() {
   ] = useState(false);
   const [replyingMessage, setReplyingMessage] = useState<MessageData | null>(null);
   const [text, setText] = useState('');
+  const [isSearchMode, setIsSearchMode] = useState(false);
+  const [isSearchPending, setIsSearchPending] = useState(false);
+  const [messageSearchText, setMessageSearchText] = useState('');
   const listRef = useRef<FlatList>(null);
   const isChatFocusedRef = useRef(false);
   const typingStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -103,6 +112,47 @@ export default function ChatScreen() {
       });
   }, [chatId,isAuthenticated, token,]);
 
+  useEffect(() => {
+    if (
+      !isSearchMode ||
+      !Number.isFinite(chatId)
+    ) {
+      setIsSearchPending(false);
+      return;
+    }
+
+    const query = messageSearchText.trim();
+
+    if (!query) {
+      setIsSearchPending(false);
+      clearMessageSearch();
+
+      return;
+    }
+
+    setIsSearchPending(true);
+
+    const timeoutId = setTimeout(
+      () => {
+        setIsSearchPending(false);
+
+        void searchMessagesInChat(
+          chatId,
+          query,
+        );
+      },
+      MESSAGE_SEARCH_DELAY,
+    );
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [
+    isSearchMode,
+    messageSearchText,
+    chatId,
+  ]);
+
   useFocusEffect(
     useCallback(() => {
       isChatFocusedRef.current = true;
@@ -116,6 +166,8 @@ export default function ChatScreen() {
 
       return () => {
         isChatFocusedRef.current = false;
+
+        clearMessageSearch();
 
         if (typingStopTimerRef.current) {
           clearTimeout(typingStopTimerRef.current);
@@ -151,6 +203,19 @@ export default function ChatScreen() {
         firstMessage.createdAt - 
         secondMessage.createdAt,
     );
+
+  const searchResultList = [
+    ...messageSearchResults,
+  ].sort(
+    (firstMessage, secondMessage) =>
+      firstMessage.createdAt -
+      secondMessage.createdAt,
+  );
+
+  const displayedMessages = 
+    isSearchMode
+      ? searchResultList
+      : messageList;
   const latestMessage = messageList[messageList.length - 1];
   const isSendDisabled = !text.trim() || isSending || isEditing;
 
@@ -187,12 +252,33 @@ export default function ChatScreen() {
   }
 
   function handleBackPress() {
+    if (isSearchMode) {
+      handleCloseSearch();
+      return;
+    }
+    
     if (router.canGoBack()) {
       router.back();
       return;
     }
 
     router.replace('/');
+  }
+
+  function handleOpenSearch() {
+    handleStopTyping();
+
+    setIsSearchMode(true);
+    setMessageSearchText('');
+    setIsSearchPending(false);
+    clearMessageSearch();
+  }
+
+  function handleCloseSearch() {
+    setIsSearchMode(false);
+    setMessageSearchText('');
+    setIsSearchPending(false);
+    clearMessageSearch();
   }
 
   function handleStartEditing(
@@ -427,36 +513,100 @@ export default function ChatScreen() {
             <Text style={styles.backButtonText}>←</Text>
           </Pressable>
 
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{chat.name[0]}</Text>
-          </View>
+          {isSearchMode ? (
+            <>
+              <TextInput
+                value={messageSearchText}
+                onChangeText={setMessageSearchText}
+                placeholder="Поиск по сообщениям"
+                placeholderTextColor="#777777"
+                autoFocus
+                autoCorrect={false}
+                style={styles.searchInput}
+              />
 
-          <View style={styles.headerInfo}>
-            <Text style={styles.headerTitle}>{chat.name}</Text>
-            <Text style={styles.headerStatus}>
-              {!isCompanionOnline
-                ? formatLastSeen(companionLastSeenAt)
-                : isCompanionTyping
-                  ? 'печатает...'
-                  : 'online'}
+              <Pressable
+                onPress={handleCloseSearch}
+                style={({ pressed }) => [
+                  styles.closeSearchButton,
+                  pressed &&
+                    styles.searchButtonPressed,
+                ]}
+              >
+                <Text style={styles.closeSearchButtonText}>
+                  ✕
+                </Text>
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{chat.name[0]}</Text>
+              </View>
+
+              <View style={styles.headerInfo}>
+                <Text style={styles.headerTitle}>{chat.name}</Text>
+                <Text style={styles.headerStatus}>
+                  {!isCompanionOnline
+                    ? formatLastSeen(companionLastSeenAt)
+                    : isCompanionTyping
+                      ? 'печатает...'
+                      : 'online'}
+                </Text>
+              </View>
+
+              <Pressable
+                onPress={handleOpenSearch}
+                style={({ pressed }) => [
+                  styles.searchButton,
+                  pressed && styles.searchButtonPressed,
+                ]}
+              >
+                <Text style={styles.searchButtonText}>
+                  🔍
+                </Text>
+              </Pressable>
+              
+              <Pressable style={({ pressed }) => [styles.callButton,
+              pressed && styles.callButtonPressed,]}>
+                <Text style={styles.callButtonText}>📞</Text>
+              </Pressable>
+            </>
+          )}  
+        </View>
+
+        {isSearchMode && (
+          <View style={styles.searchStatus}>
+            <Text style={styles.searchStatusText}>
+              {!messageSearchText.trim()
+                ? 'Введите текст для поиска'
+                : isSearchingMessages || isSearchPending
+                  ? 'Поиск...'
+                  : messageSearchError
+                    ? messageSearchError
+                    : messageSearchResults.length === 0
+                      ? 'Сообщения не найдены'
+                      : `Найдено: ${messageSearchResults.length}`}
             </Text>
           </View>
-
-          <Pressable style={({ pressed }) => [styles.callButton,
-          pressed && styles.callButtonPressed,]}>
-            <Text style={styles.callButtonText}>📞</Text>
-          </Pressable>
-        </View>
+        )}
       
         <FlatList
           ref={listRef}
           style={styles.messages}
-          data={messageList}
-          onContentSizeChange={() => {listRef.current?.scrollToEnd({animated: true});
+          data={displayedMessages}
+          onContentSizeChange={() => {
+            if (isSearchMode) {
+              return;
+            }
+
+            listRef.current?.scrollToEnd({
+              animated: true
+            });
           }}
           keyExtractor={(message) => message.id.toString()}
           renderItem={({ item, index }) => {
-            const previousMessage = messageList[index - 1];
+            const previousMessage = displayedMessages[index - 1];
 
             const messageReceipt =
               receipts.find(
@@ -663,85 +813,89 @@ export default function ChatScreen() {
           </Text>
         )}
 
-        {editingMessageId !== null && (
-          <View style={styles.editingBar}>
-            <View style={styles.editingInfo}>
-              <Text style={styles.editingTitle}>
-                Редактирование сообщения
-              </Text>
+        {!isSearchMode && (
+          <>
+            {editingMessageId !== null && (
+              <View style={styles.editingBar}>
+                <View style={styles.editingInfo}>
+                  <Text style={styles.editingTitle}>
+                    Редактирование сообщения
+                  </Text>
 
-              <Text
-                style={styles.editingText}
-                numberOfLines={1}
+                  <Text
+                    style={styles.editingText}
+                    numberOfLines={1}
+                  >
+                    {text}
+                  </Text>
+                </View>
+
+                <Pressable
+                  onPress={handleCancelEditing}
+                  style={styles.cancelEditButton}
+                >
+                  <Text style={styles.cancelEditButtonText}>
+                    ✕
+                  </Text>
+                </Pressable>
+              </View>
+            )}
+
+            {replyingMessage !== null &&(
+              <View style={styles.replyingBar}>
+                <View style={styles.replyingInfo}>
+                  <Text style={styles.replyingTitle}>
+                    Ответ: {replyingMessage.author}
+                  </Text>
+
+                  <Text
+                    style={styles.replyingText}
+                    numberOfLines={1}
+                  >
+                    {replyingMessage.text}
+                  </Text>
+                </View>
+
+                <Pressable
+                  onPress={handleCancelReply}
+                  style={styles.cancelReplyButton}
+                >
+                  <Text style={styles.cancelReplyButtonText}>
+                    ✕
+                  </Text>
+                </Pressable>
+              </View>
+            )}
+
+            <View style={styles.inputRow}>
+              <TextInput 
+                value={text}
+                onChangeText={handleTextChange}
+                placeholder="Написать сообщение..."
+                placeholderTextColor='gray'
+                style={styles.input}
+                multiline
+              />
+              <Pressable
+                style={({ pressed }) => [
+                  styles.sendButton, 
+                  isSendDisabled && styles.sendButtonDisabled,
+                  pressed && !isSendDisabled && styles.sendButtonPressed,
+                ]}
+                onPress={handleSend}
+                disabled={isSendDisabled}
               >
-                {text}
-              </Text>
+                <Text style={styles.sendButtonText}>
+                  {isSending || isEditing
+                    ? '...' 
+                    : editingMessageId !== null
+                      ? 'Save'
+                      : 'Send'}
+                </Text>
+              </Pressable>
             </View>
-
-            <Pressable
-              onPress={handleCancelEditing}
-              style={styles.cancelEditButton}
-            >
-              <Text style={styles.cancelEditButtonText}>
-                ✕
-              </Text>
-            </Pressable>
-          </View>
+          </>
         )}
-
-        {replyingMessage !== null &&(
-          <View style={styles.replyingBar}>
-            <View style={styles.replyingInfo}>
-              <Text style={styles.replyingTitle}>
-                Ответ: {replyingMessage.author}
-              </Text>
-
-              <Text
-                style={styles.replyingText}
-                numberOfLines={1}
-              >
-                {replyingMessage.text}
-              </Text>
-            </View>
-
-            <Pressable
-              onPress={handleCancelReply}
-              style={styles.cancelReplyButton}
-            >
-              <Text style={styles.cancelReplyButtonText}>
-                ✕
-              </Text>
-            </Pressable>
-          </View>
-        )}
-
-        <View style={styles.inputRow}>
-          <TextInput 
-            value={text}
-            onChangeText={handleTextChange}
-            placeholder="Написать сообщение..."
-            placeholderTextColor='gray'
-            style={styles.input}
-            multiline
-          />
-          <Pressable
-            style={({ pressed }) => [
-              styles.sendButton, 
-              isSendDisabled && styles.sendButtonDisabled,
-              pressed && !isSendDisabled && styles.sendButtonPressed,
-            ]}
-            onPress={handleSend}
-            disabled={isSendDisabled}
-          >
-            <Text style={styles.sendButtonText}>
-              {isSending || isEditing
-                ? '...' 
-                : editingMessageId !== null
-                  ? 'Save'
-                  : 'Send'}
-            </Text>
-          </Pressable>
-        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

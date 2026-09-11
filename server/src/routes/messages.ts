@@ -17,6 +17,7 @@ import {
   hideMessageForUser,
   insertForwardedMessage,
   insertMessage,
+  searchMessagesByChatId,
   updateMessage,
 } from '../db/messages.js';
 import { mapMessageRow } from '../mappers/message.js';
@@ -42,6 +43,71 @@ export function createMessagesRouter({
 }: MessagesRouterOptions) {
   const messagesRouter = Router();
 
+  messagesRouter.get(
+    '/search',
+    requireAuth,
+    (request, response) => {
+      const chatId = Number(request.query.chatId);
+
+      if (
+        !Number.isInteger(chatId) ||
+        chatId <= 0
+      ) {
+        response.status(400).json({
+          error: 'chatId must be a positive integer',
+        });
+
+        return;
+      }
+
+      const search =
+        typeof request.query.search === 'string'
+          ? request.query.search.trim()
+          : '';
+
+      if (!search) {
+        response.json([]);
+
+        return;
+      }
+
+      const currentUser = request.user;
+
+      if (!currentUser) {
+        response.status(401).json({
+          error: 'authorization required',
+        });
+
+        return;
+      }
+
+      const userIsChatMember =
+        isUserInChat(
+          chatId,
+          currentUser.id,
+        );
+
+      if (!userIsChatMember) {
+        response.status(403).json({
+          error: 'forbidden',
+        });
+
+        return;
+      }
+
+      const rows =
+        searchMessagesByChatId(
+          chatId,
+          currentUser.id,
+          search,
+        );
+
+      const messages = rows.map(mapMessageRow);
+
+      response.json(messages);
+    },
+  );
+  
   messagesRouter.get('/latest', requireAuth, (request, response) => {
     const currentUser = request.user;
 
