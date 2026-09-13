@@ -14,6 +14,7 @@ import {
   getMessageById,
   getMessagesByChatId,
   getPendingDeliveryMessagesByUserId,
+  getMessagePageByChatId,
   hideMessageForUser,
   insertForwardedMessage,
   insertMessage,
@@ -209,6 +210,123 @@ export function createMessagesRouter({
     response.json(receipts);
   });
 
+  messagesRouter.get(
+    '/page',
+    requireAuth,
+    (request, response) => {
+      const chatId = Number(
+        request.query.chatId,
+      );
+
+      if (
+        !Number.isInteger(chatId) ||
+        chatId <= 0
+      ) {
+        response.status(400).json({
+          error:
+            'chatId must be a positive integer',
+        });
+
+        return;
+      }
+
+      const rawBeforeMessageId =
+        request.query.beforeMessageId;
+
+      let beforeMessageId: number | null =
+        null;
+
+      if (
+        typeof rawBeforeMessageId ===
+        'string'
+      ) {
+        const parsedBeforeMessageId =
+          Number(rawBeforeMessageId);
+
+        if (
+          !Number.isInteger(
+            parsedBeforeMessageId,
+          ) ||
+          parsedBeforeMessageId <= 0
+        ) {
+          response.status(400).json({
+            error:
+              'beforeMessageId must be a positive integer',
+          });
+
+          return;
+        }
+
+        beforeMessageId =
+          parsedBeforeMessageId;
+      }
+
+      const currentUser =
+        request.user;
+
+      if (!currentUser) {
+        response.status(401).json({
+          error:
+            'authorization required',
+        });
+
+        return;
+      }
+
+      const userIsChatMember =
+        isUserInChat(
+          chatId,
+          currentUser.id,
+        );
+
+      if (!userIsChatMember) {
+        response.status(403).json({
+          error: 'forbidden',
+        });
+
+        return;
+      }
+
+      const PAGE_SIZE = 50;
+
+      const rows =
+        getMessagePageByChatId(
+          chatId,
+          currentUser.id,
+          beforeMessageId,
+          PAGE_SIZE + 1,
+        );
+
+      const hasMore =
+        rows.length > PAGE_SIZE;
+
+      const pageRows =
+        hasMore
+          ? rows.slice(0, PAGE_SIZE)
+          : rows;
+
+      const oldestRow =
+        pageRows[
+          pageRows.length - 1
+        ] as MessageRow | undefined;
+
+      const nextBeforeMessageId =
+        hasMore && oldestRow
+          ? oldestRow.id
+          : null;
+
+      const pageMessages =
+        [...pageRows]
+          .reverse()
+          .map(mapMessageRow);
+
+      response.json({
+        messages: pageMessages,
+        hasMore,
+        nextBeforeMessageId,
+      });
+    },
+  );
 
   messagesRouter.get('/', requireAuth, (request, response) => {
     const chatId = Number(request.query.chatId);

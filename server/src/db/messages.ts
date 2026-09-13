@@ -42,6 +42,73 @@ export function getMessagesByChatId(chatId: number, userId: number) {
   return statement.all(userId, userId, chatId);
 }
 
+export function getMessagePageByChatId(
+  chatId: number,
+  userId: number,
+  beforeMessageId: number | null,
+  limit: number,
+) {
+  const beforeCondition =
+    beforeMessageId === null
+      ? ''
+      : 'AND message.id < ?';
+
+  const statement = database.prepare(`
+    SELECT
+      message.id,
+      message.chatId,
+      message.senderId,
+      sender.name AS author,
+      message.text,
+      message.createdAt,
+      message.editedAt,
+      message.deletedAt,
+      message.replyToMessageId,
+      message.forwardedFromMessageId,
+      message.forwardedFromAuthor
+    FROM messages AS message
+
+    JOIN users AS sender
+      ON sender.id = message.senderId
+
+    JOIN chat_members AS member
+      ON member.chatId = message.chatId
+      AND member.userId = ?
+
+    LEFT JOIN message_hidden_for_users AS hidden
+      ON hidden.messageId = message.id
+      AND hidden.userId = ?
+
+    WHERE message.chatId = ?
+      AND hidden.messageId IS NULL
+      AND (
+        member.clearedBeforeMessageId IS NULL
+        OR message.id >
+          member.clearedBeforeMessageId
+      )
+      ${beforeCondition}
+
+    ORDER BY message.id DESC
+    LIMIT ?
+  `);
+
+  const parameters = [
+    userId,
+    userId,
+    chatId,
+  ];
+
+  if (beforeMessageId !== null) {
+    parameters.push(beforeMessageId);
+  }
+
+  parameters.push(limit);
+
+  return statement.all(
+    ...parameters,
+  );
+}
+
 export function searchMessagesByChatId(
   chatId: number,
   userId: number,
