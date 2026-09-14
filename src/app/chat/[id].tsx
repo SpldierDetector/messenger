@@ -50,6 +50,9 @@ export default function ChatScreen() {
     deleteMessage,
     deleteMessageForMe,
     loadMessages,
+    loadOlderMessages,
+    hasMoreMessagesByChat,
+    isLoadingOlderMessagesByChat,
     searchMessagesInChat,
     clearMessageSearch,
     isLoaded,
@@ -82,7 +85,11 @@ export default function ChatScreen() {
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [isSearchPending, setIsSearchPending] = useState(false);
   const [messageSearchText, setMessageSearchText] = useState('');
+  const [isInitialMessagePositionReady, setIsInitialMessagePositionReady] = useState(false);
   const listRef = useRef<FlatList>(null);
+  const hasInitialScrollCompletedRef = useRef(false);
+  const isNearBottomRef = useRef(true);
+  const isInitialScrollScheduledRef = useRef(false);
   const isChatFocusedRef = useRef(false);
   const typingStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTypingRef = useRef(false);
@@ -111,6 +118,14 @@ export default function ChatScreen() {
         setIsChatLoaded(true);
       });
   }, [chatId,isAuthenticated, token,]);
+
+  useEffect(() => {
+    hasInitialScrollCompletedRef.current = false;
+    isInitialScrollScheduledRef.current = false;
+    isNearBottomRef.current = true;
+
+    setIsInitialMessagePositionReady(false);
+  }, [chatId]);
 
   useEffect(() => {
     if (
@@ -217,8 +232,35 @@ export default function ChatScreen() {
       ? searchResultList
       : messageList;
   const latestMessage = messageList[messageList.length - 1];
+  const hasMoreMessages = hasMoreMessagesByChat[chatId] ?? false;
+  const isLoadingOlderMessages = isLoadingOlderMessagesByChat[chatId] ?? false;
   const isSendDisabled = !text.trim() || isSending || isEditing;
 
+  useEffect(() => {
+    if (
+      isSearchMode ||
+      !latestMessage ||
+      !hasInitialScrollCompletedRef.current ||
+      !isNearBottomRef.current
+    ) {
+      return;
+    }
+
+    const frameId =
+      requestAnimationFrame(() => {
+        listRef.current?.scrollToEnd({
+          animated: true,
+        });
+      });
+
+    return () => {
+      cancelAnimationFrame(frameId);
+    };
+  }, [
+    latestMessage?.id,
+    isSearchMode,
+  ]);
+  
   useEffect(() => {
     if (
       !isChatFocusedRef.current ||
@@ -240,6 +282,42 @@ export default function ChatScreen() {
     markChatRead,
   ]);
 
+  function handleMessagesScroll(
+    offsetY: number,
+    viewportHeight: number,
+    contentHeight: number,
+  ) {
+    const BOTTOM_THRESHOLD = 120;
+    const TOP_THRESHOLD = 100;
+
+    isNearBottomRef.current =
+      offsetY + viewportHeight >=
+      contentHeight - BOTTOM_THRESHOLD;
+
+    if (
+      !hasInitialScrollCompletedRef.current &&
+      isNearBottomRef.current
+    ) {
+      hasInitialScrollCompletedRef.current = true;
+
+      setIsInitialMessagePositionReady(true);
+
+      return;
+    }
+
+    if (
+      isSearchMode ||
+      !hasInitialScrollCompletedRef.current ||
+      isLoadingOlderMessages ||
+      !hasMoreMessages ||
+      offsetY > TOP_THRESHOLD
+    ) {
+      return;
+    }
+
+    void loadOlderMessages(chatId);
+  }
+  
   function handleOpenMessageMenu(
     message: MessageData,
   ) {
@@ -593,17 +671,54 @@ export default function ChatScreen() {
       
         <FlatList
           ref={listRef}
-          style={styles.messages}
+          style={[
+            styles.messages,
+            !isSearchMode &&
+              !isInitialMessagePositionReady &&
+              styles.messagesPreparing,
+          ]}
           data={displayedMessages}
+          maintainVisibleContentPosition={
+            isSearchMode
+              ? undefined
+              : {
+                minIndexForVisible: 0,
+              }
+          }
           onContentSizeChange={() => {
-            if (isSearchMode) {
+            if (
+              isSearchMode ||
+              messageList.length === 0 ||
+              hasInitialScrollCompletedRef.current ||
+              isInitialScrollScheduledRef.current
+            ) {
               return;
             }
 
-            listRef.current?.scrollToEnd({
-              animated: true
-            });
+            isInitialScrollScheduledRef.current = true;
+
+            setTimeout(() => {
+              listRef.current?.scrollToEnd({
+                animated: false,
+              });
+
+              isInitialScrollScheduledRef.current = false;
+            }, 300);
           }}
+          onScroll={(event) => {
+            const {
+              contentOffset,
+              layoutMeasurement,
+              contentSize,
+            } = event.nativeEvent;
+
+            handleMessagesScroll(
+              contentOffset.y,
+              layoutMeasurement.height,
+              contentSize.height,
+            );
+          }}
+          scrollEventThrottle={16}
           keyExtractor={(message) => message.id.toString()}
           renderItem={({ item, index }) => {
             const previousMessage = displayedMessages[index - 1];

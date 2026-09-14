@@ -289,5 +289,8 @@ searchStatus: {
 searchStatusText: {
   color: '#a1a1aa',
   fontSize: 13,
-}
+},
+messagesPreparing: {
+  opacity: 0,
+},
 });

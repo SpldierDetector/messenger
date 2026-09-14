@@ -1,12 +1,14 @@
 import { API_BASE_URL } from '@/config/api';
 import type {
   MessageData,
+  MessagePage,
   MessageReceiptData,
   UnreadMessageCount,
 } from '@/types/message';
 import type {
   EditMessageRequest,
   MessageApiData,
+  MessagePageApiData,
   SendMessageRequest,
 } from '@/types/message-api';
 import { mapMessageApiData } from '@/utils/map-message';
@@ -34,6 +36,61 @@ export async function getMessagesRequest(
   return messages.map((message) => 
     mapMessageApiData(message, currentUserId),
   );
+}
+
+export async function getMessagePageRequest(
+  chatId: number,
+  beforeMessageId: number | null,
+  token: string,
+  currentUserId: number,
+): Promise<MessagePage> {
+  const params = new URLSearchParams({
+    chatId: chatId.toString(),
+  });
+
+  if (beforeMessageId !== null) {
+    params.set(
+      'beforeMessageId',
+      beforeMessageId.toString(),
+    );
+  }
+
+  const response = await fetch(
+    `${API_BASE_URL}/messages/page?${params.toString()}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },    
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+
+    console.error(
+      'Failed to load message page:',
+      response.status,
+      errorBody,
+    );
+
+    throw new Error(
+      `Failed to load message page: ${response.status}`,
+    );
+  }
+
+  const page = (await response.json()) as MessagePageApiData;
+
+  return {
+    messages: page.messages.map(
+      (message) =>
+        mapMessageApiData(
+          message,
+          currentUserId,
+        ),
+    ),
+    hasMore: page.hasMore,
+    nextBeforeMessageId: page.nextBeforeMessageId,
+  };
 }
 
 export async function sendMessageRequest(

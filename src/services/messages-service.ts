@@ -4,6 +4,7 @@ import {
   editMessageRequest,
   forwardMessageRequest,
   getLatestMessagesRequest,
+  getMessagePageRequest,
   getMessageReceiptsRequest,
   getMessagesRequest,
   getPendingDeliveryMessagesRequest,
@@ -44,6 +45,20 @@ export async function loadMessageList(
   currentUserId: number,
 ) {
   return getMessagesRequest(chatId, token, currentUserId,);
+}
+
+export async function loadMessagePage(
+  chatId: number,
+  beforeMessageId: number | null,
+  token: string,
+  currentUserId: number,
+) {
+  return getMessagePageRequest(
+    chatId,
+    beforeMessageId,
+    token,
+    currentUserId,
+  );
 }
 
 export async function loadMessageReceipts(

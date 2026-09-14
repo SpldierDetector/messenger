@@ -22,6 +22,12 @@ export type MessageApiData = {
   forwardedFromAuthor: string | null;
 };
 
+export type MessagePageApiData = {
+  messages: MessageApiData[];
+  hasMore: boolean;
+  nextBeforeMessageId: number | null;
+};
+
 export type EditMessageRequest = {
   text: string;
 };

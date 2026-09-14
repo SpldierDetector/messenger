@@ -13,6 +13,12 @@ export type MessageData = {
   isOwn: boolean;
 }
 
+export type MessagePage = {
+  messages: MessageData[];
+  hasMore: boolean;
+  nextBeforeMessageId: number | null;
+}
+
 export type MessageReceiptData = {
   messageId: number;
   userId: number;

@@ -16,11 +16,11 @@ import {
   editMessage as editMessageService,
   forwardMessage as forwardMessageService,
   loadLatestMessages,
-  loadMessageList,
+  loadMessagePage,
   loadMessageReceipts,
   loadPendingDeliveryMessages,
   loadUnreadMessageCounts,
-  searchMessages as searchMessagesService,
+  searchMessages as searchMessagesService
 } from "@/services/messages-service";
 import {
   connectWebSocket,
@@ -56,6 +56,9 @@ type MessagesContextValue = {
   searchMessagesInChat: (chatId: number, search: string) => Promise<void>;
   clearMessageSearch: () => void;
   loadMessages: (chatId: number) => Promise<void>;
+  loadOlderMessages: (chatId: number) => Promise<void>;
+  hasMoreMessagesByChat: Record<number, boolean>;
+  isLoadingOlderMessagesByChat: Record<number, boolean>;
   loadLatestMessagePreviews: () => Promise<void>;
   markChatRead: (chatId: number) => void;
   editMessage: (messageId: number, text: string,) => Promise<boolean>;
@@ -86,28 +89,77 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
   const [messageSearchResults, setMessageSearchResults] = useState<MessageData[]>([]);
   const [isSearchingMessages, setIsSearchingMessages] = useState(false);
   const [messageSearchError, setMessageSearchError] = useState<string | null>(null);
+  const [hasMoreMessagesByChat, setHasMoreMessagesByChat] = useState<Record<number, boolean>>({});
+  const [nextBeforeMessageIdByChat, setNextBeforeMessageIdByChat] = useState<Record<number, number | null>>({});
+  const [isLoadingOlderMessagesByChat, setIsLoadingOlderMessagesByChat] = useState<Record<number, boolean>>({});
   const messageSearchRequestIdRef = useRef(0);
   const webSocketConnectionRef = useRef<WebSocketConnection | null>(null);
+  const loadingOlderChatIdsRef = useRef<Set<number>>(new Set());
 
   async function loadMessages(chatId: number) {
     if (!token || !user) {
       return;
     }
 
-    const [loadedMessages, loadedReceipts] = await Promise.all([
-      loadMessageList(chatId, token, user.id),
-      loadMessageReceipts(chatId, token),
-    ]);
+    const [page, loadedReceipts] =
+      await Promise.all([
+        loadMessagePage(
+          chatId,
+          null,
+          token,
+          user.id,
+        ),
+        loadMessageReceipts(
+          chatId,
+          token,
+        ),
+      ]);
+    
+    setMessages((currentMessages) => {
+      const messagesFromOtherChats =
+        currentMessages.filter(
+          (message) =>
+            message.chatId !== chatId,
+        );
 
-    setMessages((currentMessages) => [
-      ...currentMessages.filter(
-        (message: MessageData) => message.chatId !== chatId,
-      ),
-      ...loadedMessages,
-    ]);
+      const pageMessageIds = new Set(
+        page.messages.map(
+          (message) => message.id,
+        ),
+      );
+
+      const newestPageMessageId =
+        page.messages.length > 0
+          ? Math.max(
+              ...page.messages.map(
+                (message) => message.id
+              ),
+            )
+          : null;
+      
+      const newerRealtimeMessages =
+        currentMessages.filter(
+          (message) =>
+            message.chatId === chatId &&
+            !pageMessageIds.has(message.id) &&
+            (
+              newestPageMessageId === null ||
+              message.id >
+                newestPageMessageId
+            ),
+        );
+
+      return [
+        ...messagesFromOtherChats,
+        ...page.messages,
+        ...newerRealtimeMessages,
+      ];
+    });
 
     const loadedMessageIds = new Set(
-      loadedMessages.map((message) => message.id),
+      page.messages.map(
+        (message) => message.id,
+      ),
     );
 
     setReceipts((currentReceipts) => [
@@ -120,7 +172,116 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       ...loadedReceipts,
     ]);
 
+    setHasMoreMessagesByChat(
+      (current) => ({
+        ...current,
+        [chatId]: page.hasMore,
+      }),
+    );
+
+    setNextBeforeMessageIdByChat(
+      (current) => ({
+        ...current,
+        [chatId]: page.nextBeforeMessageId,
+      }),
+    );
+
     setIsLoaded(true);
+  }
+
+  async function loadOlderMessages(
+    chatId: number,
+  ) {
+    if (!token || !user) {
+      return;
+    }
+
+    if (
+      loadingOlderChatIdsRef.current.has(chatId)
+    ) {
+      return;
+    }
+
+    const hasMore = hasMoreMessagesByChat[chatId] ?? false;
+    const beforeMessageId = nextBeforeMessageIdByChat[chatId] ?? null;
+
+    if (
+      !hasMore ||
+      beforeMessageId === null
+    ) {
+      return;
+    }
+
+    loadingOlderChatIdsRef.current.add(chatId);
+
+    setIsLoadingOlderMessagesByChat(
+      (current) => ({
+        ...current,
+        [chatId]: true,
+      }),
+    );
+
+    try {
+      const page =
+        await loadMessagePage(
+          chatId,
+          beforeMessageId,
+          token,
+          user.id,
+        );
+
+      setMessages((currentMessages) => {
+        const existingMessageIds =
+          new Set(
+            currentMessages.map(
+              (message) => message.id,
+            ),
+          );
+
+        const newMessages = 
+          page.messages.filter(
+            (message) => 
+              !existingMessageIds.has(message.id),
+          );
+
+        return [
+          ...currentMessages,
+          ...newMessages,
+        ];
+      });
+
+      setHasMoreMessagesByChat(
+        (current) => ({
+          ...current,
+          [chatId]: page.hasMore,
+        }),
+      );
+
+      setNextBeforeMessageIdByChat(
+        (current) => ({
+          ...current,
+          [chatId]: page.nextBeforeMessageId,
+        }),
+      );
+    } catch (caughtError) {
+      console.error(
+        'Failed to load older messages:',
+        caughtError,
+      );
+
+      setError(
+        'Не удалось загрузить предыдущие сообщения',
+      );
+    } finally {
+      loadingOlderChatIdsRef.current.delete(chatId);
+
+      setIsLoadingOlderMessagesByChat(
+        (current) => ({
+          ...current,
+          [chatId]: false,
+        }),
+      );
+    }
   }
 
   async function loadLatestMessagePreviews() {
@@ -474,12 +635,28 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       ),
     );
 
-    setReceipts((currentReceipts) =>
-      currentReceipts.filter(
-        (receipt) =>
-          !messageIdsToRemove.has(receipt.messageId),
-      ),
+    setHasMoreMessagesByChat(
+      (current) => ({
+        ...current,
+        [chatId]: false,
+      }),
     );
+
+    setNextBeforeMessageIdByChat(
+      (current) => ({
+        ...current,
+        [chatId]: null,
+      }),
+    );
+
+    setIsLoadingOlderMessagesByChat(
+      (current) => ({
+        ...current,
+        [chatId]: false,
+      }),
+    );
+
+    loadingOlderChatIdsRef.current.delete(chatId);
 
     setReceipts((currentReceipts) =>
       currentReceipts.filter(
@@ -751,8 +928,13 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       setIsSearchingMessages(false);
       setMessageSearchError(null);
       setTypingUserIdsByChat({});
+      setHasMoreMessagesByChat({});
+      setNextBeforeMessageIdByChat({});
+      setIsLoadingOlderMessagesByChat({});
       setOnlineByChat({});
       setLastSeenByChat({});
+
+      loadingOlderChatIdsRef.current.clear();
 
       ++messageSearchRequestIdRef.current;
       
@@ -809,6 +991,9 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       clearChatHistoryLocally,
       forwardMessage,
       loadMessages,
+      loadOlderMessages,
+      hasMoreMessagesByChat,
+      isLoadingOlderMessagesByChat,
       loadLatestMessagePreviews,
       markChatRead, 
       startTyping,
