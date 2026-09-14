@@ -6,7 +6,9 @@ import type {
 import type { MessageApiData } from '@/types/message-api';
 import { mapMessageApiData } from '@/utils/map-message';
 
-const WEB_SOCKET_URL = API_BASE_URL.replace('http://', 'ws://');
+const WEB_SOCKET_URL = API_BASE_URL
+  .replace(/^https:\/\//, 'wss://')
+  .replace(/^http:\/\//, 'ws://');
 const RECONNECT_DELAY = 3000;
 
 type ConnectWebSocketOptions = {
@@ -20,6 +22,7 @@ type ConnectWebSocketOptions = {
   onTypingStopped: (data: TypingEventData) => void;
   onUserPresenceUpdated: (data: UserPresenceEventData) => void;
   onConnected?: () => void;
+  onDisconnected?: () => void;
 };
 
 type WebSocketEvent = {
@@ -66,6 +69,7 @@ export function connectWebSocket({
   onTypingStopped,
   onUserPresenceUpdated,
   onConnected,
+  onDisconnected,
 }: ConnectWebSocketOptions): WebSocketConnection {
   let socket: WebSocket | null = null;
   let reconnectTimer: 
@@ -162,12 +166,38 @@ export function connectWebSocket({
   }
 
   function connect() {
+    if (!shouldReconnect) {
+      return;
+    }
+
+    if (
+      socket &&
+      (
+        socket.readyState === WebSocket.OPEN ||
+        socket.readyState === WebSocket.CONNECTING
+      )
+    ) {
+      return;
+    }
+    
     const socketUrl = 
     `${WEB_SOCKET_URL}?token=${encodeURIComponent(token)}`;
 
-    socket = new WebSocket(socketUrl);
+    const currentSocket = new WebSocket(socketUrl);
+    
+    socket = currentSocket;
 
-    socket.onopen = () => {
+    currentSocket.onopen = () => {
+      if (socket !== currentSocket) {
+        currentSocket.close();
+        return;
+      }
+
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+
       console.log('WebSocket connected');
 
       for (const messageId of pendingDeliveryMessageIds) {
@@ -181,7 +211,7 @@ export function connectWebSocket({
       onConnected?.();
     };
 
-    socket.onmessage = (event) => {
+    currentSocket.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data) as WebSocketEvent;
 
@@ -253,16 +283,26 @@ export function connectWebSocket({
       }
     };
 
-    socket.onerror = () => {
+    currentSocket.onerror = () => {
       console.log(
         'WebSocket connection error. Waiting for reconnect...',
       );
     };
 
-    socket.onclose = () => {
+    currentSocket.onclose = () => {
+      if (socket === currentSocket) {
+        socket = null;
+      }
+
       if (!shouldReconnect) {
-      console.log('WebSocket disconnect');
-      
+        console.log('WebSocket disconnected');
+
+        return;
+      }
+
+      onDisconnected?.();
+
+      if (reconnectTimer) {
         return;
       }
 
@@ -271,8 +311,10 @@ export function connectWebSocket({
       )
 
       reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
         connect();
-      }, RECONNECT_DELAY);
+      }, RECONNECT_DELAY
+      );
     };
   }
 
@@ -283,9 +325,14 @@ export function connectWebSocket({
 
     if (reconnectTimer) {
       clearTimeout(reconnectTimer);
+      reconnectTimer = null;
     }
 
-    socket?.close();
+    const currentSocket = socket;
+
+    socket = null;
+
+    currentSocket?.close();
   }
 
   return {

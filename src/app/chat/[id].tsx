@@ -41,6 +41,7 @@ export default function ChatScreen() {
     receipts,
     typingUserIdsByChat,
     onlineByChat,
+    isRealtimeConnected,
     lastSeenByChat,
     messageSearchResults,
     isSearchingMessages,
@@ -625,11 +626,13 @@ export default function ChatScreen() {
               <View style={styles.headerInfo}>
                 <Text style={styles.headerTitle}>{chat.name}</Text>
                 <Text style={styles.headerStatus}>
-                  {!isCompanionOnline
-                    ? formatLastSeen(companionLastSeenAt)
-                    : isCompanionTyping
-                      ? 'печатает...'
-                      : 'online'}
+                  {!isRealtimeConnected
+                    ? 'offline'
+                    : !isCompanionOnline
+                      ? formatLastSeen(companionLastSeenAt)
+                      : isCompanionTyping
+                        ? 'печатает...'
+                        : 'online'}
                 </Text>
               </View>
 

@@ -41,6 +41,7 @@ type MessagesContextValue = {
   unreadCounts: UnreadMessageCount[];
   typingUserIdsByChat: Record<number, number[]>;
   onlineByChat: Record<number, boolean>;
+  isRealtimeConnected: boolean;
   lastSeenByChat: Record<number, number | null>;
   deleteMessage: (messageId: number) => Promise<boolean>;
   deleteMessageForMe: (messageId: number) => Promise<boolean>;
@@ -85,6 +86,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
   const [error, setError] = useState<string | null>(null);
   const [typingUserIdsByChat, setTypingUserIdsByChat] = useState<Record<number, number[]>>({});
   const [onlineByChat, setOnlineByChat] = useState<Record<number, boolean>>({});
+  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
   const [lastSeenByChat, setLastSeenByChat] = useState<Record<number, number | null>>({});
   const [messageSearchResults, setMessageSearchResults] = useState<MessageData[]>([]);
   const [isSearchingMessages, setIsSearchingMessages] = useState(false);
@@ -933,6 +935,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       setIsLoadingOlderMessagesByChat({});
       setOnlineByChat({});
       setLastSeenByChat({});
+      setIsRealtimeConnected(false);
 
       loadingOlderChatIdsRef.current.clear();
 
@@ -954,8 +957,13 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       onTypingStopped: handleTypingStopped,
       onUserPresenceUpdated: handleUserPresenceUpdated,
       onConnected: () => {
+        setIsRealtimeConnected(true);
         void syncPendingDeliveryMessages();
         void refreshUnreadCounts();
+      },
+      onDisconnected: () => {
+        setIsRealtimeConnected(false);
+        setTypingUserIdsByChat({});
       },
     });
 
@@ -983,6 +991,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       unreadCounts,
       typingUserIdsByChat,
       onlineByChat,
+      isRealtimeConnected,
       lastSeenByChat,
       sendMessage,
       editMessage,

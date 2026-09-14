@@ -41,6 +41,7 @@ export default function ChatListScreen() {
     unreadCounts,
     typingUserIdsByChat,
     onlineByChat,
+    isRealtimeConnected,
     clearChatHistoryLocally,
     loadLatestMessagePreviews, 
   } = useMessages();
@@ -241,8 +242,8 @@ export default function ChatListScreen() {
         renderItem={({ item }) => {
           const lastMessage = getLastMessage(messages, item.id);
           const realtimeIsOnline = onlineByChat[item.id];
-          const isOnline = realtimeIsOnline ?? item.isOnline;
-          const isTyping = (typingUserIdsByChat[item.id]?.length ?? 0) > 0;
+          const isOnline = isRealtimeConnected && (realtimeIsOnline ?? item.isOnline);
+          const isTyping = isRealtimeConnected && ((typingUserIdsByChat[item.id]?.length ?? 0) > 0);
 
           const unreadCount = unreadCounts.find(
             (count) => count.chatId === item.id,
