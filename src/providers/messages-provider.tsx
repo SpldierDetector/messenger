@@ -48,6 +48,7 @@ type MessagesContextValue = {
   clearChatHistoryLocally: (chatId: number) => void;
   forwardMessage: (messageId: number, targetChatId: number) => Promise<boolean>;
   sendMessage: (chatId: number, text: string, replyToMessageId?: number | null) => Promise<boolean>;
+  retryMessage: (clientMessageId: string) => Promise<boolean>;
   isLoaded: boolean;
   isSending: boolean;
   error: string | null;
@@ -95,6 +96,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
   const [nextBeforeMessageIdByChat, setNextBeforeMessageIdByChat] = useState<Record<number, number | null>>({});
   const [isLoadingOlderMessagesByChat, setIsLoadingOlderMessagesByChat] = useState<Record<number, boolean>>({});
   const messageSearchRequestIdRef = useRef(0);
+  const nextTemporaryMessageIdRef = useRef(-1);
   const webSocketConnectionRef = useRef<WebSocketConnection | null>(null);
   const loadingOlderChatIdsRef = useRef<Set<number>>(new Set());
 
@@ -474,28 +476,165 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
     [],
   );
 
+  function createClientMessageId(
+    userId: number,
+  ) {
+    return [
+      userId,
+      Date.now(),
+      Math.random().toString(36).slice(2),
+      Math.random().toString(36).slice(2),
+    ].join('-');
+  }
+  
   async function sendMessage(chatId: number, text: string, replyToMessageId: number | null = null): Promise<boolean> {
     if (!token || !user) {
       return false;
     }
     
+    const normalizedText = text.trim();
+
+    if (!normalizedText) {
+      return false;
+    }
+
+    const clientMessageId = createClientMessageId(user.id);
+    const temporaryMessageId = nextTemporaryMessageIdRef.current;
+
+    nextTemporaryMessageIdRef.current -= 1;
+
+    const optimisticMessage: MessageData = {
+      id: temporaryMessageId,
+      chatId,
+      senderId: user.id,
+      clientMessageId,
+      author: user.name,
+      text: normalizedText,
+      createdAt: Date.now(),
+      editedAt: null,
+      deletedAt: null,
+      replyToMessageId,
+      forwardedFromMessageId: null,
+      forwardedFromAuthor: null,
+      isOwn: true,
+      sendStatus: 'sending',
+    };
+
+    setMessages((currentMessages) => [
+      ...currentMessages,
+      optimisticMessage,
+    ]);
+
     try {
       setIsSending(true);
       setError(null);
 
-      const message = await createMessage(chatId, text, token, user.id, replyToMessageId);
+      const message =
+        await createMessage(
+          chatId,
+          normalizedText,
+          token,
+          user.id,
+          clientMessageId,
+          replyToMessageId,
+        );
 
-      addMessageIfMissing(message);
+      addOrReplaceServerMessage(
+        message,
+      );
 
       return true;
     } catch (caughtError) {
-      console.error('Failed to send message:', caughtError);
+      console.warn(
+        'Failed to send message:',
+        caughtError,
+      );
 
-      setError('Не удалось отправить сообщение');
+      setMessages((currentMessages) =>
+        currentMessages.map(
+          (message) =>
+            message.senderId === user.id &&
+            message.clientMessageId ===
+              clientMessageId
+              ? {
+                ...message,
+                sendStatus: 'failed',
+              }
+              : message,
+        ),
+      );
 
       return false;
     } finally {
       setIsSending(false);
+    }
+  }
+
+  async function retryMessage(
+    clientMessageId: string,
+  ): Promise<boolean> {
+    if (!token || !user) {
+      return false;
+    }
+
+    const failedMessage = messages.find(
+      (message) =>
+        message.senderId === user.id &&
+        message.clientMessageId === clientMessageId &&
+        message.sendStatus === 'failed',
+    );
+
+    if (!failedMessage) {
+      return false;
+    }
+
+    setMessages((currentMessages) =>
+      currentMessages.map(
+        (message) =>
+          message.senderId === user.id &&
+          message.clientMessageId === clientMessageId
+            ? {
+              ...message,
+              sendStatus: 'sending',
+            }
+            : message,
+      ),
+    );
+
+    try {
+      const message =
+      await createMessage(
+        failedMessage.chatId,
+        failedMessage.text,
+        token,
+        user.id,
+        clientMessageId,
+        failedMessage.replyToMessageId,
+      );
+      addOrReplaceServerMessage(message);
+
+      return true;
+    } catch (caughtError) {
+      console.warn(
+        'Failed to retry message:',
+        caughtError,
+      );
+
+      setMessages((currentMessages) =>
+        currentMessages.map (
+          (message) =>
+            message.senderId === user.id &&
+            message.clientMessageId ===
+            clientMessageId
+            ? {
+              ...message,
+              sendStatus: 'failed',
+            }
+            : message,
+        ),
+      );
+
+      return false;
     }
   }
 
@@ -742,10 +881,41 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
     });
   }
 
+  function addOrReplaceServerMessage(
+    newMessage: MessageData,
+  ) {
+    setMessages((currentMessages) => {
+      const existingIndex =
+        currentMessages.findIndex(
+          (message) =>
+            message.id === newMessage.id ||
+            (
+              newMessage.clientMessageId !== null &&
+              message.senderId === newMessage.senderId &&
+              message.clientMessageId === newMessage.clientMessageId
+            ),
+        );
+      
+      if (existingIndex === -1) {
+        return [
+          ...currentMessages,
+          newMessage,
+        ];
+      }
+
+      return currentMessages.map(
+        (message, index) =>
+          index === existingIndex
+            ? newMessage
+            : message,
+      );
+    });
+  }
+
   function handleMessageCreated(
     newMessage: MessageData,
   ) {
-    addMessageIfMissing(newMessage);
+    addOrReplaceServerMessage(newMessage);
 
     if (newMessage.senderId === user?.id) {
       return;
@@ -994,6 +1164,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       isRealtimeConnected,
       lastSeenByChat,
       sendMessage,
+      retryMessage,
       editMessage,
       deleteMessage,
       deleteMessageForMe,

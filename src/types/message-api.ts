@@ -3,6 +3,7 @@ import type { MessageData } from '@/types/message';
 export type SendMessageRequest = {
   chatId: number;
   text: string;
+  clientMessageId: string;
   replyToMessageId?: number | null;
 };
 
@@ -12,6 +13,7 @@ export type MessageApiData = {
   id: number;
   chatId: number;
   senderId: number;
+  clientMessageId: string | null;
   author: string;
   text: string;
   createdAt: number;

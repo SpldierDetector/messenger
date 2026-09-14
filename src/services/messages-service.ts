@@ -92,12 +92,14 @@ export async function createMessage(
   text: string,
   token: string,
   currentUserId: number,
+  clientMessageId: string,
   replyToMessageId: number | null = null,
 ) {
   return sendMessageRequest(
     {
       chatId,
       text,
+      clientMessageId,
       replyToMessageId,
     },
     token,

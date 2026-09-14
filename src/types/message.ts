@@ -2,6 +2,7 @@ export type MessageData = {
   id: number;
   chatId: number;
   senderId: number;
+  clientMessageId: string | null;
   author: string;
   text: string;
   createdAt: number;
@@ -11,6 +12,7 @@ export type MessageData = {
   forwardedFromMessageId: number | null;
   forwardedFromAuthor: string | null;
   isOwn: boolean;
+  sendStatus: MessageSendStatus | null;
 }
 
 export type MessagePage = {
@@ -30,3 +32,7 @@ export type UnreadMessageCount = {
   chatId: number;
   unreadCount: number;
 }
+
+export type MessageSendStatus =
+  | 'sending'
+  | 'failed';

@@ -2,6 +2,7 @@ export type MessageRow = {
   id: number;
   chatId: number;
   senderId: number;
+  clientMessageId: string | null;
   author: string;
   text: string;
   createdAt: number;
@@ -16,6 +17,7 @@ export type MessageData = {
   id: number;
   chatId: number;
   senderId: number;
+  clientMessageId: string | null;
   author: string;
   text: string;
   createdAt: number;
@@ -29,6 +31,7 @@ export type MessageData = {
 export type SendMessageRequest = {
   chatId: number;
   text: string;
+  clientMessageId: string;
   replyToMessageId?: number | null;
 };
 

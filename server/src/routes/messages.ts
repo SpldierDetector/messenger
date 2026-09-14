@@ -11,6 +11,7 @@ import {
 import {
   deleteMessage,
   getLatestMessagesByUserId,
+  getMessageByClientMessageId,
   getMessageById,
   getMessagesByChatId,
   getPendingDeliveryMessagesByUserId,
@@ -373,6 +374,7 @@ export function createMessagesRouter({
     const { 
       chatId,
       text,
+      clientMessageId,
       replyToMessageId = null,
     } = request.body as SendMessageRequest;
 
@@ -387,6 +389,19 @@ export function createMessagesRouter({
     if (typeof text !== 'string' || !text.trim()) {
       response.status(400).json({
         error: 'text must be a non-empty string',
+      });
+
+      return;
+    }
+
+    if (
+      typeof clientMessageId !== 'string' ||
+      !clientMessageId.trim() ||
+      clientMessageId.length > 128
+    ) {
+      response.status(400).json({
+        error:
+        'clientMessageId must be a non-empty string up to 128 characters',
       });
 
       return;
@@ -426,6 +441,34 @@ export function createMessagesRouter({
       response.status(403).json({
         error: 'forbidden',
       });
+
+      return;
+    }
+
+    const normalizedText = text.trim();
+    const normalizedClientMessageId = clientMessageId.trim();
+    const existingRow = getMessageByClientMessageId(currentUser.id, normalizedClientMessageId);
+
+    if (existingRow) {
+      const existingMessage = existingRow as MessageRow;
+
+      const requestMatchesExistingMessage =
+        existingMessage.chatId === chatId &&
+        existingMessage.text === normalizedText &&
+        existingMessage.replyToMessageId === replyToMessageId;
+
+      if (!requestMatchesExistingMessage) {
+        response.status(409).json({
+          error: 
+            'clientMessageId is already used for another message',
+        });
+
+        return;
+      }
+
+      response.json(
+        mapMessageRow(existingMessage),
+      );
 
       return;
     }
@@ -475,10 +518,11 @@ export function createMessagesRouter({
       chatId,
       currentUser.id,
       currentUser.name,
-      text.trim(),
+      normalizedText,
       now,
       true,
       replyToMessageId,
+      normalizedClientMessageId,
     );
 
     createMessageReceipts(
@@ -491,8 +535,9 @@ export function createMessagesRouter({
       id: Number(result.lastInsertRowid),
       chatId,
       senderId: currentUser.id,
+      clientMessageId: normalizedClientMessageId,
       author: currentUser.name,
-      text: text.trim(),
+      text: normalizedText,
       createdAt: now,
       editedAt: null,
       deletedAt: null,
@@ -630,6 +675,7 @@ export function createMessagesRouter({
       id: Number(result.lastInsertRowid),
       chatId: targetChatId,
       senderId: currentUser.id,
+      clientMessageId: null,
       author: currentUser.name,
       text: sourceMessage.text,
       createdAt: now,

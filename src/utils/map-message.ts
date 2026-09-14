@@ -8,5 +8,6 @@ export function mapMessageApiData(
   return {
     ...message,
     isOwn: message.senderId === currentUserId,
+    sendStatus: null,
   };
 }

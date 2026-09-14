@@ -47,6 +47,7 @@ export default function ChatScreen() {
     isSearchingMessages,
     messageSearchError,
     sendMessage,
+    retryMessage,
     editMessage,
     deleteMessage,
     deleteMessageForMe,
@@ -235,7 +236,7 @@ export default function ChatScreen() {
   const latestMessage = messageList[messageList.length - 1];
   const hasMoreMessages = hasMoreMessagesByChat[chatId] ?? false;
   const isLoadingOlderMessages = isLoadingOlderMessagesByChat[chatId] ?? false;
-  const isSendDisabled = !text.trim() || isSending || isEditing;
+  const isSendDisabled = !text.trim() || isEditing;
 
   useEffect(() => {
     if (
@@ -538,16 +539,16 @@ export default function ChatScreen() {
       return;
     }
 
-    const wasSent = await sendMessage(
+    const replyToMessageId = replyingMessage?.id ?? null;
+
+    setText('');
+    setReplyingMessage(null);
+
+    void sendMessage(
       chatId,
       normalizedText,
-      replyingMessage?.id ?? null,
+      replyToMessageId,
     );
-
-    if (wasSent) {
-      setText('');
-      setReplyingMessage(null);
-    }
   }
   
   if (!isChatLoaded) {
@@ -779,6 +780,17 @@ export default function ChatScreen() {
                   isOwn={item.isOwn}
                   editedAt={item.editedAt}
                   deletedAt={item.deletedAt}
+                  sendStatus={item.sendStatus}
+                  onRetry={
+                    item.sendStatus === 'failed' &&
+                    item.clientMessageId
+                      ? () => {
+                        void retryMessage(
+                          item.clientMessageId,
+                        );
+                      }
+                      : undefined
+                  }
                   replyAuthor={
                     hasReply
                       ? repliedMessage?.author ?? 'Ответ'
@@ -801,6 +813,7 @@ export default function ChatScreen() {
                   isDelivered={isDelivered}
                   isRead={isRead}
                   onLongPress={
+                    item.sendStatus === null &&
                     item.deletedAt === null
                       ? () => handleOpenMessageMenu(item)
                       : undefined                  
@@ -1004,7 +1017,7 @@ export default function ChatScreen() {
                 disabled={isSendDisabled}
               >
                 <Text style={styles.sendButtonText}>
-                  {isSending || isEditing
+                  {isEditing
                     ? '...' 
                     : editingMessageId !== null
                       ? 'Save'

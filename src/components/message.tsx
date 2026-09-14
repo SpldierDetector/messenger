@@ -4,6 +4,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import type { MessageSendStatus } from '@/types/message';
 
 type MessageProps = {
   author: string;
@@ -18,6 +19,8 @@ type MessageProps = {
   forwardedFromAuthor: string | null;
   isDelivered: boolean;
   isRead: boolean;
+  sendStatus: MessageSendStatus | null;
+  onRetry?: () => void;
   onLongPress?: () => void;
 };
 
@@ -33,6 +36,8 @@ export function Message({
   replyDeleted,
   forwardedFromAuthor,
   isDelivered,
+  sendStatus,
+  onRetry,
   isRead,
   onLongPress,
 }: MessageProps) {
@@ -102,14 +107,33 @@ export function Message({
           {time}
         </Text>
         {isOwn && deletedAt === null && (
-          <Text 
-          style={[
-            styles.deliveryStatus,
-            isDelivered && styles.doubleCheck,
-            isRead && styles.readStatus,  
-          ]}>
-            {isDelivered ? '✓✓' : '✓'}
-          </Text>
+          <>
+            {sendStatus === 'sending' ? (
+              <Text style={styles.sendingStatus}>
+                ◷
+              </Text>
+            ) : sendStatus === 'failed' ? (
+              <Pressable
+                onPress={onRetry}
+                hitSlop={8}
+                style={({ pressed }) => [
+                  styles.failedStatusButton,
+                  pressed && styles.failedStatusPressed,
+                ]}
+              >
+                <Text style={styles.failedStatus}>
+                  !
+                </Text>
+              </Pressable>
+            ) : (
+              <Text style={[styles.deliveryStatus, isDelivered &&
+                styles.doubleCheck, isRead && styles.readStatus,
+              ]}
+            >
+              {isDelivered ? '✓✓' : '✓'}
+            </Text>
+            )}
+          </>
         )}
       </View>
     </Pressable>
@@ -217,4 +241,28 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
 
+  sendingStatus: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 13,
+  },
+
+  failedStatusButton: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#ef4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  
+  failedStatusPressed: {
+    opacity: 0.7,
+  },
+
+  failedStatus: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 14,
+  },
 });

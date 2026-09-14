@@ -37,6 +37,7 @@ database.exec(`
     replyToMessageId INTEGER,
     forwardedFromMessageId INTEGER,
     forwardedFromAuthor TEXT,
+    clientMessageId TEXT,
     isOwn INTEGER NOT NULL
   );
 `);
@@ -62,6 +63,9 @@ const hasForwardedFromMessageId = messageColumns.some(
 );
 const hasForwardedFromAuthor = messageColumns.some(
   (column) => column.name === 'forwardedFromAuthor',
+);
+const hasClientMessageId = messageColumns.some(
+  (column) => column.name === 'clientMessageId',
 );
 
 const messageColumnsAfterMigration = database
@@ -110,6 +114,23 @@ if (!hasForwardedFromAuthor) {
     ADD COLUMN forwardedFromAuthor TEXT  
   `);
 }
+
+if (!hasClientMessageId) {
+  database.exec(`
+    ALTER TABLE messages
+    ADD COLUMN clientMessageId TEXT  
+  `);
+}
+
+database.exec(`
+  CREATE UNIQUE INDEX IF NOT EXISTS
+    messages_sender_client_message_unique
+  ON messages(
+    senderId,
+    clientMessageId  
+  )
+  WHERE clientMessageId IS NOT NULL  
+`);
 
 database.exec(`
   UPDATE messages

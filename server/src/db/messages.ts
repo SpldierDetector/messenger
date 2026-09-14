@@ -7,6 +7,7 @@ export function getMessagesByChatId(chatId: number, userId: number) {
       message.id,
       message.chatId,
       message.senderId,
+      message.clientMessageId,
       sender.name AS author,
       message.text,
       message.createdAt,
@@ -58,6 +59,7 @@ export function getMessagePageByChatId(
       message.id,
       message.chatId,
       message.senderId,
+      message.clientMessageId,
       sender.name AS author,
       message.text,
       message.createdAt,
@@ -137,6 +139,7 @@ export function searchMessagesByChatId(
       message.id,
       message.chatId,
       message.senderId,
+      message.clientMessageId,
       sender.name AS author,
       message.text,
       message.createdAt,
@@ -189,6 +192,7 @@ export function getLatestMessagesByUserId(userId: number) {
       message.id,
       message.chatId,
       message.senderId,
+      message.clientMessageId,
       sender.name AS author,
       message.text,
       message.createdAt,
@@ -244,6 +248,7 @@ export function getPendingDeliveryMessagesByUserId(
       message.id,
       message.chatId,
       message.senderId,
+      message.clientMessageId,
       sender.name AS author,
       message.text,
       message.createdAt,
@@ -293,6 +298,7 @@ export function getMessageById(messageId: number) {
       message.id,
       message.chatId,
       message.senderId,
+      message.clientMessageId,
       sender.name AS author,
       message.text,
       message.createdAt,
@@ -311,6 +317,41 @@ export function getMessageById(messageId: number) {
   return statement.get(messageId);
 }
 
+export function getMessageByClientMessageId(
+  senderId: number,
+  clientMessageId: string,
+) {
+  const statement = database.prepare(`
+    SELECT
+      message.id,
+      message.chatId,
+      message.senderId,
+      message.clientMessageId,
+      sender.name AS author,
+      message.text,
+      message.createdAt,
+      message.editedAt,
+      message.deletedAt,
+      message.replyToMessageId,
+      message.forwardedFromMessageId,
+      message.forwardedFromAuthor
+    FROM messages AS message
+
+    JOIN users AS sender
+      ON sender.id = message.senderId
+
+    WHERE message.senderId = ?
+      AND message.clientMessageId = ?
+
+    LIMIT 1
+  `);
+
+  return statement.get(
+    senderId,
+    clientMessageId,
+  );
+}
+
 export function insertMessage(
   chatId: number,
   senderId: number,
@@ -319,6 +360,7 @@ export function insertMessage(
   createdAt: number,
   isOwn: boolean,
   replyToMessageId: number | null,
+  clientMessageId: string | null = null,
 ) {
   const statement = database.prepare(`
     INSERT INTO messages (
@@ -328,9 +370,10 @@ export function insertMessage(
       text,
       createdAt,
       isOwn,
-      replyToMessageId
+      replyToMessageId,
+      clientMessageId
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   return statement.run(
@@ -341,6 +384,7 @@ export function insertMessage(
     createdAt,
     isOwn ? 1 : 0,
     replyToMessageId,
+    clientMessageId,
   );
 }
 
