@@ -317,6 +317,62 @@ export function getMessageById(messageId: number) {
   return statement.get(messageId);
 }
 
+export function getMessagesByIdsForUser(
+  messageIds: number[],
+  userId: number,
+) {
+  if (messageIds.length === 0) {
+    return [];
+  }
+
+  const placeholders =
+    messageIds
+      .map(() => '?')
+      .join(', ');
+
+  const statement = database.prepare(`
+    SELECT
+      message.id,
+      message.chatId,
+      message.senderId,
+      message.clientMessageId,
+      sender.name AS author,
+      message.text,
+      message.createdAt,
+      message.editedAt,
+      message.deletedAt,
+      message.replyToMessageId,
+      message.forwardedFromMessageId,
+      message.forwardedFromAuthor
+    FROM messages AS message
+
+    JOIN users AS sender
+      ON sender.id = message.senderId
+
+    JOIN chat_members AS member
+      ON member.chatId = message.chatId
+      AND member.userId = ?
+
+    LEFT JOIN message_hidden_for_users AS hidden
+      ON hidden.messageId = message.id
+      AND hidden.userId = ?
+
+    WHERE message.id IN (${placeholders})
+      AND hidden.messageId IS NULL
+      AND (
+        member.clearedBeforeMessageId IS NULL
+        OR message.id >
+          member.clearedBeforeMessageId
+      )
+  `);
+
+  return statement.all(
+    userId,
+    userId,
+    ...messageIds,
+  );
+}
+
 export function getMessageByClientMessageId(
   senderId: number,
   clientMessageId: string,

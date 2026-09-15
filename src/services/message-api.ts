@@ -93,6 +93,44 @@ export async function getMessagePageRequest(
   };
 }
 
+export async function syncMessagesRequest(
+  messageIds: number[],
+  token: string,
+  currentUserId: number,
+): Promise<MessageData[]> {
+  const response = await fetch(
+    `${API_BASE_URL}/messages/sync`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON .stringify({
+        messageIds,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+
+    throw new Error(
+      `Failed to sync messages: ${response.status} ${errorBody}`,
+    );
+  }
+
+  const messages = (await response.json()) as MessageApiData[];
+
+  return messages.map(
+    (message) =>
+      mapMessageApiData(
+        message,
+        currentUserId,
+      ),
+  );
+}
+
 export async function sendMessageRequest(
   data: SendMessageRequest,
   token: string,

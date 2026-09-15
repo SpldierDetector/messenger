@@ -42,3 +42,7 @@ export type EditMessageRequest = {
 export type ForwardMessageRequest = {
   targetChatId: number,
 };
+
+export type SyncMessagesRequest = {
+  messageIds: number [];
+};

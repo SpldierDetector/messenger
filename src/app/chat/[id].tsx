@@ -68,6 +68,7 @@ export default function ChatScreen() {
   const { token, isAuthenticated } = useAuth();
   const chatId = Number(id);
   const [chat, setChat] = useState<ChatData | null>(null);
+  const [chatLoadError, setChatLoadError] = useState<string | null>(null);
   const [isChatLoaded, setIsChatLoaded] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -107,18 +108,48 @@ export default function ChatScreen() {
       return;
     }
 
-    loadMessages(chatId);
+    let isActive = true;
+
+    setIsChatLoaded(false);
+    setChatLoadError(null);
+
+    void loadMessages(chatId)
+      .catch((error) => {
+        console.warn(
+          'Failed to load messages:',
+          error,
+        );
+      });
 
     getChatRequest(chatId, token)
       .then((loadedChat) => {
+        if (!isActive) {
+          return;
+        }
+
         setChat(loadedChat);
       })
       .catch((error) => {
-        console.error(`Failed to load chat:`, error);
+        console.warn(`Failed to load chat:`, error);
+
+        if (!isActive) {
+          return;
+        }
+
+        setChatLoadError(
+          'Не удалось загрузить чат. Проверьте подключение к сети.',
+        );
       })
       .finally(() => {
+        if (!isActive) {
+          return;
+        }
+
         setIsChatLoaded(true);
       });
+      return () => {
+        isActive = false;
+      };
   }, [chatId,isAuthenticated, token,]);
 
   useEffect(() => {
@@ -176,7 +207,9 @@ export default function ChatScreen() {
       
       if (
         Number.isFinite(chatId) &&
-        isAuthenticated
+        isAuthenticated &&
+        chat?.id === chatId &&
+        !chatLoadError
       ) {
         markChatRead(chatId);
       }
@@ -203,6 +236,8 @@ export default function ChatScreen() {
       };
     },  [
       chatId,
+      chat?.id,
+      chatLoadError,
       isAuthenticated,
       markChatRead,
       stopTyping,
@@ -555,6 +590,31 @@ export default function ChatScreen() {
     return null;
   }
 
+  if (chatLoadError) {
+    return (
+      <SafeAreaView
+        style={styles.notFoundContainer}
+      >
+        <Text style={styles.notFoundTitle}>
+          Нет соединения
+        </Text>
+
+        <Text style={styles.errorText}>
+          {chatLoadError}
+        </Text>
+
+        <Pressable
+          style={styles.notFoundButton}
+          onPress={() => router.back()}
+          >
+            <Text style={styles.notFoundButtonText}>
+              Вернуться к чатам
+            </Text>
+          </Pressable>
+      </SafeAreaView>
+    );
+  }
+  
   if (!chat) {
     return (
       <SafeAreaView style={styles.notFoundContainer}>

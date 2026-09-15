@@ -13,9 +13,10 @@ import {
   getLatestMessagesByUserId,
   getMessageByClientMessageId,
   getMessageById,
-  getMessagesByChatId,
-  getPendingDeliveryMessagesByUserId,
   getMessagePageByChatId,
+  getMessagesByChatId,
+  getMessagesByIdsForUser,
+  getPendingDeliveryMessagesByUserId,
   hideMessageForUser,
   insertForwardedMessage,
   insertMessage,
@@ -30,6 +31,7 @@ import type {
   MessageData,
   MessageRow,
   SendMessageRequest,
+  SyncMessagesRequest,
 } from '../types/message.js';
 
 type MessagesRouterOptions = {
@@ -550,6 +552,74 @@ export function createMessagesRouter({
 
     response.status(201).json(message);
   });
+
+  messagesRouter.post(
+    '/sync',
+    requireAuth,
+    (request, response) => {
+      const {messageIds} = request.body as SyncMessagesRequest;
+
+      if (!Array.isArray(messageIds)) {
+        response.status(400).json({
+          error: 'messageIds must be an array',
+        });
+
+        return;
+      }
+
+      const normalizedMessageIds = [
+        ...new Set(
+          messageIds.filter(
+            (messageId) =>
+              Number.isInteger(messageId) &&
+            messageId > 0,
+          ),
+        ),
+      ];
+
+      if (
+        normalizedMessageIds.length !==
+        messageIds.length
+      ) {
+        response.status(400).json({
+          error: 
+            'messageIds must contain only positive integers',
+        });
+
+        return;
+      }
+
+      if (
+        normalizedMessageIds.length > 500
+      ) {
+        response.status(400).json({
+          error: 'too many messageIds',
+        });
+        
+        return;
+      }
+
+      const currentUser = request.user;
+
+      if (!currentUser) {
+        response.status(401).json({
+          error: 'authorization required',
+        });
+
+        return;
+      }
+
+      const rows =
+      getMessagesByIdsForUser(
+        normalizedMessageIds,
+        currentUser.id,
+      );
+
+      response.json(
+        rows.map(mapMessageRow)
+      );
+    },
+  );
 
   messagesRouter.post('/:id/forward', requireAuth, (request, response) => {
     const messageId = Number(request.params.id);

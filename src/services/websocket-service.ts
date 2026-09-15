@@ -9,7 +9,8 @@ import { mapMessageApiData } from '@/utils/map-message';
 const WEB_SOCKET_URL = API_BASE_URL
   .replace(/^https:\/\//, 'wss://')
   .replace(/^http:\/\//, 'ws://');
-const RECONNECT_DELAY = 3000;
+const RECONNECT_INITIAL_DELAY = 1000;
+const RECONNECT_MAX_DELAY = 30000;
 
 type ConnectWebSocketOptions = {
   token: string;
@@ -76,7 +77,9 @@ export function connectWebSocket({
     | ReturnType<typeof setTimeout> 
     | null = null;
   let shouldReconnect = true;
+  let reconnectAttempt = 0;
   const pendingDeliveryMessageIds = new Set<number>();
+  const pendingReadChatIds = new Set<number>();
 
   function sendMessageDelivered(messageId: number) {
     if (
@@ -112,20 +115,39 @@ export function connectWebSocket({
     pendingDeliveryMessageIds.add(messageId);
   }
 
-  function markChatRead(chatId: number) {
+  function sendChatRead(
+    chatId: number,
+  ) {
     if (
       !socket ||
       socket.readyState !== WebSocket.OPEN
     ) {
-      return;
+      return false;
     }
 
     socket.send(
       JSON.stringify({
         type: 'chat_read',
-        data: {chatId},
+        data: {
+          chatId,
+        },
       }),
     );
+
+    return true;
+  }
+
+  function markChatRead(
+    chatId: number,
+  ) {
+    const wasSent = sendChatRead(chatId);
+
+    if (wasSent) {
+      pendingReadChatIds.delete(chatId);
+      return;
+    }
+
+    pendingReadChatIds.add(chatId);
   }
 
   function sendTypingEvent(
@@ -165,6 +187,20 @@ export function connectWebSocket({
     );
   }
 
+  function getReconnectDelay() {
+    const delay = Math.min(
+      RECONNECT_INITIAL_DELAY *
+        2 ** reconnectAttempt,
+      RECONNECT_MAX_DELAY,
+    );
+
+    const jitter = 0.8 + Math.random() * 0.4;
+
+    return Math.round(
+      delay * jitter,
+    );
+  }
+
   function connect() {
     if (!shouldReconnect) {
       return;
@@ -193,6 +229,8 @@ export function connectWebSocket({
         return;
       }
 
+      reconnectAttempt = 0;
+
       if (reconnectTimer) {
         clearTimeout(reconnectTimer);
         reconnectTimer = null;
@@ -205,6 +243,17 @@ export function connectWebSocket({
 
         if (wasSent) {
           pendingDeliveryMessageIds.delete(messageId);
+        }
+      }
+
+      for (
+        const chatId
+        of pendingReadChatIds
+      ) {
+        const wasSent = sendChatRead(chatId);
+
+        if (wasSent) {
+          pendingReadChatIds.delete(chatId);
         }
       }
 
@@ -322,14 +371,18 @@ export function connectWebSocket({
         return;
       }
 
+      const reconnectDelay= getReconnectDelay();
+
+      reconnectAttempt += 1;
+
       console.log(
-        `WebSocket disconnected. Reconnecting in ${RECONNECT_DELAY / 1000}s...`
+        `WebSocket disconnected. Reconnecting in ${(reconnectDelay / 1000).toFixed(1)}s...`,
       )
 
       reconnectTimer = setTimeout(() => {
         reconnectTimer = null;
         connect();
-      }, RECONNECT_DELAY
+      }, reconnectDelay,
       );
     };
   }

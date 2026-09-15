@@ -21,6 +21,7 @@ import {
   loadPendingDeliveryMessages,
   loadUnreadMessageCounts,
   searchMessages as searchMessagesService
+  syncMessages as syncMessagesService,
 } from "@/services/messages-service";
 import {
   connectWebSocket,
@@ -95,10 +96,15 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
   const [hasMoreMessagesByChat, setHasMoreMessagesByChat] = useState<Record<number, boolean>>({});
   const [nextBeforeMessageIdByChat, setNextBeforeMessageIdByChat] = useState<Record<number, number | null>>({});
   const [isLoadingOlderMessagesByChat, setIsLoadingOlderMessagesByChat] = useState<Record<number, boolean>>({});
+  const messageRef = useRef<MessageData[]>([]);
   const messageSearchRequestIdRef = useRef(0);
   const nextTemporaryMessageIdRef = useRef(-1);
   const webSocketConnectionRef = useRef<WebSocketConnection | null>(null);
   const loadingOlderChatIdsRef = useRef<Set<number>>(new Set());
+
+  useEffect(() => {
+    messageRef.current = messages;
+  }, [messages]);
 
   async function loadMessages(chatId: number) {
     if (!token || !user) {

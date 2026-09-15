@@ -11,6 +11,7 @@ import {
   getUnreadMessageCountsRequest,
   searchMessagesRequest,
   sendMessageRequest,
+  syncMessagesRequest,
 } from '@/services/message-api';
 import { saveMessages } from "@/services/message-storage";
 import type { MessageData, UnreadMessageCount } from "@/types/message";
@@ -24,6 +25,18 @@ export async function searchMessages(
   return searchMessagesRequest(
     chatId,
     search,
+    token,
+    currentUserId,
+  );
+}
+
+export async function syncMessages(
+  messageIds: number[],
+  token: string,
+  currentUserId: number,
+) {
+  return syncMessagesRequest(
+    messageIds,
     token,
     currentUserId,
   );
