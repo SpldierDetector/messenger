@@ -20,7 +20,7 @@ import {
   loadMessageReceipts,
   loadPendingDeliveryMessages,
   loadUnreadMessageCounts,
-  searchMessages as searchMessagesService
+  searchMessages as searchMessagesService,
   syncMessages as syncMessagesService,
 } from "@/services/messages-service";
 import {
@@ -96,14 +96,14 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
   const [hasMoreMessagesByChat, setHasMoreMessagesByChat] = useState<Record<number, boolean>>({});
   const [nextBeforeMessageIdByChat, setNextBeforeMessageIdByChat] = useState<Record<number, number | null>>({});
   const [isLoadingOlderMessagesByChat, setIsLoadingOlderMessagesByChat] = useState<Record<number, boolean>>({});
-  const messageRef = useRef<MessageData[]>([]);
+  const messagesRef = useRef<MessageData[]>([]);
   const messageSearchRequestIdRef = useRef(0);
   const nextTemporaryMessageIdRef = useRef(-1);
   const webSocketConnectionRef = useRef<WebSocketConnection | null>(null);
   const loadingOlderChatIdsRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
-    messageRef.current = messages;
+    messagesRef.current = messages;
   }, [messages]);
 
   async function loadMessages(chatId: number) {
@@ -427,6 +427,93 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
     } catch (caughtError) {
       console.error(
         'Failed to sync pending delivery messages:',
+        caughtError,
+      );
+    }
+  }
+
+  async function syncCachedMessages() {
+    if (!token || !user) {
+      return;
+    }
+
+    const messageIds = [
+      ...new Set (
+        messagesRef.current
+          .filter(
+            (message) => message.id > 0,
+          )
+          .map(
+            (message) => message.id,
+          ),
+      ),
+    ];
+
+    if (messageIds.length === 0) {
+      return;
+    }
+
+    const BATCH_SIZE = 500;
+
+    try {
+      for(
+        let index = 0;
+        index < messageIds.length;
+        index += BATCH_SIZE
+      ) {
+        const batch =
+          messageIds.slice(
+            index,
+            index + BATCH_SIZE,
+          );
+
+        const syncedMessages =
+          await syncMessagesService(
+            batch,
+            token,
+            user.id,
+          );
+
+        const batchIds = new Set(batch);
+
+        const syncedMessagesById =
+          new Map(
+            syncedMessages.map(
+              (message) => [
+                message.id,
+                message,
+              ],
+            ),
+          );
+
+        setMessages(
+          (currentMessages) =>
+            currentMessages.flatMap(
+              (message) => {
+                if (
+                  !batchIds.has(
+                    message.id,
+                  )
+                ) {
+                  return [message];
+                }
+
+                const syncedMessage = syncedMessagesById.get(message.id);
+
+                if (!syncedMessage) {
+                  return[];
+                }
+
+                return [
+                  syncedMessage,
+                ];
+              },
+            ),
+        );
+      }
+    } catch (caughtError) {
+      console.warn(
+        'Failed to sync cached messages:',
         caughtError,
       );
     }
@@ -1095,6 +1182,20 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
     void refreshLatestMessagePreviews();
   }
 
+  async function syncAfterReconnect() {
+    try {
+      await syncCachedMessages();
+      await syncPendingDeliveryMessages();
+      await refreshLatestMessagePreviews();
+      await refreshUnreadCounts();
+    } catch (caughtError) {
+      console.warn(
+        'Failed to sync state after reconnect',
+        caughtError,
+      );
+    }
+  }
+  
   useEffect(() => {
     if (!isAuthenticated || !user || !token) {
       setMessages([]);
@@ -1134,8 +1235,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       onUserPresenceUpdated: handleUserPresenceUpdated,
       onConnected: () => {
         setIsRealtimeConnected(true);
-        void syncPendingDeliveryMessages();
-        void refreshUnreadCounts();
+        void syncAfterReconnect();
       },
       onDisconnected: () => {
         setIsRealtimeConnected(false);
