@@ -215,6 +215,22 @@ export function connectWebSocket({
       try {
         const message = JSON.parse(event.data) as WebSocketEvent;
 
+        if (message.type === 'heartbeat_ping') {
+          if (
+            currentSocket.readyState ===
+            WebSocket.OPEN
+          ) {
+            currentSocket.send(
+              JSON.stringify({
+                type: 'heartbeat_pong',
+                data: {},
+              }),
+            );
+          }
+
+          return;
+        }
+
         if (message.type === "message_created") {
           const apiMessage = message.data as MessageApiData;
           const mappedMessage = mapMessageApiData(apiMessage, currentUserId,);

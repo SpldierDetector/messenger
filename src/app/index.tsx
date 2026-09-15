@@ -58,7 +58,13 @@ export default function ChatListScreen() {
 
       let isActive = true;
 
-      loadLatestMessagePreviews();
+      void loadLatestMessagePreviews()
+        .catch((error) => {
+          console.warn(
+            'Failed to load latest message previews:',
+            error,
+          );
+        });
 
       getChatsRequest(token)
         .then((loadedChats) => {
@@ -69,7 +75,7 @@ export default function ChatListScreen() {
           setChats(loadedChats);
         })
         .catch((error) => {
-          console.error(
+          console.warn(
             'Failed to load chats:',
             error,
           );
@@ -110,7 +116,7 @@ export default function ChatListScreen() {
         setChats(loadedChats);
       })
       .catch((error) => {
-        console.error(
+        console.warn(
           'Failed to refresh chats:',
           error,
         );

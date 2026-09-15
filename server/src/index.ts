@@ -1,7 +1,7 @@
 import cors from 'cors';
 import express from 'express';
 import { createServer } from 'node:http';
-import { WebSocketServer } from 'ws';
+import { WebSocket, WebSocketServer } from 'ws';
 
 import { getUserBySessionToken } from './auth/auth-service.js';
 import {
@@ -20,6 +20,7 @@ import { usersRouter } from './routes/users.js';
 import type {
   AuthenticatedWebSocket,
   ChatReadEvent,
+  HeartbeatPongEvent,
   MessageDeliveredEvent,
   TypingStartedEvent,
   TypingStoppedEvent,
@@ -40,6 +41,8 @@ import {
 
 const app = express();
 const port = 3000;
+const WEB_SOCKET_HEARTBEAT_INTERVAL = 10000;
+const WEB_SOCKET_HEARTBEAT_TIMEOUT = 15000;
 
 app.use(cors());
 app.use(express.json());
@@ -59,6 +62,8 @@ const server = createServer(app);
 const webSocketServer = new WebSocketServer({
   server,
 });
+
+const lastHeartbeatAtBySocket = new WeakMap<WebSocket, number>();
 
 const messagesRouter = createMessagesRouter({
   broadcastMessageCreated: (message) => {
@@ -115,6 +120,8 @@ webSocketServer.on('connection', (socket, request) => {
 
   authenticatedSocket.userId = user.id;
 
+  lastHeartbeatAtBySocket.set(authenticatedSocket, Date.now());
+
   const userWasOnline = isUserOnline(user.id);
 
   addUserConnection(user.id);
@@ -137,7 +144,8 @@ webSocketServer.on('connection', (socket, request) => {
         | MessageDeliveredEvent
         | ChatReadEvent
         | TypingStartedEvent
-        | TypingStoppedEvent;
+        | TypingStoppedEvent
+        | HeartbeatPongEvent;
 
       try {
         event = JSON.parse(
@@ -146,8 +154,20 @@ webSocketServer.on('connection', (socket, request) => {
           | MessageDeliveredEvent
           | ChatReadEvent
           | TypingStartedEvent
-          | TypingStoppedEvent;
+          | TypingStoppedEvent
+          | HeartbeatPongEvent;
       } catch {
+        return;
+      }
+
+      if (
+        event.type === 'heartbeat_pong'
+      ) {
+        lastHeartbeatAtBySocket.set(
+          authenticatedSocket,
+          Date.now(),
+        );
+
         return;
       }
 
@@ -277,6 +297,10 @@ webSocketServer.on('connection', (socket, request) => {
   });
 
   authenticatedSocket.on('close', () => {
+    lastHeartbeatAtBySocket.delete(
+      authenticatedSocket,
+    );
+    
     removeUserConnection(user.id);
 
     const userIsStillOnline = isUserOnline(user.id);
@@ -299,6 +323,60 @@ webSocketServer.on('connection', (socket, request) => {
     
     console.log(`WebSocket client disconnected: user ${user.id}`);
   });
+});
+
+const heartbeatInterval =
+  setInterval(() => {
+    const now = Date.now();
+
+    for (
+      const socket
+      of webSocketServer.clients
+    ) {
+      if (
+        socket.readyState !==
+        WebSocket.OPEN
+      ) {
+        continue;
+      }
+
+      const lastHeartbeatAt =
+        lastHeartbeatAtBySocket.get(
+          socket,
+        );
+
+      if (lastHeartbeatAt === undefined) {
+        continue;
+      }
+
+      const heartbeatAge = now - lastHeartbeatAt;
+
+      if (
+        heartbeatAge > 
+        WEB_SOCKET_HEARTBEAT_TIMEOUT
+      ) {
+        console.log(
+          'Terminating stale WebSocket connection',
+        );
+
+        socket.terminate();
+
+        continue;
+      }
+
+      socket.send(
+        JSON.stringify({
+          type: 'heartbeat_ping',
+          data: {},
+        }),
+      );
+    }
+  }, WEB_SOCKET_HEARTBEAT_INTERVAL);
+
+webSocketServer.on('close', () => {
+  clearInterval(
+    heartbeatInterval,
+  );
 });
 
 server.listen(port, '0.0.0.0', () => {

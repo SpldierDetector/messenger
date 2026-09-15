@@ -36,3 +36,9 @@ export type TypingStoppedEvent = {
     chatId: number;
   };
 };
+
+export type HeartbeatPongEvent = {
+  type: 'heartbeat_pong';
+
+  data: {};
+};

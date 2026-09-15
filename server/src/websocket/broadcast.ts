@@ -40,7 +40,7 @@ function broadcastToChatMembers(
     if (!userIsChatMember) {
       return;
     }
-
+    
     authenticatedClient.send(serializedEvent);
   });
 }
@@ -229,6 +229,7 @@ export function broadcastUserPresence(
         if (!userIsChatMember) {
           return;
         }
+
         authenticatedClient.send(
           serializedEvent,
         );
