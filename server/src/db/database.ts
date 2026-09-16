@@ -42,6 +42,88 @@ database.exec(`
   );
 `);
 
+database.exec(`
+  CREATE TABLE IF NOT EXISTS attachments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chatId INTEGER NOT NULL,
+    messageId INTEGER,
+    uploaderId INTEGER NOT NULL,
+    type TEXT NOT NULL,
+    originalName TEXT NOT NULL,
+    storedName TEXT NOT NULL UNIQUE,
+    mimeType TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    width INTEGER,
+    height INTEGER,
+    durationMs INTEGER,
+    sortOrder INTEGER NOT NULL DEFAULT 0,
+    createdAt INTEGER NOT NULL,
+
+    FOREIGN KEY (chatId)
+      REFERENCES chats(id),
+    
+    FOREIGN KEY (messageId)
+      REFERENCES messages(id),
+
+    FOREIGN KEY (uploaderId)
+      REFERENCES users(id),
+
+    CHECK (
+      type IN (
+        'file',
+        'image',
+        'audio'
+      )
+    ),
+
+    CHECK (size >= 0),
+
+    CHECK (
+      width IS NULL
+      OR width > 0
+    ),
+
+    CHECK (
+      height IS NULL
+      OR height > 0
+    ),
+
+    CHECK (
+      durationMs IS NULL
+      OR durationMs >= 0
+    )
+  );  
+`);
+
+database.exec(`
+  CREATE INDEX IF NOT EXISTS
+    attachments_chat_id_idx
+  ON attachments(chatId);  
+`);
+
+database.exec(`
+  CREATE INDEX IF NOT EXISTS
+    attachments_message_id_idx
+  ON attachments(messageId);  
+`);
+
+database.exec(`
+  CREATE INDEX IF NOT EXISTS
+    attachments_uploader_id_idx
+  ON attachments(uploaderId);
+`);
+
+database.exec(`
+  CREATE INDEX IF NOT EXISTS
+    attachments_unattached_idx
+  ON attachments(
+    chatId,
+    uploaderId,
+    createdAt
+  )
+  WHERE messageId IS NULL;  
+`);
+
 const messageColumns = database
   .prepare(`PRAGMA table_info(messages)`)
   .all() as Array<{ name: string }>;

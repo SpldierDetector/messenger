@@ -1,5 +1,11 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
+# config api
+src/config/api.ts
+
+# files ib uploads
+server/uploads/
+
 # dependencies
 node_modules/
 

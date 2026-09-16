@@ -13,6 +13,7 @@ import { updateUserLastSeenAt } from './db/users.js';
 import type { MessageRow } from './types/message.js';
 
 import { isUserInChat } from './db/chat-members.js';
+import { createAttachmentsRouter } from './routes/attachments.js';
 import { authRouter } from './routes/auth.js';
 import { chatsRouter } from './routes/chats.js';
 import { createMessagesRouter } from './routes/messages.js';
@@ -56,6 +57,7 @@ app.get('/health', (_request, response) => {
 app.use('/auth', authRouter);
 app.use('/chats', chatsRouter);
 app.use('/users', usersRouter);
+app.use('/chats', createAttachmentsRouter());
 
 const server = createServer(app);
 

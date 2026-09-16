@@ -23,8 +23,11 @@ import {
   searchMessagesByChatId,
   updateMessage,
 } from '../db/messages.js';
-import { mapMessageRow } from '../mappers/message.js';
 import { requireAuth } from '../middleware/auth.js';
+import {
+  buildMessageData,
+  buildMessageDataRows,
+} from '../services/message-data.js';
 import type {
   EditMessageRequest,
   ForwardMessageRequest,
@@ -106,7 +109,7 @@ export function createMessagesRouter({
           search,
         );
 
-      const messages = rows.map(mapMessageRow);
+      const messages = buildMessageDataRows(rows);
 
       response.json(messages);
     },
@@ -127,7 +130,7 @@ export function createMessagesRouter({
       currentUser.id,
     );
 
-    const latestMessages = rows.map(mapMessageRow);
+    const latestMessages = buildMessageDataRows(rows);
     
     response.json(latestMessages);
   },
@@ -147,8 +150,10 @@ export function createMessagesRouter({
         return;
       }
 
-      const pendingMessages = 
+      const rows = 
         getPendingDeliveryMessagesByUserId(currentUser.id);
+
+        const pendingMessages = buildMessageDataRows(rows);
 
         response.json(pendingMessages);
     },
@@ -319,9 +324,9 @@ export function createMessagesRouter({
           : null;
 
       const pageMessages =
-        [...pageRows]
-          .reverse()
-          .map(mapMessageRow);
+        buildMessageDataRows(
+          [...pageRows].reverse()
+        );
 
       response.json({
         messages: pageMessages,
@@ -367,7 +372,7 @@ export function createMessagesRouter({
 
     const rows = getMessagesByChatId(chatId, currentUser.id);
 
-    const chatMessages = rows.map(mapMessageRow);
+    const chatMessages = buildMessageDataRows(rows);
 
     response.json(chatMessages);
   });
@@ -469,7 +474,7 @@ export function createMessagesRouter({
       }
 
       response.json(
-        mapMessageRow(existingMessage),
+        buildMessageData(existingMessage),
       );
 
       return;
@@ -546,6 +551,7 @@ export function createMessagesRouter({
       replyToMessageId,
       forwardedFromMessageId: null,
       forwardedFromAuthor: null,
+      attachments: [],
     };
 
     broadcastMessageCreated(message);
@@ -616,7 +622,7 @@ export function createMessagesRouter({
       );
 
       response.json(
-        rows.map(mapMessageRow)
+        buildMessageDataRows(rows),
       );
     },
   );
@@ -754,6 +760,7 @@ export function createMessagesRouter({
       replyToMessageId: null,
       forwardedFromMessageId,
       forwardedFromAuthor,
+      attachments: [],
     };
 
     broadcastMessageCreated(
@@ -860,11 +867,12 @@ export function createMessagesRouter({
         editedAt,
       );
 
-      const updatedMessage: MessageData ={
-        ...message,
-        text: normalizedText,
-        editedAt,
-      };
+      const updatedMessage =
+        buildMessageData({
+          ...message,
+          text: normalizedText,
+          editedAt,
+        });
 
       broadcastMessageUpdated(
         updatedMessage,
@@ -1017,10 +1025,11 @@ export function createMessagesRouter({
         deletedAt,
       );
 
-      const deletedMessage: MessageData = {
-        ...message,
-        deletedAt,
-      };
+      const deletedMessage =
+        buildMessageData({
+          ...message,
+          deletedAt,        
+      });
 
       broadcastMessageDeleted(
         deletedMessage,
