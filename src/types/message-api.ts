@@ -1,10 +1,11 @@
-import type { MessageData } from '@/types/message';
+import type { AttachmentData, MessageData } from '@/types/message';
 
 export type SendMessageRequest = {
   chatId: number;
   text: string;
   clientMessageId: string;
   replyToMessageId?: number | null;
+  attachmentIds?: number[];
 };
 
 export type SendMessageResponse = MessageData;
@@ -22,6 +23,7 @@ export type MessageApiData = {
   replyToMessageId: number | null;
   forwardedFromMessageId: number | null;
   forwardedFromAuthor: string | null;
+  attachments: AttachmentData[];
 };
 
 export type MessagePageApiData = {
@@ -33,3 +35,4 @@ export type MessagePageApiData = {
 export type EditMessageRequest = {
   text: string;
 };
+

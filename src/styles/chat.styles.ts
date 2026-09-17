@@ -19,6 +19,8 @@ export const styles = StyleSheet.create({
     paddingVertical: 10,
     maxHeight: 120,
     textAlignVertical: 'top',
+    paddingRight: 44,
+    width: '100%',
   },
   inputRow: {
     flexDirection: "row",
@@ -292,5 +294,19 @@ searchStatusText: {
 },
 messagesPreparing: {
   opacity: 0,
+},
+inputWrapper: {
+  flex: 1,
+  position: 'relative',
+  minWidth: 0,
+},
+attachmentButton: {
+  position: 'absolute',
+  right: 8,
+  top: 0,
+  bottom: 0,
+  width: 36,
+  alignItems: 'center',
+  justifyContent: 'center',
 },
 });

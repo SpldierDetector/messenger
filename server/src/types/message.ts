@@ -68,6 +68,7 @@ export type SendMessageRequest = {
   text: string;
   clientMessageId: string;
   replyToMessageId?: number | null;
+  attachmentIds?: number[];
 };
 
 export type EditMessageRequest = {

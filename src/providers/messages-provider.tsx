@@ -609,6 +609,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       replyToMessageId,
       forwardedFromMessageId: null,
       forwardedFromAuthor: null,
+      attachments: [],
       isOwn: true,
       sendStatus: 'sending',
     };

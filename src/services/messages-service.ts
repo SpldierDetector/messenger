@@ -107,6 +107,7 @@ export async function createMessage(
   currentUserId: number,
   clientMessageId: string,
   replyToMessageId: number | null = null,
+  attachmentIds: number[] = [],
 ) {
   return sendMessageRequest(
     {
@@ -114,6 +115,7 @@ export async function createMessage(
       text,
       clientMessageId,
       replyToMessageId,
+      attachmentIds,
     },
     token,
     currentUserId,

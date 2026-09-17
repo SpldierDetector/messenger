@@ -1,8 +1,15 @@
 import { Router } from 'express';
 import {
+  attachAttachmentsToMessage,
+  getAttachmentsByIdsForUploaderAndChat,
+} from '../db/attachments.js';
+import {
   isUserInChat,
   showChatForAllMembers,
 } from '../db/chat-members.js';
+import {
+  database,
+} from '../db/database.js';
 import {
   createMessageReceipts,
   getMessageReceiptsByChatId,
@@ -383,6 +390,7 @@ export function createMessagesRouter({
       text,
       clientMessageId,
       replyToMessageId = null,
+      attachmentIds = [],
     } = request.body as SendMessageRequest;
 
     if (typeof chatId !== 'number') {
@@ -393,9 +401,9 @@ export function createMessagesRouter({
       return;
     }
 
-    if (typeof text !== 'string' || !text.trim()) {
+    if (typeof text !== 'string') {
       response.status(400).json({
-        error: 'text must be a non-empty string',
+        error: 'text must be a string',
       });
 
       return;
@@ -429,6 +437,37 @@ export function createMessagesRouter({
       return;
     }
 
+    if (!Array.isArray(attachmentIds)) {
+      response.status(400).json({
+        error: 'attachmentIds must be an array',
+      });
+
+      return;
+    }
+
+    if (attachmentIds.length > 10) {
+      response.status(400).json({
+        error: 'a message can contain at most 10 attachments',
+      });
+
+      return;
+    }
+
+    const normalizedAttachmentIds = [
+      ...new Set(attachmentIds),
+    ];
+
+    if (
+      normalizedAttachmentIds.length !== attachmentIds.length ||
+      normalizedAttachmentIds.some((attachmentId) => !Number.isInteger(attachmentId) || attachmentId <= 0)
+    ) {
+      response.status(400).json({
+        error: 'attachmentIds must contain unique positive integers',
+      });
+
+      return;
+    }
+
     const currentUser = request.user;
 
     if (!currentUser) {
@@ -454,15 +493,39 @@ export function createMessagesRouter({
 
     const normalizedText = text.trim();
     const normalizedClientMessageId = clientMessageId.trim();
+    
+    if (
+      !normalizedText &&
+      normalizedAttachmentIds.length === 0
+    ) {
+      response.status(400).json({
+        error: 'message must contain text or attachments',
+      });
+
+      return;
+    }
+
     const existingRow = getMessageByClientMessageId(currentUser.id, normalizedClientMessageId);
 
     if (existingRow) {
-      const existingMessage = existingRow as MessageRow;
+      const existingMessage = buildMessageData(existingRow);
+
+      const existingAttachmentIds =
+        existingMessage.attachments.map(
+          (attachment) => attachment.id,
+        );
+      
+      const attachmentsMatch = 
+        existingAttachmentIds.length === normalizedAttachmentIds.length &&
+        existingAttachmentIds.every((attachmentId, index) =>
+          attachmentId === normalizedAttachmentIds[index],
+        );
 
       const requestMatchesExistingMessage =
         existingMessage.chatId === chatId &&
         existingMessage.text === normalizedText &&
-        existingMessage.replyToMessageId === replyToMessageId;
+        existingMessage.replyToMessageId === replyToMessageId &&
+        attachmentsMatch;
 
       if (!requestMatchesExistingMessage) {
         response.status(409).json({
@@ -474,11 +537,43 @@ export function createMessagesRouter({
       }
 
       response.json(
-        buildMessageData(existingMessage),
+        existingMessage,
       );
 
       return;
     }
+
+    const attachmentRows =
+      getAttachmentsByIdsForUploaderAndChat(
+        normalizedAttachmentIds,
+        currentUser.id,
+        chatId,
+      );
+
+      if (
+        attachmentRows.length !==
+          normalizedAttachmentIds.length
+      ) {
+        response.status(400).json({
+          error: 'one or more attachments are invalid',
+        });
+
+        return;
+      }
+
+      const hasAttachedAttachment =
+        attachmentRows.some(
+          (attachment) => attachment.messageId !== null,
+        );
+
+      if (hasAttachedAttachment) {
+        response.status(409).json({
+          error:
+            'one or more attachments are already attached to a message',
+        });
+
+        return;
+      }
 
     if (replyToMessageId !== null) {
       const replyRow = getMessageById(
@@ -521,38 +616,82 @@ export function createMessagesRouter({
 
     const now = Date.now();
 
-    const result = insertMessage(
-      chatId,
-      currentUser.id,
-      currentUser.name,
-      normalizedText,
-      now,
-      true,
-      replyToMessageId,
-      normalizedClientMessageId,
-    );
+    let message: MessageData;
 
-    createMessageReceipts(
-      Number(result.lastInsertRowid),
-      chatId,
-      currentUser.id,
-    );
+    try{
+      database.exec('BEGIN IMMEDIATE');
+    
 
-    const message: MessageData = {
-      id: Number(result.lastInsertRowid),
-      chatId,
-      senderId: currentUser.id,
-      clientMessageId: normalizedClientMessageId,
-      author: currentUser.name,
-      text: normalizedText,
-      createdAt: now,
-      editedAt: null,
-      deletedAt: null,
-      replyToMessageId,
-      forwardedFromMessageId: null,
-      forwardedFromAuthor: null,
-      attachments: [],
-    };
+      showChatForAllMembers(chatId);
+
+      const result = insertMessage(
+        chatId,
+        currentUser.id,
+        currentUser.name,
+        normalizedText,
+        now,
+        true,
+        replyToMessageId,
+        normalizedClientMessageId,
+      );
+
+      const messageId = Number(result.lastInsertRowid);
+
+      const attachedCount = 
+        attachAttachmentsToMessage(
+          normalizedAttachmentIds,
+          currentUser.id,
+          chatId,
+          messageId,
+        );
+
+      if (
+        attachedCount !==
+        normalizedAttachmentIds.length
+      ) {
+        throw new Error(
+          'failed to attach all attachments',
+        );
+      }
+
+      createMessageReceipts(
+        messageId,
+        chatId,
+        currentUser.id,
+      );
+
+      const createdRow = getMessageById(messageId);
+
+      if (!createdRow) {
+        throw new Error('created messge was not found');
+      }
+
+      message = buildMessageData(createdRow);
+
+      database.exec(
+      'COMMIT',
+      );
+    } catch (caughtError) {
+      try{
+        database.exec(
+          'ROLLBACK',
+        );
+      } catch {
+        // Transaction may have failed before BEGIN.
+      }
+
+      console.error(
+        'Failed to create message:',
+        caughtError,
+      );
+
+      response.status(500).json({
+        error: 'failed to create message',
+      });
+
+      return;
+    }
+
 
     broadcastMessageCreated(message);
 

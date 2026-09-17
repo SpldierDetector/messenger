@@ -1,3 +1,20 @@
+export type AttachmentType =
+  | 'file'
+  | 'image'
+  | 'audio';
+
+export type AttachmentData = {
+  id: number;
+  type: AttachmentType;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  width: number | null;
+  height: number | null;
+  durationMs: number | null;
+  createdAt: number | null; 
+};
+
 export type MessageData = {
   id: number;
   chatId: number;
@@ -11,6 +28,7 @@ export type MessageData = {
   replyToMessageId: number | null;
   forwardedFromMessageId: number | null;
   forwardedFromAuthor: string | null;
+  attachments: AttachmentData[];
   isOwn: boolean;
   sendStatus: MessageSendStatus | null;
 }

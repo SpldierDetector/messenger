@@ -1,6 +1,17 @@
+import { Message } from '@/components/message';
+import { useAuth } from '@/providers/auth-provider';
+import { useMessages } from '@/providers/messages-provider';
+import { uploadAttachment } from '@/services/attachments-service';
 import { getChatRequest } from '@/services/chat-api';
+import { styles } from '@/styles/chat.styles';
 import type { ChatData } from '@/types/chat';
 import type { MessageData } from '@/types/message';
+import {
+  formatMessageDate,
+  formatMessageTime,
+  isSameDay
+} from '@/utils/date';
+import * as DocumentPicker from 'expo-document-picker';
 import {
   Href,
   router,
@@ -19,16 +30,6 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-import { Message } from '@/components/message';
-import { useAuth } from '@/providers/auth-provider';
-import { useMessages } from '@/providers/messages-provider';
-import { styles } from '@/styles/chat.styles';
-import {
-  formatMessageDate,
-  formatMessageTime,
-  isSameDay
-} from '@/utils/date';
 
 
 export default function ChatScreen() {
@@ -243,6 +244,43 @@ export default function ChatScreen() {
       stopTyping,
     ]), 
   );
+
+  const handlePickAttachment = async () => {
+    if (!token) {
+      return;
+    }
+
+    const result =
+      await DocumentPicker.getDocumentAsync({
+        multiple: false,
+        copyToCacheDirectory: true,
+      });
+
+    if (result.canceled) {
+      return;
+    }
+
+    const asset = result.assets[0];
+
+    try {
+      const attachment =
+        await uploadAttachment(
+          chatId,
+          asset,
+          token,
+        );
+
+      console.log(
+        'Uploaded attachment:',
+        attachment,
+      );
+    } catch (error) {
+      console.error(
+        'Failed to upload attachment:',
+        error,
+      );
+    }
+  };
   
   const messageList = messages
     .filter(
@@ -1059,14 +1097,22 @@ export default function ChatScreen() {
             )}
 
             <View style={styles.inputRow}>
-              <TextInput 
-                value={text}
-                onChangeText={handleTextChange}
-                placeholder="Написать сообщение..."
-                placeholderTextColor='gray'
-                style={styles.input}
-                multiline
-              />
+              <View style={styles.inputWrapper}>
+                <TextInput 
+                  value={text}
+                  onChangeText={handleTextChange}
+                  placeholder="Написать сообщение..."
+                  placeholderTextColor='gray'
+                  style={styles.input}
+                  multiline
+                />
+                <Pressable
+                  style={styles.attachmentButton}
+                  onPress={handlePickAttachment}
+                >
+                  <Text>📎</Text>
+                </Pressable>
+              </View>
               <Pressable
                 style={({ pressed }) => [
                   styles.sendButton, 
