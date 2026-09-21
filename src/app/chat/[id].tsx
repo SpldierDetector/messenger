@@ -804,6 +804,12 @@ export default function ChatScreen() {
                 animated: false,
               });
 
+              if (!hasInitialScrollCompletedRef.current) {
+                hasInitialScrollCompletedRef.current = true;
+
+                setIsInitialMessagePositionReady(true);
+              }
+
               isInitialScrollScheduledRef.current = false;
             }, 300);
           }}
