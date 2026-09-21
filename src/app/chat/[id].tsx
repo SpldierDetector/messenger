@@ -5,7 +5,10 @@ import { uploadAttachment } from '@/services/attachments-service';
 import { getChatRequest } from '@/services/chat-api';
 import { styles } from '@/styles/chat.styles';
 import type { ChatData } from '@/types/chat';
-import type { MessageData } from '@/types/message';
+import type { 
+  MessageData,
+  AttachmentData, 
+} from '@/types/message';
 import {
   formatMessageDate,
   formatMessageTime,
@@ -86,6 +89,8 @@ export default function ChatScreen() {
   ] = useState(false);
   const [replyingMessage, setReplyingMessage] = useState<MessageData | null>(null);
   const [text, setText] = useState('');
+  const [selectedAttachment, setSelectedAttachment] = useState<AttachmentData | null>(null);
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [isSearchPending, setIsSearchPending] = useState(false);
   const [messageSearchText, setMessageSearchText] = useState('');
@@ -246,39 +251,44 @@ export default function ChatScreen() {
   );
 
   const handlePickAttachment = async () => {
-    if (!token) {
+    if (
+      !token ||
+      isUploadingAttachment ||
+      selectedAttachment
+    ) {
       return;
     }
-
-    const result =
-      await DocumentPicker.getDocumentAsync({
-        multiple: false,
-        copyToCacheDirectory: true,
-      });
-
-    if (result.canceled) {
-      return;
-    }
-
-    const asset = result.assets[0];
 
     try {
+      setIsUploadingAttachment(true);
+
+      const result =
+        await DocumentPicker.getDocumentAsync({
+          multiple: false,
+          copyToCacheDirectory: true,
+        });
+
+      if (result.canceled) {
+        return;
+      }
+
+      const asset = result.assets[0];
+
       const attachment =
         await uploadAttachment(
           chatId,
           asset,
           token,
-        );
-
-      console.log(
-        'Uploaded attachment:',
-        attachment,
       );
+
+      setSelectedAttachment(attachment);
     } catch (error) {
       console.error(
         'Failed to upload attachment:',
         error,
       );
+    } finally {
+      setIsUploadingAttachment(false);
     }
   };
   
@@ -1099,6 +1109,34 @@ export default function ChatScreen() {
                     ✕
                   </Text>
                 </Pressable>
+              </View>
+            )}
+
+            {(isUploadingAttachment || selectedAttachment) && (
+              <View style={styles.attachmentBar}>
+                <Text style={styles.attachmentIcon}>
+                  📄
+                </Text>
+                
+                <Text
+                  numberOfLines={1}
+                  style={styles.attachmentName}
+                >
+                  {isUploadingAttachment
+                    ? 'Загрузка файла...'
+                    : selectedAttachment?.originalName}
+                </Text>
+                
+                {selectedAttachment && (
+                  <Pressable
+                    style={styles.attachmentRemoveButton}
+                    onPress={() => setSelectedAttachment(null)}
+                  >
+                    <Text style={styles.attachmentRemoveText}>
+                      ✕
+                    </Text>
+                  </Pressable>
+                )}
               </View>
             )}
 

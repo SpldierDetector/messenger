@@ -309,4 +309,40 @@ attachmentButton: {
   alignItems: 'center',
   justifyContent: 'center',
 },
+attachmentBar: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  alignSelf: 'flex-start',
+  maxWidth: '100%',
+  gap: 8,
+
+  marginHorizontal: 12,
+  marginBottom: 8,
+  paddingHorizontal: 10,
+  paddingVertical: 8,
+
+  backgroundColor: '#242529',
+  borderWidth: 1,
+  borderColor: '#383A40',
+  borderRadius: 12,
+},
+attachmentIcon: {
+  fontSize: 18,
+},
+attachmentName: {
+  flexShrink: 1,
+  fontSize: 13,
+  color: '#F2F2F2',
+},
+attachmentRemoveButton: {
+  width: 28,
+  height: 28,
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: 14,
+},
+attachmentRemoveText: {
+  fontSize: 15,
+  color: '#A0A0A0',
+},
 });
