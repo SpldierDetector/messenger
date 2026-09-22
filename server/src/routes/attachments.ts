@@ -1,11 +1,16 @@
 import { Router } from 'express';
 import { rmSync } from 'node:fs';
-import { getAttachmentById, insertAttachment } from '../db/attachments.js';
+import { 
+  getAttachmentById,
+  getDownloadableAttachmentForUser,
+  insertAttachment,
+} from '../db/attachments.js';
 import { isUserInChat } from '../db/chat-members.js';
 import { mapAttachmentRow } from '../mappers/message.js';
 import { requireAuth } from '../middleware/auth.js';
 import type { AttachmentRow, AttachmentType } from '../types/message.js';
 import { attachmentUpload } from '../uploads/upload.js';
+import { getChatUploadDirectory } from '../uploads/storage.js';
 
 function getAttachmentType(
   mimeType: string,
@@ -180,6 +185,94 @@ export function createAttachmentsRouter() {
             'failed to create attachment',
         });
       }
+    },
+  );
+
+  attachmentsRouter.get(
+    '/:chatId/attachments/:attachmentId/download',
+    requireAuth,
+    (request, response) => {
+      const chatId = Number(request.params.chatId);
+      const attachmentId = Number(request.params.attachmentId);
+      const currentUser = request.user;
+      
+      if (
+        !Number.isSafeInteger(chatId) ||
+        chatId <= 0 ||
+        !Number.isSafeInteger(attachmentId) ||
+        attachmentId <= 0
+      ) {
+        response.status(400).json({
+          error: 'invalid chatId or attachmentId',
+        });
+
+        return;
+      }
+
+      if (!currentUser) {
+        response.status(401).json({
+          error: 'authorization required',
+        });
+
+        return;
+      }
+
+      const attachment = getDownloadableAttachmentForUser(
+        attachmentId,
+        chatId,
+        currentUser.id,
+      );
+
+      if (!attachment) {
+        response.status(404).json({
+          error: 'attachment not found',
+        });
+
+        return;
+      }
+
+      const directory = getChatUploadDirectory(chatId);
+
+      response.setHeader(
+        'Cache-Control',
+        'private, no-store',
+      );
+
+      response.setHeader(
+        'X-Content-Type-Options',
+        'nosniff',
+      );
+
+      response.download(
+        attachment.storedName,
+        attachment.originalName,
+        {
+          root: directory,
+        },
+        (error) => {
+          if (!error) {
+            return;
+          }
+
+          console.error(
+            'Failed to download attachment:',
+            error,
+          );
+
+          if (response.headersSent) {
+            response.destroy(error);
+            return;
+          }
+
+          const fileError = error as NodeJS.ErrnoException;
+
+          response.status(
+            fileError.code === 'ENOENT' ? 404 : 500,
+          ).json({
+            error: 'failed to download attachment',
+          });
+        },
+      );
     },
   );
 

@@ -197,7 +197,50 @@ export function attachAttachmentsToMessage(
       );
 
     attachedCount += Number(result.changes);
-
-    return attachedCount;
   }
+  
+  return attachedCount;
+}
+
+export function getDownloadableAttachmentForUser(
+  attachmentId: number,
+  chatId: number,
+  userId: number,
+): AttachmentRow | undefined {
+  const statement = database.prepare(`
+    SELECT attachment.*
+    FROM attachments AS attachment
+    
+    JOIN messages AS message
+      ON message.id = attachment.messageId
+      AND message.chatId = attachment.chatId
+
+    JOIN chat_members AS member
+      ON member.chatId = message.chatId
+      AND member.userId = ?
+
+    LEFT JOIN message_hidden_for_users AS hidden
+      ON hidden.messageId = message.id
+      AND hidden.userId = member.userId
+
+    WHERE attachment.id = ?
+      AND attachment.chatId = ?
+      AND message.deletedAt IS NULL
+      AND hidden.messageId IS NULL
+      AND (
+        member.clearedBeforeMessageId IS NULL
+        OR message.id >
+          member.clearedBeforeMessageId IS NULL
+          OR message.id >
+            member.clearedBeforeMessageId
+      )
+
+    LIMIT 1
+  `);
+
+  return statement.get(
+    userId,
+    attachmentId,
+    chatId,
+  ) as AttachmentRow | undefined;
 }

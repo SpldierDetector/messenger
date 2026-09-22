@@ -31,6 +31,7 @@ import {
 } from "@/services/websocket-service";
 
 import type {
+  AttachmentData,
   MessageData,
   MessageReceiptData,
   UnreadMessageCount,
@@ -48,7 +49,7 @@ type MessagesContextValue = {
   deleteMessageForMe: (messageId: number) => Promise<boolean>;
   clearChatHistoryLocally: (chatId: number) => void;
   forwardMessage: (messageId: number, targetChatId: number) => Promise<boolean>;
-  sendMessage: (chatId: number, text: string, replyToMessageId?: number | null) => Promise<boolean>;
+  sendMessage: (chatId: number, text: string, replyToMessageId?: number | null, attachments?: AttachmentData[]) => Promise<boolean>;
   retryMessage: (clientMessageId: string) => Promise<boolean>;
   isLoaded: boolean;
   isSending: boolean;
@@ -580,14 +581,14 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
     ].join('-');
   }
   
-  async function sendMessage(chatId: number, text: string, replyToMessageId: number | null = null): Promise<boolean> {
+  async function sendMessage(chatId: number, text: string, replyToMessageId: number | null = null, attachments: AttachmentData[] = []): Promise<boolean> {
     if (!token || !user) {
       return false;
     }
     
     const normalizedText = text.trim();
 
-    if (!normalizedText) {
+    if (!normalizedText && attachments.length === 0) {
       return false;
     }
 
@@ -609,7 +610,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       replyToMessageId,
       forwardedFromMessageId: null,
       forwardedFromAuthor: null,
-      attachments: [],
+      attachments,
       isOwn: true,
       sendStatus: 'sending',
     };
@@ -631,6 +632,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
           user.id,
           clientMessageId,
           replyToMessageId,
+          attachments.map((attachment) => attachment.id),
         );
 
       addOrReplaceServerMessage(
@@ -704,6 +706,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
         user.id,
         clientMessageId,
         failedMessage.replyToMessageId,
+        failedMessage.attachments.map((attachment) => attachment.id),
       );
       addOrReplaceServerMessage(message);
 

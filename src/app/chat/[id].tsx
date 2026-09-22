@@ -319,7 +319,8 @@ export default function ChatScreen() {
   const latestMessage = messageList[messageList.length - 1];
   const hasMoreMessages = hasMoreMessagesByChat[chatId] ?? false;
   const isLoadingOlderMessages = isLoadingOlderMessagesByChat[chatId] ?? false;
-  const isSendDisabled = !text.trim() || isEditing;
+  const isSendDisabled = (!text.trim() && !selectedAttachment) ||
+    isUploadingAttachment || isEditing;
 
   useEffect(() => {
     if (
@@ -596,7 +597,11 @@ export default function ChatScreen() {
   async function handleSend() {
     const normalizedText = text.trim();
 
-    if (!normalizedText) {
+    if (!normalizedText && !selectedAttachment) {
+      return;
+    }
+
+    if (isUploadingAttachment || isEditing) {
       return;
     }
 
@@ -623,14 +628,19 @@ export default function ChatScreen() {
     }
 
     const replyToMessageId = replyingMessage?.id ?? null;
+    const attachments = selectedAttachment
+      ? [selectedAttachment]
+      : [];
 
     setText('');
     setReplyingMessage(null);
+    setSelectedAttachment(null);
 
     void sendMessage(
       chatId,
       normalizedText,
       replyToMessageId,
+      attachments,
     );
   }
   
@@ -895,6 +905,7 @@ export default function ChatScreen() {
                   editedAt={item.editedAt}
                   deletedAt={item.deletedAt}
                   sendStatus={item.sendStatus}
+                  attachments={item.attachments}
                   onRetry={
                     item.sendStatus === 'failed' &&
                     item.clientMessageId
