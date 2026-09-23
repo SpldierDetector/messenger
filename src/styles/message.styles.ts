@@ -154,4 +154,61 @@ export const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 3,
   },
+
+  attachmentImage: {
+    width: 200,
+    maxWidth: '100%',
+    height: 160,
+    marginTop: 6,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.18)',
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  attachmentImagePreview: {
+    width: '100%',
+    height: '100%',
+  },
+
+  attachmentImagePlaceholder: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 12,
+    textAlign: 'center',
+    padding: 10,
+  },
+
+  imageViewer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    padding: 16,
+  },
+
+  imageViewerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 12,
+    paddingBottom: 16,
+  },
+
+  imageViewerButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  },
+
+  imageViewerButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+
+  imageViewerPhoto: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
 })

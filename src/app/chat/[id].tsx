@@ -94,6 +94,8 @@ export default function ChatScreen() {
   const [replyingMessage, setReplyingMessage] = useState<MessageData | null>(null);
   const [text, setText] = useState('');
   const [selectedAttachment, setSelectedAttachment] = useState<AttachmentData | null>(null);
+  const [downloadingAttachmentId, setDownloadingAttachmentId] = useState<number | null>(null);
+  const [attachmentDownloadError, setAttachmentDownloadError] = useState<string | null>(null);
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [isSearchPending, setIsSearchPending] = useState(false);
@@ -299,9 +301,12 @@ export default function ChatScreen() {
   async function handleAttachmentPress(
     attachment: AttachmentData,
   ) {
-    if(!token) {
+    if(!token || downloadingAttachmentId !== null) {
       return;
     }
+
+    setDownloadingAttachmentId(attachment.id);
+    setAttachmentDownloadError(null);
 
     try {
       if (Platform.OS === 'web') {
@@ -322,6 +327,13 @@ export default function ChatScreen() {
         'Failed to download attachment:',
         error,
       );
+
+      setAttachmentDownloadError(
+        `Не удалось скачать файл «${attachment.originalName}». ` +
+        'Проверьте подключение и попробуйте ещё раз.',
+      );
+    } finally {
+      setDownloadingAttachmentId(null);
     }
   }
   
@@ -939,6 +951,9 @@ export default function ChatScreen() {
                   deletedAt={item.deletedAt}
                   sendStatus={item.sendStatus}
                   attachments={item.attachments}
+                  chatId={chatId}
+                  token={token}
+                  downloadingAttachmentId={downloadingAttachmentId}
                   onAttachmentPress={(attachment) => {void handleAttachmentPress(attachment)}}
                   onRetry={
                     item.sendStatus === 'failed' &&
@@ -1100,6 +1115,12 @@ export default function ChatScreen() {
         {error && (
           <Text style={styles.errorText}>
             {error}
+          </Text>
+        )}
+
+        {attachmentDownloadError && (
+          <Text style={styles.errorText}>
+            {attachmentDownloadError}
           </Text>
         )}
 

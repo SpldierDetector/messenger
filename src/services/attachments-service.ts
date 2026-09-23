@@ -134,3 +134,64 @@ export async function downloadAttachmentNative(
     },
   );
 }
+
+export async function loadAttachmentImageWeb(
+  chatId: number,
+  attachment: AttachmentData,
+  token: string,
+): Promise<string> {
+  const response = await fetch(
+    `${API_BASE_URL}/chats/${chatId}/attachments/${attachment.id}/download`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to load image: HTTP ${response.status}`,
+    );
+  }
+
+  const blob = await response.blob();
+
+  return URL.createObjectURL(blob);
+}
+
+export async function loadAttachmentImageNative(
+  chatId: number,
+  attachment: AttachmentData,
+  token: string,
+): Promise<File> {
+  const directory = new Directory(
+    Paths.cache,
+    `voxa-image-${attachment.id}-${Date.now()}`,
+  );
+
+  directory.create();
+
+  const fileName =
+    attachment.originalName.replace(/[\\/]/g, '_') ||
+    'image';
+
+  const destination = new File(
+    directory,
+    fileName,
+  );
+
+  const downloadUrl = 
+    `${API_BASE_URL}/chats/${chatId}` +
+    `/attachments/${attachment.id}/download`;
+
+  return File.downloadFileAsync(
+    downloadUrl,
+    destination,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+}

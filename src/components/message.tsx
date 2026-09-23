@@ -1,5 +1,6 @@
 import {
   Pressable,
+  Platform,
   StyleSheet,
   Text,
   View,
@@ -9,6 +10,7 @@ import type {
   MessageSendStatus,
 } from '@/types/message';
 import { styles } from '@/styles/message.styles';
+import { AttachmentImage } from '@/components/attachment-image';
 
 type MessageProps = {
   author: string;
@@ -25,12 +27,17 @@ type MessageProps = {
   isRead: boolean;
   sendStatus: MessageSendStatus | null;
   attachments?: AttachmentData[];
+  downloadingAttachmentId?: number | null;
+  chatId?: number;
+  token?: string | null;
   onAttachmentPress?: (attachment: AttachmentData) => void;
   onRetry?: () => void;
   onLongPress?: () => void;
 };
 
 export function Message({
+  chatId,
+  token,
   author,
   text,
   time,
@@ -46,8 +53,9 @@ export function Message({
   onRetry,
   isRead,
   onLongPress,
-  onAttachmentPress,
   attachments = [],
+  downloadingAttachmentId = null,
+  onAttachmentPress,
 }: MessageProps) {
   return (
     <Pressable
@@ -101,12 +109,24 @@ export function Message({
         </Text>
       )}
       
-      {deletedAt === null && attachments.map((attachment) => (
+      {deletedAt === null && attachments.map((attachment) => 
+        attachment.type === 'image' &&
+        chatId !== undefined &&
+        token ? (
+          <AttachmentImage
+            key={attachment.id}
+            chatId={chatId}
+            attachment = {attachment}
+            token={token}
+            onPress={() => onAttachmentPress?.(attachment)}
+            disabled={downloadingAttachmentId !== null}
+          />
+        ) : (
         <Pressable
           key={attachment.id}
           style={styles.attachmentCard}
           onPress={() => onAttachmentPress?.(attachment)}
-          disabled={!onAttachmentPress}
+          disabled={!onAttachmentPress || downloadingAttachmentId !== null}
         >
           <Text style={styles.attachmentIcon}>
             📄
@@ -121,11 +141,13 @@ export function Message({
             </Text>
 
             <Text style={styles.attachmentSize}>
-              {attachment.size < 1024
-                ? `${attachment.size} Б`
-                : attachment.size < 1024 * 1024
-                  ? `${(attachment.size / 1024).toFixed(1)} КБ`
-                  : `${(attachment.size / (1024 * 1024)).toFixed(1)} МБ`}
+              {downloadingAttachmentId === attachment.id
+                ? 'Скачивание...'
+                : attachment.size < 1024
+                  ? `${attachment.size} Б`
+                  : attachment.size < 1024 * 1024
+                    ? `${(attachment.size / 1024).toFixed(1)} КБ`
+                    : `${(attachment.size / (1024 * 1024)).toFixed(1)} МБ`}
             </Text>
           </View>
         </Pressable>
