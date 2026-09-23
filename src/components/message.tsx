@@ -25,6 +25,7 @@ type MessageProps = {
   isRead: boolean;
   sendStatus: MessageSendStatus | null;
   attachments?: AttachmentData[];
+  onAttachmentPress?: (attachment: AttachmentData) => void;
   onRetry?: () => void;
   onLongPress?: () => void;
 };
@@ -45,6 +46,7 @@ export function Message({
   onRetry,
   isRead,
   onLongPress,
+  onAttachmentPress,
   attachments = [],
 }: MessageProps) {
   return (
@@ -100,9 +102,11 @@ export function Message({
       )}
       
       {deletedAt === null && attachments.map((attachment) => (
-        <View
+        <Pressable
           key={attachment.id}
           style={styles.attachmentCard}
+          onPress={() => onAttachmentPress?.(attachment)}
+          disabled={!onAttachmentPress}
         >
           <Text style={styles.attachmentIcon}>
             📄
@@ -124,7 +128,7 @@ export function Message({
                   : `${(attachment.size / (1024 * 1024)).toFixed(1)} МБ`}
             </Text>
           </View>
-        </View>
+        </Pressable>
       ))}
 
       <View style={styles.messageMeta}>

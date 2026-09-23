@@ -1,7 +1,11 @@
 import { Message } from '@/components/message';
 import { useAuth } from '@/providers/auth-provider';
 import { useMessages } from '@/providers/messages-provider';
-import { uploadAttachment } from '@/services/attachments-service';
+import { 
+  downloadAttachmentNative,
+  downloadAttachmentWeb,
+  uploadAttachment 
+} from '@/services/attachments-service';
 import { getChatRequest } from '@/services/chat-api';
 import { styles } from '@/styles/chat.styles';
 import type { ChatData } from '@/types/chat';
@@ -291,6 +295,35 @@ export default function ChatScreen() {
       setIsUploadingAttachment(false);
     }
   };
+
+  async function handleAttachmentPress(
+    attachment: AttachmentData,
+  ) {
+    if(!token) {
+      return;
+    }
+
+    try {
+      if (Platform.OS === 'web') {
+        await downloadAttachmentWeb(
+          chatId,
+          attachment,
+          token,
+        );
+      } else {
+        await downloadAttachmentNative(
+          chatId,
+          attachment,
+          token,
+        );
+      }
+    } catch (error) {
+      console.error(
+        'Failed to download attachment:',
+        error,
+      );
+    }
+  }
   
   const messageList = messages
     .filter(
@@ -906,6 +939,7 @@ export default function ChatScreen() {
                   deletedAt={item.deletedAt}
                   sendStatus={item.sendStatus}
                   attachments={item.attachments}
+                  onAttachmentPress={(attachment) => {void handleAttachmentPress(attachment)}}
                   onRetry={
                     item.sendStatus === 'failed' &&
                     item.clientMessageId
