@@ -11,6 +11,7 @@ export const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    minWidth: 0,
     color: 'white',
     borderWidth: 1,
     borderColor: 'gray',
@@ -19,8 +20,6 @@ export const styles = StyleSheet.create({
     paddingVertical: 10,
     maxHeight: 120,
     textAlignVertical: 'top',
-    paddingRight: 44,
-    width: '100%',
   },
   inputRow: {
     flexDirection: "row",
@@ -297,15 +296,14 @@ messagesPreparing: {
 },
 inputWrapper: {
   flex: 1,
-  position: 'relative',
   minWidth: 0,
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 4,
 },
 attachmentButton: {
-  position: 'absolute',
-  right: 8,
-  top: 0,
-  bottom: 0,
-  width: 36,
+  width: 32,
+  height: 40,
   alignItems: 'center',
   justifyContent: 'center',
 },
@@ -344,5 +342,30 @@ attachmentRemoveButton: {
 attachmentRemoveText: {
   fontSize: 15,
   color: '#A0A0A0',
+},
+voicePreview: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 10,
+  padding: 10,
+  marginBottom: 8,
+  borderRadius: 12,
+  backgroundColor: '#242529',
+},
+voicePreviewButton: {
+  width: 36,
+  height: 36,
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: 18,
+  backgroundColor: '#2563eb',
+},
+voicePreviewButtonText: {
+  color: 'white',
+  fontSize: 18,
+},
+voicePreviewText: {
+  color: 'white',
+  fontSize: 13,
 },
 });

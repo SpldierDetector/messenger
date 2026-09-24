@@ -26,7 +26,16 @@ import {
   useLocalSearchParams,
 } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { 
+  AudioModule,
+  RecordingPresets,
+  setAudioModeAsync,
+  useAudioPlayer,
+  useAudioPlayerStatus,
+  useAudioRecorder, 
+} from 'expo-audio';
 import {
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -101,6 +110,12 @@ export default function ChatScreen() {
   const [isSearchPending, setIsSearchPending] = useState(false);
   const [messageSearchText, setMessageSearchText] = useState('');
   const [isInitialMessagePositionReady, setIsInitialMessagePositionReady] = useState(false);
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordedVoiceUri, setRecordedVoiceUri] = useState<string | null>(null);
+  const voicePlayer = useAudioPlayer(null);
+  const voicePlayerStatus = useAudioPlayerStatus(voicePlayer);
+  const recordingBusyRef = useRef(false);  
   const listRef = useRef<FlatList>(null);
   const hasInitialScrollCompletedRef = useRef(false);
   const isNearBottomRef = useRef(true);
@@ -164,6 +179,16 @@ export default function ChatScreen() {
       };
   }, [chatId,isAuthenticated, token,]);
 
+  useEffect(() => {
+    if (!recordedVoiceUri) {
+      return;
+    }
+
+    voicePlayer.replace({
+      uri: recordedVoiceUri,
+    });
+  }, [recordedVoiceUri, voicePlayer]);
+  
   useEffect(() => {
     hasInitialScrollCompletedRef.current = false;
     isInitialScrollScheduledRef.current = false;
@@ -255,6 +280,107 @@ export default function ChatScreen() {
       stopTyping,
     ]), 
   );
+
+  async function handleVoicePreviewPress() {
+    if (!recordedVoiceUri) {
+      return;
+    }
+
+    try {
+      if (voicePlayerStatus.playing) {
+        voicePlayer.pause();
+        return;
+      }
+
+      if (
+        voicePlayerStatus.didJustFinish ||
+        (
+          voicePlayerStatus.duration > 0 &&
+          voicePlayerStatus.currentTime >=
+            voicePlayerStatus.duration
+        )
+      ) {
+        await voicePlayer.seekTo(0);
+      }
+
+      voicePlayer.play();
+    } catch (error) {
+      console.error(
+        'Failed to play voice preview:',
+        error,
+      );
+    }
+  }
+
+  async function handleMicrophonePress() {
+    if (recordingBusyRef.current) {
+      return;
+    }
+
+    recordingBusyRef.current = true;
+
+    try {
+      if (isRecording) {
+        await audioRecorder.stop();
+
+        setIsRecording(false);
+
+        await setAudioModeAsync({
+          allowsRecording: false,
+        });
+
+        const uri = audioRecorder.uri;
+
+        if (!uri) {
+          throw new Error('Recording URI is missing');
+        }
+
+        setRecordedVoiceUri(uri);
+
+        console.log('Voice recording saved:', uri);
+
+        Alert.alert(
+          'Запись готова',
+          'Голосовое сообщение записано. ' +
+          'Скоро добавим предпрослушивание и отправку.',
+        );
+
+        return;
+      }
+
+      const permission = await AudioModule.requestRecordingPermissionsAsync();
+
+      if (!permission.granted) {
+        Alert.alert(
+          'Нет доступа к микрофону',
+          'Разрешите Voxa использовать микрофон.',
+        );
+
+        return;
+      }
+
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
+      });
+
+      await audioRecorder.prepareToRecordAsync();
+
+      audioRecorder.record();
+
+      setRecordedVoiceUri(null);
+      setIsRecording(true);
+    } catch (error) {
+      console.error('Voice recording failed:', error);
+
+      Alert.alert(
+        'Ошибка записи',
+        'Не удалось записать голосовое сообщение.',
+      );
+    } finally {
+      recordingBusyRef.current = false;
+    }
+  }
 
   const handlePickAttachment = async () => {
     if (
@@ -1206,6 +1332,25 @@ export default function ChatScreen() {
               </View>
             )}
 
+            {recordedVoiceUri && !isRecording && (
+              <View style={styles.voicePreview}>
+                <Pressable
+                  style={styles.voicePreviewButton}
+                  onPress={() => {
+                    void handleVoicePreviewPress();
+                  }}
+                >
+                  <Text style={styles.voicePreviewButtonText}>
+                    {voicePlayerStatus.playing ? '⏸' : '▶️'}
+                  </Text>
+                </Pressable>
+
+                <Text style={styles.voicePreviewText}>
+                  Предпрослушивание голосового
+                </Text>
+              </View>
+            )}
+
             <View style={styles.inputRow}>
               <View style={styles.inputWrapper}>
                 <TextInput 
@@ -1223,6 +1368,14 @@ export default function ChatScreen() {
                   <Text>📎</Text>
                 </Pressable>
               </View>
+              <Pressable
+                style={styles.attachmentButton}
+                onPress={() => {
+                  void handleMicrophonePress();
+                }}
+              >
+                <Text>{isRecording ? '⏹️' : '🎤'}</Text>
+              </Pressable>
               <Pressable
                 style={({ pressed }) => [
                   styles.sendButton, 
