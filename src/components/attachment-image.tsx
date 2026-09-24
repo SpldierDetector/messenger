@@ -33,6 +33,7 @@ export function AttachmentImage({
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isPreviewVisible, setIsPreviewVisible] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let isActive = true;
@@ -99,14 +100,23 @@ export function AttachmentImage({
         cachedFile.delete();
       }
     };
-  }, [chatId, attachment.id, token]);
+  }, [chatId, attachment.id, token, reloadKey]);
 
   return (
     <>
       <Pressable
         style={styles.attachmentImage}
-        onPress={() => setIsPreviewVisible(true)}
-        disabled={disabled || !imageUrl || loadError}
+        onPress={() => {
+          if (loadError) {
+            setReloadKey((current) => current + 1);
+            return;
+          }
+
+          if (imageUrl) {
+            setIsPreviewVisible(true)
+          }
+        }}
+        disabled={disabled || (!imageUrl && !loadError)}
       >
         {imageUrl && !loadError ? (
           <Image

@@ -2,6 +2,7 @@ import cors from 'cors';
 import express from 'express';
 import { createServer } from 'node:http';
 import { WebSocket, WebSocketServer } from 'ws';
+import { cleanupExpiredAttachments } from './uploads/cleanup.js';
 
 import { getUserBySessionToken } from './auth/auth-service.js';
 import {
@@ -383,4 +384,13 @@ webSocketServer.on('close', () => {
 
 server.listen(port, '0.0.0.0', () => {
   console.log(`Server started on port ${port}`);
+
+  try {
+    cleanupExpiredAttachments();
+  } catch (error) {
+    console.error(
+      'Failed to run attachment cleanup:',
+      error,
+    );
+  }
 });

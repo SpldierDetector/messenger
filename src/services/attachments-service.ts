@@ -86,6 +86,45 @@ export async function downloadAttachmentWeb(
   }, 60_000);
 }
 
+const SHARED_FILE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+function cleanupOldSharedFiles(): void {
+  const now = Date.now();
+  const cachedItems = Paths.cache.list();
+
+  for (const item of cachedItems) {
+    if (!(item instanceof Directory)) {
+      continue;
+    }
+
+    const match = item.name.match(
+      /^voxa-\d+-\d+-(\d{13})$/,
+    );
+
+    if (!match) {
+      continue;
+    }
+
+    const createdAt = Number(match[1]);
+
+    if (
+      !Number.isFinite(createdAt) ||
+      now - createdAt < SHARED_FILE_MAX_AGE_MS
+    ) {
+      continue;
+    }
+
+    try {
+      item.delete();
+    } catch (error) {
+      console.warn(
+        'Failed to clean up shared file:',
+        error,
+      );
+    }
+  }
+}
+
 export async function downloadAttachmentNative(
   chatId: number,
   attachment: AttachmentData,
@@ -96,6 +135,15 @@ export async function downloadAttachmentNative(
   if (!sharingAvailable) {
     throw new Error(
       'File sharing is not available on this device',
+    );
+  }
+
+  try {
+    cleanupOldSharedFiles();
+  } catch (error) {
+    console.warn(
+      'Failed to clean up attachment cache:',
+      error,
     );
   }
 
@@ -115,8 +163,10 @@ export async function downloadAttachmentNative(
 
   const destination = new File(directory, fileName);
 
-  const downloadedFile =
-    await File.downloadFileAsync(
+  let downloadedFile: File;
+
+  try {
+    downloadedFile = await File.downloadFileAsync(
       downloadUrl,
       destination,
       {
@@ -125,12 +175,26 @@ export async function downloadAttachmentNative(
         },
       },
     );
+  } catch (error) {
+    try {
+      if (directory.exists) {
+        directory.delete();
+      }
+    } catch (cleanupError) {
+      console.warn(
+        'Failed to clean up incomplete download:',
+        cleanupError,
+      );
+    }
+
+    throw error;
+  }
 
   await Sharing.shareAsync(
     downloadedFile.uri,
     {
       mimeType: attachment.mimeType,
-      dialogTitle: 'Сщхранить или поделиться файлом',
+      dialogTitle: 'Сохранить или поделиться файлом',
     },
   );
 }
@@ -165,33 +229,35 @@ export async function loadAttachmentImageNative(
   attachment: AttachmentData,
   token: string,
 ): Promise<File> {
-  const directory = new Directory(
-    Paths.cache,
-    `voxa-image-${attachment.id}-${Date.now()}`,
-  );
-
-  directory.create();
-
   const fileName =
     attachment.originalName.replace(/[\\/]/g, '_') ||
     'image';
 
   const destination = new File(
-    directory,
-    fileName,
+    Paths.cache,
+    `voxa-image-${chatId}-${attachment.id}-${Date.now()}-${fileName}`,
   );
 
-  const downloadUrl = 
+  const downloadUrl =
     `${API_BASE_URL}/chats/${chatId}` +
     `/attachments/${attachment.id}/download`;
 
-  return File.downloadFileAsync(
-    downloadUrl,
-    destination,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
+  try {
+    return await File.downloadFileAsync(
+      downloadUrl,
+      destination,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       },
-    },
-  );
+    );
+  } catch (error) {
+
+    if (destination.exists) {
+      destination.delete();
+    }
+
+    throw error;
+  }
 }

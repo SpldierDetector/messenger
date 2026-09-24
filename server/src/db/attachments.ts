@@ -229,10 +229,7 @@ export function getDownloadableAttachmentForUser(
       AND hidden.messageId IS NULL
       AND (
         member.clearedBeforeMessageId IS NULL
-        OR message.id >
-          member.clearedBeforeMessageId IS NULL
-          OR message.id >
-            member.clearedBeforeMessageId
+        OR message.id > member.clearedBeforeMessageId
       )
 
     LIMIT 1
@@ -243,4 +240,36 @@ export function getDownloadableAttachmentForUser(
     attachmentId,
     chatId,
   ) as AttachmentRow | undefined;
+}
+
+export function getExpiredUnattachedAttachments(
+  cutoff: number,
+  limit = 100,
+): AttachmentRow[] {
+  return database
+    .prepare(`
+      SELECT *
+      FROM attachments
+      WHERE messageId IS NULL
+        AND createdAt < ?
+      ORDER BY createdAt ASC, id ASC
+      LIMIT ?  
+    `)
+    .all(cutoff, limit) as AttachmentRow[];
+}
+
+export function deleteExpiredUnattachedAttachment(
+  attachmentId: number,
+  cutoff: number,
+): boolean {
+  const result = database
+    .prepare(`
+      DELETE FROM attachments
+      WHERE id = ?
+        AND messageId IS NULL
+        AND createdAt < ?  
+    `)
+    .run(attachmentId, cutoff);
+
+  return result.changes === 1;
 }
