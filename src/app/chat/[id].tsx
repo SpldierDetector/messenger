@@ -4,7 +4,8 @@ import { useMessages } from '@/providers/messages-provider';
 import { 
   downloadAttachmentNative,
   downloadAttachmentWeb,
-  uploadAttachment 
+  uploadAttachment,
+  uploadVoiceAttachment,
 } from '@/services/attachments-service';
 import { getChatRequest } from '@/services/chat-api';
 import { styles } from '@/styles/chat.styles';
@@ -113,6 +114,7 @@ export default function ChatScreen() {
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const [isRecording, setIsRecording] = useState(false);
   const [recordedVoiceUri, setRecordedVoiceUri] = useState<string | null>(null);
+  const [isUploadingVoice, setIsUploadingVoice] = useState(false);
   const voicePlayer = useAudioPlayer(null);
   const voicePlayerStatus = useAudioPlayerStatus(voicePlayer);
   const recordingBusyRef = useRef(false);  
@@ -183,6 +185,8 @@ export default function ChatScreen() {
     if (!recordedVoiceUri) {
       return;
     }
+
+    voicePlayer.pause();
 
     voicePlayer.replace({
       uri: recordedVoiceUri,
@@ -303,6 +307,13 @@ export default function ChatScreen() {
         await voicePlayer.seekTo(0);
       }
 
+      await setAudioModeAsync({
+        allowsRecording: false,
+        playsInSilentMode: true,
+        shouldRouteThroughEarpiece: false,
+        interruptionMode: 'doNotMix',
+      })
+
       voicePlayer.play();
     } catch (error) {
       console.error(
@@ -327,6 +338,9 @@ export default function ChatScreen() {
 
         await setAudioModeAsync({
           allowsRecording: false,
+          playsInSilentMode: true,
+          shouldRouteThroughEarpiece: false,
+          interruptionMode: 'doNotMix',
         });
 
         const uri = audioRecorder.uri;
@@ -338,12 +352,6 @@ export default function ChatScreen() {
         setRecordedVoiceUri(uri);
 
         console.log('Voice recording saved:', uri);
-
-        Alert.alert(
-          'Запись готова',
-          'Голосовое сообщение записано. ' +
-          'Скоро добавим предпрослушивание и отправку.',
-        );
 
         return;
       }
@@ -364,6 +372,12 @@ export default function ChatScreen() {
         playsInSilentMode: true,
       });
 
+      voicePlayer.pause();
+
+      if (voicePlayerStatus.currentTime > 0) {
+        await voicePlayer.seekTo(0);
+      }
+
       await audioRecorder.prepareToRecordAsync();
 
       audioRecorder.record();
@@ -380,6 +394,41 @@ export default function ChatScreen() {
     } finally {
       recordingBusyRef.current = false;
     }
+  }
+
+  function formatVoiceDuration(
+    seconds: number,
+  ) {
+    const totalSeconds = Math.max(
+      0,
+      Math.floor(seconds),
+    );
+
+    const minutes = Math.floor(
+      totalSeconds / 60,
+    );
+
+    const remainingSeconds = totalSeconds % 60;
+    return `${minutes}:${remainingSeconds
+      .toString()
+      .padStart(2, '0')}`;
+  }
+
+  async function handleCancelVoicePreview() {
+    try {
+      if (voicePlayerStatus.playing) {
+        voicePlayer.pause();
+      }
+
+      await voicePlayer.seekTo(0);
+    } catch (error) {
+      console.warn(
+        'Failed to reset voice preview:',
+        error,
+      );
+    }
+
+    setRecordedVoiceUri(null);
   }
 
   const handlePickAttachment = async () => {
@@ -490,8 +539,16 @@ export default function ChatScreen() {
   const latestMessage = messageList[messageList.length - 1];
   const hasMoreMessages = hasMoreMessagesByChat[chatId] ?? false;
   const isLoadingOlderMessages = isLoadingOlderMessagesByChat[chatId] ?? false;
-  const isSendDisabled = (!text.trim() && !selectedAttachment) ||
-    isUploadingAttachment || isEditing;
+  const isSendDisabled = 
+    (
+      !text.trim() && 
+      !selectedAttachment &&
+      !recordedVoiceUri
+    ) ||
+    isUploadingAttachment || 
+    isUploadingVoice ||
+    isEditing ||
+    isRecording;
 
   useEffect(() => {
     if (
@@ -768,11 +825,20 @@ export default function ChatScreen() {
   async function handleSend() {
     const normalizedText = text.trim();
 
-    if (!normalizedText && !selectedAttachment) {
+    if (
+      !normalizedText && 
+      !selectedAttachment &&
+      !recordedVoiceUri
+    ) {
       return;
     }
 
-    if (isUploadingAttachment || isEditing) {
+    if (
+      isUploadingAttachment || 
+      isUploadingVoice ||  
+      isEditing ||
+      isRecording
+    ) {
       return;
     }
 
@@ -799,13 +865,47 @@ export default function ChatScreen() {
     }
 
     const replyToMessageId = replyingMessage?.id ?? null;
-    const attachments = selectedAttachment
-      ? [selectedAttachment]
-      : [];
+    const attachments: AttachmentData[] = 
+      selectedAttachment
+        ? [selectedAttachment]
+        : [];
+    
+    if (recordedVoiceUri) {
+      if (!token) {
+        return;
+      }
+
+      try {
+        setIsUploadingVoice(true);
+
+        const voiceAttachment =
+          await uploadVoiceAttachment(
+            chatId,
+            recordedVoiceUri,
+            token,
+          );
+
+        attachments.push(
+          voiceAttachment,
+        );
+      } catch (error) {
+        console.error(
+          'Failed to upload voice message:',
+          error,
+        );
+
+        return;
+      } finally {
+        setIsUploadingVoice(false);
+      }
+    }
+
+    voicePlayer.pause();
 
     setText('');
     setReplyingMessage(null);
     setSelectedAttachment(null);
+    setRecordedVoiceUri(null);
 
     void sendMessage(
       chatId,
@@ -1346,8 +1446,25 @@ export default function ChatScreen() {
                 </Pressable>
 
                 <Text style={styles.voicePreviewText}>
-                  Предпрослушивание голосового
+                  {formatVoiceDuration(
+                    voicePlayerStatus.currentTime,
+                  )}
+                  {' / '}
+                  {formatVoiceDuration(
+                    voicePlayerStatus.duration,
+                  )}
                 </Text>
+
+                <Pressable
+                  style={styles.voicePreviewCancelButton}
+                  onPress={() => {
+                    void handleCancelVoicePreview();
+                  }}
+                >
+                  <Text style={styles.voicePreviewCancelText}>
+                    ✕
+                  </Text>
+                </Pressable>
               </View>
             )}
 

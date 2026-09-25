@@ -1,5 +1,6 @@
 import type { AttachmentData } from '@/types/message';
 import type { DocumentPickerAsset } from 'expo-document-picker';
+import { Platform } from 'react-native';
 import { API_BASE_URL } from '../config/api';
 import {
   Directory,
@@ -260,4 +261,54 @@ export async function loadAttachmentImageNative(
 
     throw error;
   }
+}
+
+export async function uploadVoiceAttachment(
+  chatId: number,
+  uri: string,
+  token: string,
+): Promise<AttachmentData> {
+  const formData = new FormData();
+
+  if (Platform.OS == 'web') {
+    const voiceResponse = await fetch(uri);
+    const voiceBlob = await voiceResponse.blob();
+
+    formData.append(
+      'file',
+      voiceBlob,
+      'voice-message.webm',
+    );
+  } else {
+    formData.append(
+      'file',
+      {
+        uri,
+        name: 'voice-message.m4a',
+        type: 'audio/mp4',
+      } as unknown as Blob,
+    );
+  }
+
+  const response = await fetch(
+    `${API_BASE_URL}/chats/${chatId}/attachments`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+
+    throw new Error(
+      `Failed to upload voice attachment: ` +
+      `${response.status} ${errorBody}`,
+    );
+  }
+
+  return (await response.json()) as AttachmentData;
 }

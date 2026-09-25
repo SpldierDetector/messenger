@@ -351,6 +351,10 @@ voicePreview: {
   marginBottom: 8,
   borderRadius: 12,
   backgroundColor: '#242529',
+
+  position: 'relative',
+  zIndex: 20,
+  elevation: 20,
 },
 voicePreviewButton: {
   width: 36,
@@ -359,13 +363,29 @@ voicePreviewButton: {
   justifyContent: 'center',
   borderRadius: 18,
   backgroundColor: '#2563eb',
+
+  position: 'relative',
+  zIndex: 21,
+  elevation: 21,
 },
 voicePreviewButtonText: {
   color: 'white',
   fontSize: 18,
 },
 voicePreviewText: {
+  flex: 1,
   color: 'white',
   fontSize: 13,
 },
+voicePreviewCancelButton: {
+  width: 36,
+  height: 36,
+  alignItems: 'center',
+  justifyContent: 'center',
+  color: '#a1a1aa',
+},
+voicePreviewCancelText: {
+  color: '#a1a1aa',
+  fontSize: 18,
+}
 });
