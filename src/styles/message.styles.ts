@@ -211,4 +211,52 @@ export const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+
+  audioAttachment: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minWidth: 200,
+    padding: 8,
+    marginTop: 6,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.18)',
+  },
+
+  audioPlayButton:{
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2563eb',
+  },
+
+  audioPlayButtonText: {
+    color: 'white',
+    fontSize: 16,
+  },
+
+  audioInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+
+  audioProgressTrack: {
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+
+  audioProgressFill: {
+    height: '100%',
+    backgroundColor: 'white',
+  },
+
+  audioDuration: {
+    marginTop: 6,
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 11,
+  },
 })

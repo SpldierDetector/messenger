@@ -11,7 +11,8 @@ import type {
 } from '@/types/message';
 import { styles } from '@/styles/message.styles';
 import { AttachmentImage } from '@/components/attachment-image';
-
+import { AttachmentAudio } from '@/components/attachment-audio';
+ 
 type MessageProps = {
   author: string;
   text: string;
@@ -116,11 +117,20 @@ export function Message({
           <AttachmentImage
             key={attachment.id}
             chatId={chatId}
-            attachment = {attachment}
+            attachment={attachment}
             token={token}
             onPress={() => onAttachmentPress?.(attachment)}
             disabled={downloadingAttachmentId !== null}
           />
+        ) : attachment.type === 'audio' &&
+          chatId !== undefined &&
+          token ? (
+          <AttachmentAudio
+            key={attachment.id}
+            chatId={chatId}
+            attachment={attachment}
+            token={token}
+          />  
         ) : (
         <Pressable
           key={attachment.id}

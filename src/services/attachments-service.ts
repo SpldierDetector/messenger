@@ -312,3 +312,65 @@ export async function uploadVoiceAttachment(
 
   return (await response.json()) as AttachmentData;
 }
+
+export async function loadAttachmentAudioWeb(
+  chatId: number,
+  attachment: AttachmentData,
+  token: string,
+): Promise<string> {
+  const response = await fetch(
+    `${API_BASE_URL}/chats/${chatId}/attachments/${attachment.id}/download`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to load audio: HTTP ${response.status}`,
+    );
+  }
+
+  const blob = await response.blob();
+
+  return URL.createObjectURL(blob);
+}
+
+export async function loadAttachmentAudioNative(
+  chatId: number,
+  attachment: AttachmentData,
+  token: string,
+): Promise<File> {
+  const fileName =
+    attachment.originalName.replace(/[\\/]/g, '_') ||
+    'voice-message';
+
+  const destination = new File(
+    Paths.cache,
+    `voxa-audio-${chatId}-${attachment.id}-${Date.now()}-${fileName}`,
+  );
+
+  const downloadUrl =
+    `${API_BASE_URL}/chats/${chatId}` +
+    `/attachments/${attachment.id}/download`;
+
+  try {
+    return await File.downloadFileAsync(
+      downloadUrl,
+      destination,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    );
+  } catch (error) {
+    if (destination.exists) {
+      destination.delete();
+    }
+
+    throw error;
+  }
+}
