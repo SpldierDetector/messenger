@@ -4,6 +4,7 @@ import {
   Pressable,
   Text,
   View,
+  type GestureResponderEvent,
 } from 'react-native';
 import type { File } from 'expo-file-system';
 import {
@@ -52,6 +53,7 @@ export function AttachmentAudio({
 }: AttachmentAudioProps) {
   const [audioUri, setAudioUri] = useState<string | null>(null);
   const [loadError, setLoadError] = useState(false);
+  const [progressWidth, setProgressWidth] = useState(0);
 
   const player = useAudioPlayer(
     null,
@@ -195,6 +197,32 @@ export function AttachmentAudio({
     }
   }
 
+  async function handleSeekPress(
+    event: GestureResponderEvent,
+  ) {
+    if (
+      !status.isLoaded ||
+      status.duration <= 0 ||
+      progressWidth <= 0
+    ) {
+      return;
+    }
+
+    const position = Math.max(
+      0,
+      Math.min(
+        event.nativeEvent.locationX,
+        progressWidth,
+      ),
+    );
+
+    const progressRatio = position / progressWidth;
+    
+    await player.seekTo(
+      status.duration * progressRatio,
+    );
+  }
+
   const progress =
     status.duration > 0
       ? Math.min(
@@ -225,7 +253,17 @@ export function AttachmentAudio({
         </Text>
       </Pressable>
       <View style={styles.audioInfo}>
-        <View style={styles.audioProgressTrack}>
+        <Pressable
+          style={styles.audioProgressTrack}
+          onLayout={(event) => {
+            setProgressWidth(
+              event.nativeEvent.layout.width,
+            );
+            }}
+            onPress={(event) => {
+              void handleSeekPress(event);
+            }}
+        >
           <View
             style={[
               styles.audioProgressFill,
@@ -234,12 +272,12 @@ export function AttachmentAudio({
               },
             ]}
           />
-        </View>
+        </Pressable>
 
         <Text style={styles.audioDuration}>
           {loadError
             ? 'Не удалось загрузить'
-            : `${formatDuration(status.currentTime,)}/${formatDuration(status.duration)}`}
+            : `${formatDuration(status.currentTime)} / ${formatDuration(status.duration)}`}
         </Text>
       </View>
     </View>
