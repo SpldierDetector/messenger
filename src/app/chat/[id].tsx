@@ -33,7 +33,8 @@ import {
   setAudioModeAsync,
   useAudioPlayer,
   useAudioPlayerStatus,
-  useAudioRecorder, 
+  useAudioRecorder,
+  useAudioRecorderState,
 } from 'expo-audio';
 import {
   Alert,
@@ -112,6 +113,7 @@ export default function ChatScreen() {
   const [messageSearchText, setMessageSearchText] = useState('');
   const [isInitialMessagePositionReady, setIsInitialMessagePositionReady] = useState(false);
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const audioRecorderState = useAudioRecorderState(audioRecorder, 250);
   const [isRecording, setIsRecording] = useState(false);
   const [recordedVoiceUri, setRecordedVoiceUri] = useState<string | null>(null);
   const [isUploadingVoice, setIsUploadingVoice] = useState(false);
@@ -1485,6 +1487,13 @@ export default function ChatScreen() {
                   <Text>📎</Text>
                 </Pressable>
               </View>
+              {isRecording && (
+                <Text style={styles.recordingDuration}>
+                  {formatVoiceDuration(
+                    audioRecorderState.durationMillis / 1000,
+                  )}
+                </Text>
+              )}
               <Pressable
                 style={styles.attachmentButton}
                 onPress={() => {

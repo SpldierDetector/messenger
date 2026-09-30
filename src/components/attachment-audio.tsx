@@ -19,6 +19,9 @@ import {
 import { styles } from '@/styles/message.styles';
 import type { AttachmentData } from '@/types/message';
 
+let activeAudioKey: string | null = null;
+let stopActiveAudio: (() => void) | null = null;
+
 type AttachmentAudioProps = {
   chatId: number;
   attachment: AttachmentData;
@@ -53,6 +56,7 @@ export function AttachmentAudio({
 }: AttachmentAudioProps) {
   const [audioUri, setAudioUri] = useState<string | null>(null);
   const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [progressWidth, setProgressWidth] = useState(0);
 
   const player = useAudioPlayer(
@@ -63,6 +67,7 @@ export function AttachmentAudio({
   );
 
   const status = useAudioPlayerStatus(player);
+  const audioKey = `${chatId}:${attachment.id}`;
 
   useEffect(() => {
     let isActive = true;
@@ -126,6 +131,11 @@ export function AttachmentAudio({
 
       player.pause();
 
+      if (activeAudioKey === audioKey) {
+        activeAudioKey = null;
+        stopActiveAudio = null;
+      }
+
       if (objectUrl) {
         URL.revokeObjectURL(objectUrl);
       }
@@ -139,6 +149,8 @@ export function AttachmentAudio({
     attachment.id,
     token,
     player,
+    audioKey,
+    reloadKey,
   ]);
 
   useEffect(() => {
@@ -168,6 +180,12 @@ export function AttachmentAudio({
     try {
       if (status.playing) {
         player.pause();
+
+        if (activeAudioKey === audioKey) {
+          activeAudioKey = null;
+          stopActiveAudio = null;
+        }
+
         return;
       }
 
@@ -179,6 +197,15 @@ export function AttachmentAudio({
         )
       ) {
         await player.seekTo(0);
+      }
+
+      if (activeAudioKey !== audioKey) {
+        stopActiveAudio?.();
+
+        activeAudioKey = audioKey;
+        stopActiveAudio = () => {
+          player.pause();
+        };
       }
 
       await setAudioModeAsync({
@@ -196,6 +223,19 @@ export function AttachmentAudio({
       );
     }
   }
+
+  useEffect(() => {
+    if (
+      status.didJustFinish &&
+      activeAudioKey === audioKey
+    ) {
+      activeAudioKey = null;
+      stopActiveAudio = null;
+    }
+  }, [
+    status.didJustFinish,
+    audioKey,
+  ]);
 
   async function handleSeekPress(
     event: GestureResponderEvent,
@@ -231,17 +271,23 @@ export function AttachmentAudio({
         )
       : 0;
 
+  function handleAudioButtonPress() {
+    if (loadError) {
+      setReloadKey((current) => current + 1);
+      return;
+    }
+
+    void handlePlayPress();
+  }
+  
   return (
     <View style={styles.audioAttachment}>
       <Pressable
         style={styles.audioPlayButton}
-        onPress={() => {
-          void handlePlayPress();
-        }}
+        onPress={handleAudioButtonPress}
         disabled={
-          !audioUri ||
-          !status.isLoaded ||
-          loadError
+          (!audioUri || !status.isLoaded) &&
+          !loadError
         }
       >
         <Text style={styles.audioPlayButtonText}>
@@ -276,7 +322,7 @@ export function AttachmentAudio({
 
         <Text style={styles.audioDuration}>
           {loadError
-            ? 'Не удалось загрузить'
+            ? 'Ошибка загрузки · нажмите !'
             : `${formatDuration(status.currentTime)} / ${formatDuration(status.duration)}`}
         </Text>
       </View>

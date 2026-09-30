@@ -387,5 +387,12 @@ voicePreviewCancelButton: {
 voicePreviewCancelText: {
   color: '#a1a1aa',
   fontSize: 18,
-}
+},
+recordingDuration: {
+  minWidth: 34,
+  color: '#ef4444',
+  fontSize: 13,
+  fontWeight: '600',
+  textAlign: 'center',
+},
 });
