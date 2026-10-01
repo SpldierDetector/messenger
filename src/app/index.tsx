@@ -2,9 +2,7 @@ import { Redirect, router, useFocusEffect, type Href } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
 import { styles } from '@/styles/index.styles';
-
 import { ChatPreview } from '@/components/chat-preview';
 import { useAuth } from '@/providers/auth-provider';
 import { useMessages } from '@/providers/messages-provider';
@@ -13,10 +11,13 @@ import {
   deleteChatWithHistoryRequest,
   getChatsRequest
 } from '@/services/chat-api';
+import{
+  getLastMessage,
+  getMessagePreviewText,
+} from '@/utils/message';
 import type { ChatData } from '@/types/chat';
 import { sortChatsByLatestMessage } from '@/utils/chat';
 import { formatChatPreviewDate } from '@/utils/date';
-import { getLastMessage } from '@/utils/message';
 
 type ChatDeleteMode = | 'hide' | 'with-history';
 
@@ -268,7 +269,13 @@ export default function ChatListScreen() {
               >
                 <ChatPreview
                   name={item.name}
-                  lastMessage={lastMessage?.text ?? 'Нет сообщений'}
+                  lastMessage={
+                    lastMessage
+                      ? getMessagePreviewText(
+                          lastMessage,
+                        ) 
+                      : 'Нет сообщений'
+                  }
                   time={lastMessage ? formatChatPreviewDate(lastMessage.createdAt) : ''}
                   isOnline={isOnline}
                   isTyping={isTyping}
