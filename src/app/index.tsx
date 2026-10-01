@@ -29,7 +29,6 @@ export default function ChatListScreen() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-
   const { 
     isAuthenticated, 
     isAuthLoading, 

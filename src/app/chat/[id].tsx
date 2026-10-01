@@ -58,6 +58,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function ChatScreen() {
   const TYPING_STOP_DELAY = 1500;
   const MESSAGE_SEARCH_DELAY = 400;
+  const MAX_ATTACHMENT_SIZE = 25 * 1024 * 1024;
+  const MAX_ATTACHMENTS_PER_MESSAGE = 10;
   const { id } = useLocalSearchParams();
 
   const { 
@@ -109,10 +111,11 @@ export default function ChatScreen() {
   ] = useState(false);
   const [replyingMessage, setReplyingMessage] = useState<MessageData | null>(null);
   const [text, setText] = useState('');
-  const [selectedAttachment, setSelectedAttachment] = useState<AttachmentData | null>(null);
+  const [selectedAttachments, setSelectedAttachments] = useState<AttachmentData[]>([]);
   const [downloadingAttachmentId, setDownloadingAttachmentId] = useState<number | null>(null);
   const [attachmentDownloadError, setAttachmentDownloadError] = useState<string | null>(null);
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
+  const [attachmentUploadError, setAttachmentUploadError] = useState<string | null>(null);
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [isSearchPending, setIsSearchPending] = useState(false);
   const [messageSearchText, setMessageSearchText] = useState('');
@@ -472,18 +475,30 @@ export default function ChatScreen() {
   const handlePickAttachment = async () => {
     if (
       !token ||
-      isUploadingAttachment ||
-      selectedAttachment
+      isUploadingAttachment
     ) {
       return;
     }
+
+    if (
+      selectedAttachments.length >=
+      MAX_ATTACHMENTS_PER_MESSAGE
+    ) {
+      setAttachmentUploadError(
+        'К одному сообщению можно прикрепить не больше 10 файлов.',
+      );
+
+      return;
+    }
+
+    setAttachmentUploadError(null);
 
     try {
       setIsUploadingAttachment(true);
 
       const result =
         await DocumentPicker.getDocumentAsync({
-          multiple: false,
+          multiple: true,
           copyToCacheDirectory: true,
         });
 
@@ -491,20 +506,67 @@ export default function ChatScreen() {
         return;
       }
 
-      const asset = result.assets[0];
+      const assets = result.assets;
 
-      const attachment =
-        await uploadAttachment(
-          chatId,
-          asset,
-          token,
+      if (
+        selectedAttachments.length +
+          assets.length >
+        MAX_ATTACHMENTS_PER_MESSAGE
+      ) {
+        setAttachmentUploadError(
+          'К одному сообщению можно прикрепить не больше 10 файлов.',
+        );
+
+        return;
+      }
+
+      const oversizedAsset =
+        assets.find(
+          (asset) =>
+            typeof asset.size === 'number' &&
+            asset.size >
+              MAX_ATTACHMENT_SIZE,
+        );
+
+      if (oversizedAsset) {
+        setAttachmentUploadError(
+          `Файл «${oversizedAsset.name}» слишком большой. ` +
+            'Максимальный размер вложения — 25 МБ.',
+        );
+
+        return;
+      }
+
+      const uploadedAttachments: AttachmentData[] = [];
+
+      for (const asset of assets) {
+        const attachment =
+          await uploadAttachment(
+            chatId,
+            asset,
+            token,
+          );
+
+        uploadedAttachments.push(attachment);
+      }
+      
+      setSelectedAttachments(
+        (currentAttachments) => [
+          ...currentAttachments,
+          ...uploadedAttachments,
+        ],
       );
 
-      setSelectedAttachment(attachment);
+      setAttachmentUploadError(null);
     } catch (error) {
       console.error(
         'Failed to upload attachment:',
         error,
+      );
+
+      setAttachmentUploadError(
+        'Не удалось загрузить файл. ' +
+          'Проверьте подключение и попробуйте ещё раз.',
       );
     } finally {
       setIsUploadingAttachment(false);
@@ -580,7 +642,7 @@ export default function ChatScreen() {
   const isSendDisabled = 
     (
       !text.trim() && 
-      !selectedAttachment &&
+      selectedAttachments.length === 0 &&
       !recordedVoiceUri
     ) ||
     isUploadingAttachment || 
@@ -865,7 +927,7 @@ export default function ChatScreen() {
 
     if (
       !normalizedText && 
-      !selectedAttachment &&
+      selectedAttachments.length === 0 &&
       !recordedVoiceUri
     ) {
       return;
@@ -903,10 +965,9 @@ export default function ChatScreen() {
     }
 
     const replyToMessageId = replyingMessage?.id ?? null;
-    const attachments: AttachmentData[] = 
-      selectedAttachment
-        ? [selectedAttachment]
-        : [];
+    const attachments: AttachmentData[] = [
+      ...selectedAttachments,
+    ];
     
     if (recordedVoiceUri) {
       if (!token) {
@@ -942,7 +1003,7 @@ export default function ChatScreen() {
 
     setText('');
     setReplyingMessage(null);
-    setSelectedAttachment(null);
+    setSelectedAttachments([]);
 
     if (token) {
       clearVoiceDraft(
@@ -1450,8 +1511,30 @@ export default function ChatScreen() {
               </View>
             )}
 
-            {(isUploadingAttachment || selectedAttachment) && (
+            {attachmentUploadError && (
+              <Text style={styles.errorText}>
+                {attachmentUploadError}
+              </Text>
+            )}
+
+            {isUploadingAttachment && (
               <View style={styles.attachmentBar}>
+                <Text style={styles.attachmentIcon}>
+                  📄
+                </Text>
+
+                <Text style={styles.attachmentName}>
+                  Загрузка файла...
+                </Text>
+              </View>
+            )}
+
+            {selectedAttachments.map(
+              (attachment) => (
+              <View 
+                key={attachment.id} 
+                style={styles.attachmentBar}
+              >
                 <Text style={styles.attachmentIcon}>
                   📄
                 </Text>
@@ -1460,23 +1543,29 @@ export default function ChatScreen() {
                   numberOfLines={1}
                   style={styles.attachmentName}
                 >
-                  {isUploadingAttachment
-                    ? 'Загрузка файла...'
-                    : selectedAttachment?.originalName}
+                  {attachment.originalName}
                 </Text>
                 
-                {selectedAttachment && (
-                  <Pressable
-                    style={styles.attachmentRemoveButton}
-                    onPress={() => setSelectedAttachment(null)}
-                  >
+                <Pressable
+                  style={styles.attachmentRemoveButton}
+                  onPress={() => {
+                    setSelectedAttachments(
+                      (currentAttachments) =>
+                        currentAttachments.filter(
+                          (currentAttachment) =>
+                            currentAttachment.id !==
+                            attachment.id,
+                        ),
+                    );
+                  }}
+                >
                     <Text style={styles.attachmentRemoveText}>
                       ✕
                     </Text>
                   </Pressable>
-                )}
               </View>
-            )}
+            ),
+          )}
 
             {recordedVoiceUri && !isRecording && (
               <View style={styles.voicePreview}>
