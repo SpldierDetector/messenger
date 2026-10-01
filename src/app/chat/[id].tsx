@@ -15,6 +15,11 @@ import type {
   AttachmentData, 
 } from '@/types/message';
 import {
+  clearVoiceDraft,
+  getVoiceDraft,
+  saveVoiceDraft,
+} from '@/services/voice-draft-service';
+import {
   formatMessageDate,
   formatMessageTime,
   isSameDay
@@ -128,6 +133,22 @@ export default function ChatScreen() {
   const typingStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTypingRef = useRef(false);
   const isCompanionTyping = (typingUserIdsByChat[chatId]?.length ?? 0) > 0;
+
+  useEffect(() => {
+    if (
+      !Number.isFinite(chatId) ||
+      !token
+    ) {
+      return;
+    }
+
+    setRecordedVoiceUri(
+      getVoiceDraft(chatId, token),
+    );
+  }, [
+    chatId,
+    token,
+  ]);
 
   useEffect(() => {
     if (!Number.isFinite(chatId)) {
@@ -351,6 +372,14 @@ export default function ChatScreen() {
           throw new Error('Recording URI is missing');
         }
 
+        if (token) {
+          saveVoiceDraft(
+            chatId,
+            token,
+            uri,
+          );
+        }
+
         setRecordedVoiceUri(uri);
 
         console.log('Voice recording saved:', uri);
@@ -427,6 +456,13 @@ export default function ChatScreen() {
       console.warn(
         'Failed to reset voice preview:',
         error,
+      );
+    }
+
+    if (token) {
+      clearVoiceDraft(
+        chatId,
+        token,
       );
     }
 
@@ -907,6 +943,14 @@ export default function ChatScreen() {
     setText('');
     setReplyingMessage(null);
     setSelectedAttachment(null);
+
+    if (token) {
+      clearVoiceDraft(
+        chatId,
+        token,
+      );
+    }
+
     setRecordedVoiceUri(null);
 
     void sendMessage(
