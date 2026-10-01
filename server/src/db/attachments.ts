@@ -87,6 +87,51 @@ export function insertAttachment(
   );
 }
 
+export function insertForwardedAttachment(
+  chatId: number,
+  messageId: number,
+  uploaderId: number,
+  sourceAttachment: AttachmentRow,
+  storedName: string,
+  sortOrder: number,
+  createdAt: number,
+) {
+  const statement = database.prepare(`
+    INSERT INTO attachments(
+      chatId,
+      messageId,
+      uploaderId,
+      type,
+      originalName,
+      storedName,
+      mimeType,
+      size,
+      width,
+      height,
+      durationMs,
+      sortOrder,
+      createdAt
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)  
+  `);
+
+  return statement.run(
+    chatId,
+    messageId,
+    uploaderId,
+    sourceAttachment.type,
+    sourceAttachment.originalName,
+    storedName,
+    sourceAttachment.mimeType,
+    sourceAttachment.size,
+    sourceAttachment.width,
+    sourceAttachment.height,
+    sourceAttachment.durationMs,
+    sortOrder,
+    createdAt,
+  );
+}
+
 export function getAttachmentById(
   attachmentId: number,
 ) {

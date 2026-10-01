@@ -1,7 +1,15 @@
 import { Router } from 'express';
+import { randomUUID } from 'node:crypto';
+import {
+  copyFileSync,
+  unlinkSync,
+} from 'node:fs';
+import { join } from 'node:path';
 import {
   attachAttachmentsToMessage,
   getAttachmentsByIdsForUploaderAndChat,
+  getAttachmentsByMessageIds,
+  insertForwardedAttachment,
 } from '../db/attachments.js';
 import {
   isUserInChat,
@@ -30,6 +38,7 @@ import {
   searchMessagesByChatId,
   updateMessage,
 } from '../db/messages.js';
+import { getChatUploadDirectory } from '../uploads/storage.js';
 import { requireAuth } from '../middleware/auth.js';
 import {
   buildMessageData,
@@ -865,46 +874,165 @@ export function createMessagesRouter({
       sourceMessage.forwardedFromAuthor ??
       sourceMessage.author;
 
-    showChatForAllMembers(
-      targetChatId,
-    );
+    const sourceAttachments =
+      getAttachmentsByMessageIds([
+        messageId,
+      ]);
 
-    const result =
-      insertForwardedMessage(
+    const copiedFilePaths: string[] = [];
+
+    let transactionStarted = false;
+    let forwardedMessage: MessageData;
+
+    try {
+      const sourceDirectory =
+        getChatUploadDirectory(
+          sourceMessage.chatId,
+        );
+
+      const targetDirectory =
+        getChatUploadDirectory(
+          targetChatId,
+        );
+
+      const copiedAttachments =
+        sourceAttachments.map(
+          (
+            sourceAttachment,
+            index,
+          ) => {
+            const storedName = randomUUID();
+
+            const sourcePath =
+              join(
+                sourceDirectory,
+                sourceAttachment.storedName,
+              );
+
+            const targetPath =
+              join(
+                targetDirectory,
+                storedName,
+              );
+
+            copyFileSync(
+              sourcePath,
+              targetPath,
+            );
+
+            copiedFilePaths.push(
+              targetPath,
+            );
+
+            return {
+              sourceAttachment,
+              storedName,
+              sortOrder: index,
+            };
+          },
+        );
+      
+      database.exec('BEGIN IMMEDIATE');
+
+      transactionStarted = true;
+
+      showChatForAllMembers(targetChatId);
+
+      const result =
+        insertForwardedMessage(
+          targetChatId,
+          currentUser.id,
+          currentUser.name,
+          sourceMessage.text,
+          now,
+          forwardedFromMessageId,
+          forwardedFromAuthor,
+        );
+
+      const forwardedMessageId =
+        Number(
+          result.lastInsertRowid,
+        );
+      
+      createMessageReceipts(
+        forwardedMessageId,
         targetChatId,
         currentUser.id,
-        currentUser.name,
-        sourceMessage.text,
-        now,
-        forwardedFromMessageId,
-        forwardedFromAuthor,
       );
 
-    createMessageReceipts(
-      Number(result.lastInsertRowid),
-      targetChatId,
-      currentUser.id,
-    )
+      for (
+        const attachment
+        of copiedAttachments
+      ) {
+        insertForwardedAttachment(
+          targetChatId,
+          forwardedMessageId,
+          currentUser.id,
+          attachment.sourceAttachment,
+          attachment.storedName,
+          attachment.sortOrder,
+          now,
+        );
+      }
 
-    const forwardedMessage: MessageData = {
-      id: Number(result.lastInsertRowid),
-      chatId: targetChatId,
-      senderId: currentUser.id,
-      clientMessageId: null,
-      author: currentUser.name,
-      text: sourceMessage.text,
-      createdAt: now,
-      editedAt: null,
-      deletedAt: null,
-      replyToMessageId: null,
-      forwardedFromMessageId,
-      forwardedFromAuthor,
-      attachments: [],
-    };
+      const createdRow =
+        getMessageById(
+          forwardedMessageId,
+        );
 
-    broadcastMessageCreated(
-      forwardedMessage,
-    );
+      if (!createdRow) {
+        throw new Error(
+          'forwarded message was not found',
+        );
+      }
+
+      forwardedMessage =
+        buildMessageData(createdRow);
+
+      database.exec('COMMIT');
+
+      transactionStarted = false;
+    } catch (error) {
+      if (transactionStarted) {
+        try {
+          database.exec('ROLLBACK');
+        } catch (rollbackError) {
+          console.error(
+            'Failed to rollback forward:',
+            rollbackError,
+          );
+        }
+      }
+
+      for (
+        const copiedFilePath
+        of copiedFilePaths
+      ) {
+        try {
+          unlinkSync(
+            copiedFilePath,
+          );
+        } catch (cleanupError) {
+          console.warn(
+            'Failed to clean up forwarded attachment:',
+            cleanupError,
+          );
+        }
+      }
+
+      console.error(
+        'Failed to forward message:',
+        error,
+      );
+
+      response.status(500).json({
+        error: 'failed to forward message',
+      });
+
+      return;
+    }
+
+    broadcastMessageCreated(forwardedMessage);
 
     response.status(201).json(
       forwardedMessage,
