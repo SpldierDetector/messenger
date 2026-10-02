@@ -65,6 +65,7 @@ export default function ChatScreen() {
   const { 
     messages,
     receipts,
+    unreadCounts,
     typingUserIdsByChat,
     onlineByChat,
     isRealtimeConnected,
@@ -125,6 +126,7 @@ export default function ChatScreen() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordedVoiceUri, setRecordedVoiceUri] = useState<string | null>(null);
   const [isUploadingVoice, setIsUploadingVoice] = useState(false);
+  const [isCurrentChatMessagesLoaded, setIsCurrentChatMessagesLoaded] = useState(false);
   const voicePlayer = useAudioPlayer(null);
   const voicePlayerStatus = useAudioPlayerStatus(voicePlayer);
   const recordingBusyRef = useRef(false);  
@@ -135,6 +137,7 @@ export default function ChatScreen() {
   const isChatFocusedRef = useRef(false);
   const typingStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTypingRef = useRef(false);
+  const firstUnreadMessageIdRef = useRef<number | null>(null);
   const isCompanionTyping = (typingUserIdsByChat[chatId]?.length ?? 0) > 0;
 
   useEffect(() => {
@@ -168,12 +171,33 @@ export default function ChatScreen() {
     setIsChatLoaded(false);
     setChatLoadError(null);
 
-    void loadMessages(chatId)
+    const firstUnreadMessageId =
+      unreadCounts.find(
+        (count) =>
+          count.chatId === chatId,
+      )?.firstUnreadMessageId ?? null;
+
+    firstUnreadMessageIdRef.current =
+      firstUnreadMessageId;
+
+    setIsCurrentChatMessagesLoaded(false);
+
+    void loadMessages(
+      chatId,
+      firstUnreadMessageId,
+    )
       .catch((error) => {
         console.warn(
           'Failed to load messages:',
           error,
         );
+      })
+      .finally(() =>{
+        if (!isActive) {
+          return;
+        }
+
+        setIsCurrentChatMessagesLoaded(true);
       });
 
     getChatRequest(chatId, token)
@@ -223,7 +247,7 @@ export default function ChatScreen() {
     hasInitialScrollCompletedRef.current = false;
     isInitialScrollScheduledRef.current = false;
     isNearBottomRef.current = true;
-
+    
     setIsInitialMessagePositionReady(false);
   }, [chatId]);
 
@@ -276,7 +300,8 @@ export default function ChatScreen() {
         Number.isFinite(chatId) &&
         isAuthenticated &&
         chat?.id === chatId &&
-        !chatLoadError
+        !chatLoadError &&
+        isInitialMessagePositionReady
       ) {
         markChatRead(chatId);
       }
@@ -308,6 +333,7 @@ export default function ChatScreen() {
       isAuthenticated,
       markChatRead,
       stopTyping,
+      isInitialMessagePositionReady,
     ]), 
   );
 
@@ -679,6 +705,7 @@ export default function ChatScreen() {
     if (
       !isChatFocusedRef.current ||
       !isAuthenticated ||
+      !isInitialMessagePositionReady ||
       !Number.isFinite(chatId) ||
       !latestMessage ||
       latestMessage.isOwn
@@ -694,6 +721,7 @@ export default function ChatScreen() {
     isAuthenticated,
     latestMessage?.id,
     markChatRead,
+    isInitialMessagePositionReady,
   ]);
 
   function handleMessagesScroll(
@@ -1068,7 +1096,7 @@ export default function ChatScreen() {
     );
   } 
 
-  if (!isLoaded) {
+  if (!isLoaded || !isCurrentChatMessagesLoaded) {
     return null;
   }
 
@@ -1202,9 +1230,10 @@ export default function ChatScreen() {
                 animated: false,
               });
 
-              if (!hasInitialScrollCompletedRef.current) {
+              if (
+                !hasInitialScrollCompletedRef.current
+              ) {
                 hasInitialScrollCompletedRef.current = true;
-
                 setIsInitialMessagePositionReady(true);
               }
 
@@ -1261,12 +1290,25 @@ export default function ChatScreen() {
                 item.createdAt
               );
 
+            const shouldShowUnreadSeparator =
+              !isSearchMode &&
+              firstUnreadMessageIdRef.current !== null &&
+              item.id === firstUnreadMessageIdRef.current;
+
             return (
               <View>
                 {shouldShowDate && (
                   <View style={styles.dateSeparator}>
                     <Text style={styles.dateSeparatorText}>
                       {formatMessageDate(item.createdAt)}
+                    </Text>
+                  </View>
+                )}
+
+                {shouldShowUnreadSeparator && (
+                  <View style={styles.dateSeparator}>
+                    <Text style={styles.dateSeparatorText}>
+                      Непрочитанные
                     </Text>
                   </View>
                 )}

@@ -59,7 +59,7 @@ type MessagesContextValue = {
   messageSearchError: string | null;
   searchMessagesInChat: (chatId: number, search: string) => Promise<void>;
   clearMessageSearch: () => void;
-  loadMessages: (chatId: number) => Promise<void>;
+  loadMessages: (chatId: number, firstUnreadMessageId?: number | null) => Promise<void>;
   loadOlderMessages: (chatId: number) => Promise<void>;
   hasMoreMessagesByChat: Record<number, boolean>;
   isLoadingOlderMessagesByChat: Record<number, boolean>;
@@ -107,12 +107,15 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
     messagesRef.current = messages;
   }, [messages]);
 
-  async function loadMessages(chatId: number) {
+  async function loadMessages(
+    chatId: number,
+    firstUnreadMessageId: number | null = null,
+  ) {
     if (!token || !user) {
       return;
     }
 
-    const [page, loadedReceipts] =
+    const [firstPage, loadedReceipts] =
       await Promise.all([
         loadMessagePage(
           chatId,
@@ -125,7 +128,54 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
           token,
         ),
       ]);
-    
+
+    let loadedMessages = [
+      ...firstPage.messages,
+    ];
+
+    let hasMore = firstPage.hasMore;
+    let nextBeforeMessageId = firstPage.nextBeforeMessageId;
+
+    while (
+      firstUnreadMessageId !== null &&
+      !loadedMessages.some(
+        (message) =>
+          message.id ===
+        firstUnreadMessageId,
+      ) &&
+      hasMore &&
+      nextBeforeMessageId !== null
+    ) {
+      const olderPage =
+        await loadMessagePage(
+          chatId,
+          nextBeforeMessageId,
+          token,
+          user.id,
+        );
+
+      const existingIds =
+        new Set(
+          loadedMessages.map(
+            (message) => message.id,
+          ),
+        );
+
+      const olderMessages =
+        olderPage.messages.filter(
+          (message) =>
+            !existingIds.has(message.id),
+        );
+
+      loadedMessages = [
+        ...olderMessages,
+        ...loadedMessages,
+      ];
+
+      hasMore = olderPage.hasMore;
+      nextBeforeMessageId = olderPage.nextBeforeMessageId;
+    }
+
     setMessages((currentMessages) => {
       const messagesFromOtherChats =
         currentMessages.filter(
@@ -133,45 +183,49 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
             message.chatId !== chatId,
         );
 
-      const pageMessageIds = new Set(
-        page.messages.map(
-          (message) => message.id,
-        ),
-      );
-
-      const newestPageMessageId =
-        page.messages.length > 0
-          ? Math.max(
-              ...page.messages.map(
-                (message) => message.id
-              ),
-            )
-          : null;
+      const loadedMessageIds =
+        new Set(
+          loadedMessages.map(
+            (message) => message.id,
+          ),
+        );
       
+      const newestLoadedMessageId =
+        loadedMessages.length > 0
+          ? Math.max(
+            ...loadedMessages.map(
+              (message) => message.id,
+            ),
+          )
+          : null;
+
       const newerRealtimeMessages =
         currentMessages.filter(
           (message) =>
             message.chatId === chatId &&
-            !pageMessageIds.has(message.id) &&
+            !loadedMessageIds.has(
+              message.id,
+            ) &&
             (
-              newestPageMessageId === null ||
-              message.id >
-                newestPageMessageId
+              newestLoadedMessageId ===
+                null ||
+              message.id > newestLoadedMessageId
             ),
         );
-
+      
       return [
         ...messagesFromOtherChats,
-        ...page.messages,
+        ...loadedMessages,
         ...newerRealtimeMessages,
       ];
     });
 
-    const loadedMessageIds = new Set(
-      page.messages.map(
-        (message) => message.id,
-      ),
-    );
+    const loadedMessageIds =
+      new Set(
+        loadedMessages.map(
+          (message) => message.id,
+        ),
+      );
 
     setReceipts((currentReceipts) => [
       ...currentReceipts.filter(
@@ -186,14 +240,15 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
     setHasMoreMessagesByChat(
       (current) => ({
         ...current,
-        [chatId]: page.hasMore,
+        [chatId]: hasMore,
       }),
     );
 
     setNextBeforeMessageIdByChat(
       (current) => ({
         ...current,
-        [chatId]: page.nextBeforeMessageId,
+        [chatId]:
+          nextBeforeMessageId,
       }),
     );
 
@@ -1030,6 +1085,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
           {
             chatId: newMessage.chatId,
             unreadCount: 1,
+            firstUnreadMessageId: newMessage.id,
           },
         ];
       }

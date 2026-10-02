@@ -129,8 +129,6 @@ export function AttachmentAudio({
     return () => {
       isActive = false;
 
-      player.pause();
-
       if (activeAudioKey === audioKey) {
         activeAudioKey = null;
         stopActiveAudio = null;

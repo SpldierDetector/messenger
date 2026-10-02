@@ -113,7 +113,8 @@ export function getUnreadMessageCountsByUserId(
   const statement = database.prepare(`
     SELECT
       message.chatId AS chatId,
-      COUNT(*) AS unreadCount
+      COUNT(*) AS unreadCount,
+      MIN(message.id) AS firstUnreadMessageId
     FROM message_receipts AS receipt
 
     JOIN messages AS message
@@ -146,6 +147,7 @@ export function getUnreadMessageCountsByUserId(
   ) as Array<{
     chatId: number;
     unreadCount: number;
+    firstUnreadMessageId: number;
   }>;
 }
 

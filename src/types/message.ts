@@ -49,6 +49,7 @@ export type MessageReceiptData = {
 export type UnreadMessageCount = {
   chatId: number;
   unreadCount: number;
+  firstUnreadMessageId: number;
 }
 
 export type MessageSendStatus =
