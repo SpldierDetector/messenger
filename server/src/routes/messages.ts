@@ -311,22 +311,42 @@ export function createMessagesRouter({
         return;
       }
 
-      const PAGE_SIZE = 50;
+      const rawLimit = request.query.limit;
+
+      let pageSize = 50;
+
+      if (typeof rawLimit === 'string') {
+        const parsedLimit = Number(rawLimit);
+
+        if(
+          !Number.isInteger(parsedLimit) ||
+          parsedLimit <= 0 ||
+          parsedLimit > 100
+        ) {
+          response.status(400).json({
+            error: 'limit must be an integer from 1 to 100',
+          });
+
+          return;
+        }
+
+        pageSize = parsedLimit;
+      };
 
       const rows =
         getMessagePageByChatId(
           chatId,
           currentUser.id,
           beforeMessageId,
-          PAGE_SIZE + 1,
+          pageSize + 1,
         );
 
       const hasMore =
-        rows.length > PAGE_SIZE;
+        rows.length > pageSize;
 
       const pageRows =
         hasMore
-          ? rows.slice(0, PAGE_SIZE)
+          ? rows.slice(0, pageSize)
           : rows;
 
       const oldestRow =

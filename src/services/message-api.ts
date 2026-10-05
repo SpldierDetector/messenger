@@ -43,10 +43,16 @@ export async function getMessagePageRequest(
   beforeMessageId: number | null,
   token: string,
   currentUserId: number,
+  pageSize: number = 50,
 ): Promise<MessagePage> {
   const params = new URLSearchParams({
     chatId: chatId.toString(),
   });
+
+  params.set(
+    'limit',
+    pageSize.toString(),
+  );
 
   if (beforeMessageId !== null) {
     params.set(

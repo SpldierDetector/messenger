@@ -122,6 +122,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
           null,
           token,
           user.id,
+          20,
         ),
         loadMessageReceipts(
           chatId,
@@ -152,6 +153,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
           nextBeforeMessageId,
           token,
           user.id,
+          50,
         );
 
       const existingIds =
@@ -294,6 +296,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
           beforeMessageId,
           token,
           user.id,
+          50,
         );
 
       setMessages((currentMessages) => {
@@ -310,9 +313,22 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
               !existingMessageIds.has(message.id),
           );
 
+        const currentChatMessages =
+          currentMessages.filter(
+            (message) =>
+              message.chatId === chatId,
+          );
+
+        const otherChatMessages =
+          currentMessages.filter(
+            (message) =>
+              message.chatId !== chatId,
+          );;
+
         return [
-          ...currentMessages,
+          ...otherChatMessages,
           ...newMessages,
+          ...currentChatMessages,
         ];
       });
 

@@ -65,12 +65,14 @@ export async function loadMessagePage(
   beforeMessageId: number | null,
   token: string,
   currentUserId: number,
+  pageSize: number = 50,
 ) {
   return getMessagePageRequest(
     chatId,
     beforeMessageId,
     token,
     currentUserId,
+    pageSize,
   );
 }
 

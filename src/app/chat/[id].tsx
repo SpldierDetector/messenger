@@ -50,7 +50,7 @@ import {
   Pressable,
   Text,
   TextInput,
-  View
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -133,7 +133,7 @@ export default function ChatScreen() {
   const listRef = useRef<FlatList>(null);
   const hasInitialScrollCompletedRef = useRef(false);
   const isNearBottomRef = useRef(true);
-  const isInitialScrollScheduledRef = useRef(false);
+  const initialScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isChatFocusedRef = useRef(false);
   const typingStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTypingRef = useRef(false);
@@ -245,7 +245,15 @@ export default function ChatScreen() {
   
   useEffect(() => {
     hasInitialScrollCompletedRef.current = false;
-    isInitialScrollScheduledRef.current = false;
+
+    if (initialScrollTimeoutRef.current) {
+      clearTimeout(
+        initialScrollTimeoutRef.current,
+      );
+
+      initialScrollTimeoutRef.current = null;
+    }
+
     isNearBottomRef.current = true;
     
     setIsInitialMessagePositionReady(false);
@@ -737,17 +745,6 @@ export default function ChatScreen() {
       contentHeight - BOTTOM_THRESHOLD;
 
     if (
-      !hasInitialScrollCompletedRef.current &&
-      isNearBottomRef.current
-    ) {
-      hasInitialScrollCompletedRef.current = true;
-
-      setIsInitialMessagePositionReady(true);
-
-      return;
-    }
-
-    if (
       isSearchMode ||
       !hasInitialScrollCompletedRef.current ||
       isLoadingOlderMessages ||
@@ -1207,38 +1204,46 @@ export default function ChatScreen() {
           ]}
           data={displayedMessages}
           maintainVisibleContentPosition={
-            isSearchMode
+            isSearchMode ||
+            !isInitialMessagePositionReady
               ? undefined
               : {
-                minIndexForVisible: 0,
+                  minIndexForVisible: 0,
               }
           }
           onContentSizeChange={() => {
             if (
               isSearchMode ||
               messageList.length === 0 ||
-              hasInitialScrollCompletedRef.current ||
-              isInitialScrollScheduledRef.current
+              hasInitialScrollCompletedRef.current
             ) {
               return;
             }
 
-            isInitialScrollScheduledRef.current = true;
+            if (initialScrollTimeoutRef.current) {
+              clearTimeout(
+                initialScrollTimeoutRef.current
+              );
+            }
 
-            setTimeout(() => {
-              listRef.current?.scrollToEnd({
-                animated: false,
-              });
+            initialScrollTimeoutRef.current =
+              setTimeout(() => {
+                listRef.current?.scrollToEnd({
+                  animated:false,
+                });
 
-              if (
-                !hasInitialScrollCompletedRef.current
-              ) {
-                hasInitialScrollCompletedRef.current = true;
-                setIsInitialMessagePositionReady(true);
-              }
+                requestAnimationFrame(() => {
+                  if (
+                    !hasInitialScrollCompletedRef.current
+                  ) {
+                    hasInitialScrollCompletedRef.current = true;
 
-              isInitialScrollScheduledRef.current = false;
-            }, 300);
+                    setIsInitialMessagePositionReady(true);
+                  }
+
+                  initialScrollTimeoutRef.current = null;
+                });
+              }, 150);
           }}
           onScroll={(event) => {
             const {
