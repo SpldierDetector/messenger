@@ -151,9 +151,15 @@ export default function ChatScreen() {
   const firstUnreadMessageIdRef = useRef<number | null>(null);
   const buttonScrollTargetIndexRef = useRef<number | null>(null);
   const buttonScrollAttemptsRef = useRef(0);
-  const webUnreadCheckFrameRef = useRef<number | null>(null);
+  const buttonScrollTargetMessageIdRef = useRef<number | null>(null);
   const buttonScrollRetryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
+  const viewabilityConfigRef = useRef({
+    viewAreaCoveragePercentThreshold: 1,
+    minimumViewTime: 0,
+    waitForInteraction: false,
+  });
+
   function updateUnreadViewportProgress(
     visibleUnreadMessageIds: number[],
   ) {
@@ -161,56 +167,96 @@ export default function ChatScreen() {
 
     isUnreadAreaVisibleRef.current = nextVisibleIds.size > 0;
 
-    if (nextVisibleIds.size > 0) {
-      buttonScrollTargetIndexRef.current = null;
-
-      buttonScrollAttemptsRef.current = 0;
-    }
-
     const previousVisibleIds = visibleUnreadMessageIdsRef.current;
 
     visibleUnreadMessageIdsRef.current = nextVisibleIds;
 
+    const buttonScrollTargetMessageId = buttonScrollTargetMessageIdRef.current;
+
+    if(
+      buttonScrollTargetMessageId !== null &&
+      nextVisibleIds.has(
+        buttonScrollTargetMessageId
+      )
+    ) {
+      buttonScrollTargetMessageIdRef.current = null;
+      buttonScrollTargetIndexRef.current = null;
+      buttonScrollAttemptsRef.current = 0;
+
+      if (buttonScrollRetryRef.current) {
+        clearTimeout(
+          buttonScrollRetryRef.current,
+        );
+
+        buttonScrollRetryRef.current = null;
+      }
+
+      if (
+        unreadMessageIdsRef.current.has(
+          buttonScrollTargetMessageId
+        )
+      ) {
+        setLocallySeenUnreadMessageIds(
+          (currentIds) => {
+            if (
+              currentIds.has(
+                buttonScrollTargetMessageId,
+              )
+            ) {
+              return currentIds;
+            }
+
+            const nextIds = new Set(currentIds);
+
+            nextIds.add(buttonScrollTargetMessageId);
+
+            return nextIds;
+          },
+        );
+      }
+
+      return;
+    }
+
     if (
       !hasInitialScrollCompletedRef.current ||
-      !isScrollingTowardBottomRef.current ||
       previousVisibleIds.size === 0
     ) {
       return;
     }
 
-    const passedUnreadMessageIds: number[] = [];
+    const newlyVisibleUnreadMessageIds: number[] = [];
 
     for (
-      const messageId of
-      previousVisibleIds
+      const messageId of nextVisibleIds
     ) {
       if (
         unreadMessageIdsRef.current.has(
           messageId,
         ) &&
-        !nextVisibleIds.has(messageId)
+        !previousVisibleIds.has(messageId)
       ) {
-        passedUnreadMessageIds.push(messageId);
+        newlyVisibleUnreadMessageIds.push(
+          messageId
+        );
       }
     }
 
     if (
-      passedUnreadMessageIds.length === 0
+      newlyVisibleUnreadMessageIds.length === 0
     ) {
       return;
     }
 
     setLocallySeenUnreadMessageIds(
       (currentIds) => {
-        const nextIds =
-          new Set(currentIds);
+        const nextIds = new Set(currentIds);
 
         let hasChanges = false;
 
         for (
           const messageId of
-          passedUnreadMessageIds
+          newlyVisibleUnreadMessageIds
         ) {
           if (!nextIds.has(messageId)) {
             nextIds.add(messageId);
@@ -228,9 +274,47 @@ export default function ChatScreen() {
   const onViewableItemsChangedRef = useRef(
     ({
       viewableItems,
+      changed,
     }: {
       viewableItems: ViewToken[];
+      changed: ViewToken[];
     }) => {
+      if (Platform.OS === 'android') {
+        console.log(
+          '[Unread viewability]',
+          {
+            directionTowardBottom:
+              isScrollingTowardBottomRef.current,
+            visible: viewableItems.map((item) => {
+              const message = item.item as MessageData;
+
+              return {
+                id: message.id,
+                index: item.index,
+                isViewable: item.isViewable,
+                isUnread:
+                  unreadMessageIdsRef.current.has(
+                    message.id,
+                  ),
+              };
+            }),
+            changed: changed.map((item) => {
+              const message = item.item as MessageData;
+
+              return {
+                id: message.id,
+                index: item.index,
+                isViewable: item.isViewable,
+                isUnread:
+                  unreadMessageIdsRef.current.has(
+                    message.id,
+                  ),
+              };
+            }),
+          },
+        );
+      }
+
       const visibleUnreadMessageIds: number[] = [];
 
       for (const item of viewableItems) {
@@ -248,14 +332,13 @@ export default function ChatScreen() {
           continue;
         }
 
-        visibleUnreadMessageIds.push(
-          message.id,
-        );
+        visibleUnreadMessageIds.push(message.id);
       }
 
       updateUnreadViewportProgress(visibleUnreadMessageIds);
     },
   );
+
   const isCompanionTyping = (typingUserIdsByChat[chatId]?.length ?? 0) > 0;
 
   useEffect(() => {
@@ -422,15 +505,6 @@ export default function ChatScreen() {
       buttonScrollRetryRef.current = null;
     }
 
-    if (
-      webUnreadCheckFrameRef.current !== null
-    ) {
-      cancelAnimationFrame(
-        webUnreadCheckFrameRef.current,
-      );
-
-      webUnreadCheckFrameRef.current = null;
-    }
   }, [chatId]);
 
   useEffect(() => {
@@ -830,9 +904,32 @@ export default function ChatScreen() {
 
     hasInitialScrollCompletedRef.current = true;
 
-    setIsInitialMessagePositionReady(true);
+    const firstUnreadMessageId = firstUnreadMessageIdRef.current;
 
-    scheduleWebUnreadCheck();
+    if (
+      firstUnreadMessageId !== null &&
+      unreadMessageIdsRef.current.has(
+        firstUnreadMessageId
+      )
+    ) {
+      setLocallySeenUnreadMessageIds(
+        (currentIds) => {
+          if (
+            currentIds.has(firstUnreadMessageId)
+          ) {
+            return currentIds;
+          }
+
+          const nextIds = new Set(currentIds);
+
+          nextIds.add(firstUnreadMessageId);
+
+          return nextIds;
+        },
+      );
+    }
+    
+    setIsInitialMessagePositionReady(true);
   }
   
   const messageList = messages
@@ -1030,77 +1127,6 @@ export default function ChatScreen() {
     markChatRead,
     isInitialMessagePositionReady,
   ]);
-
-  function updateWebUnreadVisibility() {
-    if (
-      Platform.OS !== 'web' ||
-      typeof document === 'undefined'
-    ) {
-      return;
-    }
-
-    const container =
-      document.getElementById('messages-container');
-
-      if (!container) {
-        return;
-      }
-
-      const containerRect =
-        container.getBoundingClientRect();
-
-      const visibleUnreadMessageIds: number[] = [];
-
-      for (
-        const messageId of
-        unreadMessageIdsRef.current
-      ) {
-        const element =
-          document.getElementById(
-            `message-${messageId}`,
-          );
-
-        if (!element) {
-          continue;
-        }
-
-        const messageRect =
-          element.getBoundingClientRect();
-
-        const isVisible =
-          messageRect.bottom > containerRect.top &&
-          messageRect.top < containerRect.bottom;
-
-        if (isVisible) {
-          visibleUnreadMessageIds.push(
-            messageId,
-          );
-        }
-      }
-    
-    updateUnreadViewportProgress(visibleUnreadMessageIds);
-  }
-
-  function scheduleWebUnreadCheck() {
-    if (Platform.OS !== 'web') {
-      return;
-    }
-
-    if (
-      webUnreadCheckFrameRef.current !== null
-    ) {
-      cancelAnimationFrame(
-        webUnreadCheckFrameRef.current,
-      );
-    }
-
-    webUnreadCheckFrameRef.current =
-      requestAnimationFrame(() => {
-        webUnreadCheckFrameRef.current = null;
-
-        updateWebUnreadVisibility();
-      });
-  }
   
   function handleScrollToBottomPress() {
     if (
@@ -1109,6 +1135,8 @@ export default function ChatScreen() {
       !isUnreadAreaVisibleRef.current
     ) {
       buttonScrollTargetIndexRef.current = firstUnseenUnreadIndex;
+
+      buttonScrollTargetMessageIdRef.current = firstUnseenUnreadMessage.id;
 
       buttonScrollAttemptsRef.current = 0;
 
@@ -1125,6 +1153,8 @@ export default function ChatScreen() {
 
     buttonScrollAttemptsRef.current = 0;
 
+    buttonScrollTargetMessageIdRef.current = null;
+    
     listRef.current?.scrollToOffset({
       offset: 0,
       animated: true,
@@ -1165,7 +1195,7 @@ export default function ChatScreen() {
         isScrollingTowardBottomRef.current = false;
 
         scrollDirectionResetTimeoutRef.current = null;
-      }, 120);
+      }, Platform.OS === 'android' ? 400 : 120);
 
     const wasNearBottom = isNearBottomRef.current;
     const isNearBottom = offsetY <= BOTTOM_THRESHOLD;
@@ -1663,6 +1693,12 @@ export default function ChatScreen() {
               }
           }
           onViewableItemsChanged={onViewableItemsChangedRef.current}
+          viewabilityConfig={viewabilityConfigRef.current}
+          removeClippedSubview={
+            Platform.OS === 'android'
+              ? false
+              : undefined
+          }
           onContentSizeChange={() => {
             if (
               isSearchMode ||
@@ -1744,8 +1780,6 @@ export default function ChatScreen() {
               layoutMeasurement.height,
               contentSize.height,
             );
-
-            scheduleWebUnreadCheck();
           }}
           onScrollToIndexFailed={(info) => {
             if (
@@ -1764,6 +1798,8 @@ export default function ChatScreen() {
                 buttonScrollAttemptsRef.current >= 3
               ) {
                 buttonScrollTargetIndexRef.current = null;
+
+                buttonScrollTargetMessageIdRef.current = null;
 
                 buttonScrollAttemptsRef.current = 0;
                 
