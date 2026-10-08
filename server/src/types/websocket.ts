@@ -21,7 +21,13 @@ export type ChatReadEvent = {
   data: {
     chatId: number;
   };
-};
+} | {
+  type: 'messages_read';
+  data: {
+    chatId: number;
+    messageIds: number[];
+  };
+}
 
 export type TypingStartedEvent = {
   type: 'typing_started';

@@ -107,6 +107,78 @@ export function markChatMessagesRead(
   }>;
 }
 
+export function markMessagesRead(
+  chatId: number,
+  userId: number,
+  messageIds: number[],
+  readAt: number,
+) {
+  if (messageIds.length === 0) {
+    return [];
+  }
+
+  const placeholders = messageIds
+    .map(() => '?')
+    .join(', ');
+
+  const statement = database.prepare(`
+    UPDATE message_receipts
+    SET
+      deliveredAt = COALESCE(
+        deliveredAt,
+        ?
+      ),
+      readAt = COALESCE(
+        readAt,
+        ?
+      )
+    WHERE userId = ?
+      AND readAt IS NULL
+      AND messageId IN (
+        SELECT message.id
+        FROM messages AS message
+
+        JOIN chat_members AS member
+          ON member.chatId = message.chatId
+          AND member.userId = ?
+
+        LEFT JOIN message_hidden_for_users AS hidden
+          ON hidden.messageId = message.id
+          AND hidden.userId = ?
+
+        WHERE message.chatId = ?
+          AND message.id IN (${placeholders})
+          AND message.deletedAt IS NULL
+          AND hidden.messageId IS NULL
+          AND (
+            member.clearedBeforeMessageId IS NULL
+            OR message.id >
+              member.clearedBeforeMessageId
+          )
+      )
+    RETURNING
+      messageId,
+      userId,
+      deliveredAt,
+      readAt  
+  `);
+
+  return statement.all(
+    readAt,
+    readAt,
+    userId,
+    userId,
+    userId,
+    chatId,
+    ...messageIds,
+  ) as Array<{
+    messageId: number;
+    userId: number;
+    deliveredAt: number | null;
+    readAt: number | null;
+  }>;
+}
+
 export function getUnreadMessageCountsByUserId(
   userId: number,
 ) {

@@ -19,6 +19,7 @@ type ConnectWebSocketOptions = {
   onMessageUpdated: (message: MessageData) => void;
   onMessageDeleted: (message: MessageData) => void;
   onMessageStatusUpdated: (receipt: MessageReceiptData) => void;
+  onUnreadCountUpdated?: (data: UnreadCountUpdatedEventData) => void;
   onTypingStarted: (data: TypingEventData) => void;
   onTypingStopped: (data: TypingEventData) => void;
   onUserPresenceUpdated: (data: UserPresenceEventData) => void;
@@ -43,6 +44,13 @@ export type UserPresenceEventData = {
   lastSeenAt: number | null;
 };
 
+export type UnreadCountUpdatedEventData = {
+  chatId: number;
+  unreadCount: number;
+  firstUnreadMessageId: number | null;
+  readMessageIds: number[];
+};
+
 export type WebSocketConnection = {
   disconnect: () => void;
   acknowledgeMessageDelivered: (
@@ -50,6 +58,10 @@ export type WebSocketConnection = {
   ) => void;
   markChatRead: (
     chatId: number,
+  ) => void;
+  markMessagesRead: (
+    chatId: number,
+    messageIds: number[],
   ) => void;
   startTyping: (
     chatId: number,
@@ -66,6 +78,7 @@ export function connectWebSocket({
   onMessageUpdated,
   onMessageDeleted,
   onMessageStatusUpdated,
+  onUnreadCountUpdated,
   onTypingStarted,
   onTypingStopped,
   onUserPresenceUpdated,
@@ -80,6 +93,7 @@ export function connectWebSocket({
   let reconnectAttempt = 0;
   const pendingDeliveryMessageIds = new Set<number>();
   const pendingReadChatIds = new Set<number>();
+  const pendingReadMessageIdsByChat = new Map<number, Set<number>>();
 
   function sendMessageDelivered(messageId: number) {
     if (
@@ -148,6 +162,107 @@ export function connectWebSocket({
     }
 
     pendingReadChatIds.add(chatId);
+  }
+
+  function sendMessagesRead(
+    chatId: number,
+    messageIds: number[],
+  ) {
+    if (
+      !socket ||
+      socket.readyState !== WebSocket.OPEN
+    ) {
+      return false;
+    }
+
+    socket.send(
+      JSON.stringify({
+        type: 'messages_read',
+        data: {
+          chatId,
+          messageIds,
+        },
+      }),
+    );
+
+    return true;
+  }
+
+  function flushPendingMessageRead() {
+    for (
+      const [chatId, pendingIds]
+      of pendingReadMessageIdsByChat
+    ) {
+      const messageIds = [...pendingIds];
+
+      for (
+        let index = 0;
+        index < messageIds.length;
+        index += 100
+      ) {
+        const batch = messageIds.slice(
+          index,
+          index + 100,
+        );
+
+        const wasSent = sendMessagesRead(
+          chatId,
+          batch,
+        );
+
+        if (!wasSent) {
+          return;
+        }
+        
+        for (const messageId of batch) {
+          pendingIds.delete(messageId);
+        }
+      }
+
+      if (pendingIds.size === 0) {
+        pendingReadMessageIdsByChat.delete(
+          chatId,
+        );
+      }
+    }
+  }
+
+  function markMessagesRead(
+    chatId: number,
+    messageIds: number[],
+  ) {
+    if (
+      !Number.isSafeInteger(chatId) ||
+      chatId <= 0
+    ) {
+      return;
+    }
+
+    let pendingIds = pendingReadMessageIdsByChat.get(chatId);
+
+    if (!pendingIds) {
+      pendingIds = new Set<number>();
+    }
+
+    for (const messageId of messageIds) {
+      if (
+        Number.isSafeInteger(messageId) &&
+        messageId > 0
+      ) {
+        pendingIds.add(messageId);
+      }
+    }
+
+    if (pendingIds.size === 0) {
+      return;
+    }
+
+    pendingReadMessageIdsByChat.set(
+      chatId,
+      pendingIds,
+    );
+
+    flushPendingMessageRead();
   }
 
   function sendTypingEvent(
@@ -257,6 +372,8 @@ export function connectWebSocket({
         }
       }
 
+      flushPendingMessageRead();
+
       onConnected?.();
     };
 
@@ -321,6 +438,42 @@ export function connectWebSocket({
           const receipt = message.data as MessageReceiptData;
 
           onMessageStatusUpdated(receipt);
+        }
+
+        if (message.type === 'unread_count_updated') {
+          const data = message.data as
+            Partial<UnreadCountUpdatedEventData> | null;
+
+          if (
+            data &&
+            typeof data.chatId === 'number' &&
+            Number.isSafeInteger(data.chatId) &&
+            data.chatId > 0 &&
+            typeof data.unreadCount === 'number' &&
+            Number.isSafeInteger(data.unreadCount) &&
+            data.unreadCount >= 0 &&
+            (
+              data.firstUnreadMessageId === null ||
+              (
+                typeof data.firstUnreadMessageId === 'number' &&
+                Number.isSafeInteger(data.firstUnreadMessageId) &&
+                data.firstUnreadMessageId > 0
+              )
+            ) &&
+            Array.isArray(data.readMessageIds) &&
+            data.readMessageIds.every(
+              (id) =>
+                Number.isSafeInteger(id) &&
+                id > 0,
+            )
+          ) {
+            onUnreadCountUpdated?.({
+              chatId: data.chatId,
+              unreadCount: data.unreadCount,
+              firstUnreadMessageId: data.firstUnreadMessageId,
+              readMessageIds: data.readMessageIds,
+            });
+          }
         }
 
         if (message.type === 'typing_started') {
@@ -407,6 +560,7 @@ export function connectWebSocket({
   return {
     disconnect,
     acknowledgeMessageDelivered,
+    markMessagesRead,
     markChatRead,
     startTyping,
     stopTyping,

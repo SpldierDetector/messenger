@@ -6,8 +6,10 @@ import { cleanupExpiredAttachments } from './uploads/cleanup.js';
 
 import { getUserBySessionToken } from './auth/auth-service.js';
 import {
+  getUnreadMessageCountsByUserId,
   markChatMessagesRead,
   markMessageDelivered,
+  markMessagesRead
 } from './db/message-receipts.js';
 import { getMessageById } from './db/messages.js';
 import { updateUserLastSeenAt } from './db/users.js';
@@ -32,6 +34,7 @@ import {
   broadcastMessageDeleted,
   broadcastMessageStatusUpdated,
   broadcastMessageUpdated,
+  broadcastUnreadCountUpdated,
   broadcastTypingEvent,
   broadcastUserPresence,
 } from './websocket/broadcast.js';
@@ -215,7 +218,10 @@ webSocketServer.on('connection', (socket, request) => {
       return;
     }
 
-    if (event.type ==='chat_read') {
+    if (
+      event.type === 'chat_read' ||
+      event.type === 'messages_read'
+    ) {
       const chatId = event.data?.chatId;
 
       if (
@@ -237,12 +243,39 @@ webSocketServer.on('connection', (socket, request) => {
 
       const readAt = Date.now();
 
-      const updatedReceipts =
-        markChatMessagesRead(
+      let updatedReceipts: ReturnType<
+        typeof markChatMessagesRead
+      >;
+
+      if (event.type === 'messages_read') {
+        const messageIds = event.data?.messageIds;
+
+        if (
+          !Array.isArray(messageIds) ||
+          messageIds.length === 0 ||
+          messageIds.length > 100 ||
+          !messageIds.every(
+            (id) =>
+              Number.isSafeInteger(id) &&
+              id > 0,
+          )
+        ) {
+          return;
+        }
+
+        updatedReceipts = markMessagesRead(
+          chatId,
+          user.id,
+          [...new Set<number>(messageIds)],
+          readAt,
+        );
+      } else {
+        updatedReceipts = markChatMessagesRead(
           chatId,
           user.id,
           readAt,
         );
+      }
       
       for (
         const receipt of updatedReceipts
@@ -263,6 +296,23 @@ webSocketServer.on('connection', (socket, request) => {
           receipt.readAt,
         );
       }
+
+      const unreadCounts = getUnreadMessageCountsByUserId(user.id);
+
+      const currentUnreadState = unreadCounts.find(
+        (count) => count.chatId === chatId,
+      );
+
+      broadcastUnreadCountUpdated(
+        webSocketServer,
+        user.id,
+        chatId,
+        currentUnreadState?.unreadCount ?? 0,
+        currentUnreadState?.firstUnreadMessageId ?? null,
+        updatedReceipts.map(
+          (receipt) => receipt.messageId,
+        ),
+      );
     }
 
     if (

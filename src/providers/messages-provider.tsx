@@ -31,6 +31,10 @@ import {
 } from "@/services/websocket-service";
 
 import type {
+  UnreadCountUpdatedEventData,
+} from '@/services/websocket-service';
+
+import type {
   AttachmentData,
   MessageData,
   MessageReceiptData,
@@ -41,6 +45,7 @@ type MessagesContextValue = {
   messages: MessageData[];
   receipts: MessageReceiptData[];
   unreadCounts: UnreadMessageCount[];
+  confirmedReadMessageIdsByChat: Record<number, Set<number>>;
   typingUserIdsByChat: Record<number, number[]>;
   onlineByChat: Record<number, boolean>;
   isRealtimeConnected: boolean;
@@ -65,6 +70,7 @@ type MessagesContextValue = {
   isLoadingOlderMessagesByChat: Record<number, boolean>;
   loadLatestMessagePreviews: () => Promise<void>;
   markChatRead: (chatId: number) => void;
+  markMessagesRead: (chatId: number, messageIds: number[]) => void;
   editMessage: (messageId: number, text: string,) => Promise<boolean>;
   startTyping: (chatId: number) => void;
   stopTyping: (chatId: number) => void;
@@ -84,6 +90,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
   const [messages, setMessages] = useState<MessageData[]>([]);
   const [receipts, setReceipts] = useState<MessageReceiptData[]>([]);
   const [unreadCounts, setUnreadCounts] = useState<UnreadMessageCount[]>([]);
+  const [confirmedReadMessageIdsByChat, setConfirmedReadMessageIdsByChat] = useState<Record<number, Set<number>>>({});
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -621,6 +628,98 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
             count.chatId !== chatId,
         ), 
       );
+    },
+    [],
+  );
+
+  const markMessagesRead = useCallback(
+    (
+      chatId: number,
+      messageIds: number[],
+    ) => {
+      if (messageIds.length === 0) {
+        return;
+      }
+
+      webSocketConnectionRef.current?.markMessagesRead(
+        chatId,
+        messageIds,
+      );
+    },
+    [],
+  );
+
+  const handleUnreadCountUpdated = useCallback(
+    (data: UnreadCountUpdatedEventData) => {
+      setConfirmedReadMessageIdsByChat(
+        (current) => {
+          if (data.unreadCount === 0) {
+            if (!(data.chatId in current)) {
+              return current;
+            }
+
+            const next = { ...current };
+            delete next[data.chatId];
+
+            return next;
+          }
+
+          if (data.readMessageIds.length === 0) {
+            return current;
+          }
+
+          const confirmedIds = new Set(
+            current[data.chatId] ?? [],
+          );
+
+          for (const messageId of data.readMessageIds) {
+            confirmedIds.add(messageId);
+          }
+
+          return {
+            ...current,
+            [data.chatId]: confirmedIds,
+          };
+        },
+      );
+      
+      setUnreadCounts((currentCounts) => {
+        if (data.unreadCount === 0) {
+          return currentCounts.filter(
+            (count) =>
+              count.chatId !== data.chatId,
+          );
+        }
+
+        if (data.firstUnreadMessageId === null) {
+          return currentCounts;
+        }
+
+        const updatedCount = {
+          chatId: data.chatId,
+          unreadCount: data.unreadCount,
+          firstUnreadMessageId: data.firstUnreadMessageId,
+        };
+
+        const hasChat = currentCounts.some(
+          (count) =>
+            count.chatId === data.chatId,
+        );
+
+        if (!hasChat) {
+          return [
+            ...currentCounts,
+            updatedCount,
+          ];
+        }
+
+        return currentCounts.map(
+          (count) =>
+            count.chatId === data.chatId
+              ? updatedCount
+              : count,
+        );
+      });
     },
     [],
   );
@@ -1306,6 +1405,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       onMessageUpdated: updateMessageInState,
       onMessageDeleted: handleMessageDeleted,
       onMessageStatusUpdated: updateReceiptInState,
+      onUnreadCountUpdated: handleUnreadCountUpdated,
       onTypingStarted: handleTypingStarted,
       onTypingStopped: handleTypingStopped,
       onUserPresenceUpdated: handleUserPresenceUpdated,
@@ -1341,6 +1441,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       clearMessageSearch,
       receipts,
       unreadCounts,
+      confirmedReadMessageIdsByChat,
       typingUserIdsByChat,
       onlineByChat,
       isRealtimeConnected,
@@ -1357,7 +1458,8 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       hasMoreMessagesByChat,
       isLoadingOlderMessagesByChat,
       loadLatestMessagePreviews,
-      markChatRead, 
+      markChatRead,
+      markMessagesRead,
       startTyping,
       stopTyping,
       isLoaded,

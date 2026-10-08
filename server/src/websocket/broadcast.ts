@@ -87,6 +87,46 @@ export function broadcastMessageStatusUpdated(
   );
 }
 
+export function broadcastUnreadCountUpdated(
+  webSocketServer: WebSocketServer,
+  userId: number,
+  chatId: number,
+  unreadCount: number,
+  firstUnreadMessageId: number | null,
+  readMessageIds: number[],
+) {
+  const event: WebSocketEvent<{
+    chatId: number,
+    unreadCount: number;
+    firstUnreadMessageId: number | null;
+    readMessageIds: number[];
+  }> = {
+    type: 'unread_count_updated',
+    data: {
+      chatId,
+      unreadCount,
+      firstUnreadMessageId,
+      readMessageIds,
+    },
+  };
+
+  const serializedEvent = JSON.stringify(event);
+
+  webSocketServer.clients.forEach((client) => {
+    const authenticatedClient = 
+      client as AuthenticatedWebSocket;
+
+    if (
+      authenticatedClient.readyState !== WebSocket.OPEN ||
+      authenticatedClient.userId !== userId
+    ) {
+      return;
+    }
+
+    authenticatedClient.send(serializedEvent);
+  });
+}
+
 export function broadcastMessageCreated(
   webSocketServer: WebSocketServer,
   message: MessageData,
