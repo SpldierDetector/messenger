@@ -223,6 +223,53 @@ export function getUnreadMessageCountsByUserId(
   }>;
 }
 
+export function getUnreadMessageIdsByChatId(
+  chatId: number,
+  userId: number,
+): number[] {
+  const statement = database.prepare(`
+    SELECT
+      message.id AS messageId
+      
+    FROM message_receipts AS receipt
+
+    JOIN messages AS message
+      ON message.id = receipt.messageId
+
+    JOIN chat_members AS member
+      ON member.chatId = message.chatId
+      AND member.userId = receipt.userId
+
+    LEFT JOIN message_hidden_for_users AS hidden
+      ON hidden.messageId = message.id
+      AND hidden.userId = receipt.userId
+
+    WHERE receipt.userId = ?
+      AND message.chatId = ?
+      AND receipt.readAt IS NULL
+      AND message.deletedAt IS NULL
+      AND hidden.messageId IS NULL
+      AND (
+        member.clearedBeforeMessageId IS NULL
+        OR message.id >
+          member.clearedBeforeMessageId
+      )
+
+    ORDER BY message.id ASC
+  `);
+
+  const rows = statement.all(
+    userId,
+    chatId,
+  ) as Array<{
+    messageId: number;
+  }>;
+
+  return rows.map(
+    (row) => row.messageId,
+  );
+}
+
 export function getMessageReceiptsByChatId(
   chatId: number,
   senderId: number,

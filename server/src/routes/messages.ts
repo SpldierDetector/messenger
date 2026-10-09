@@ -22,6 +22,7 @@ import {
   createMessageReceipts,
   getMessageReceiptsByChatId,
   getUnreadMessageCountsByUserId,
+  getUnreadMessageIdsByChatId,
 } from '../db/message-receipts.js';
 import {
   deleteMessage,
@@ -194,6 +195,47 @@ export function createMessagesRouter({
       );
 
       response.json(unreadCounts);
+    },
+  );
+
+  messagesRouter.get(
+    '/unread-ids',
+    requireAuth,
+    (request, response) => {
+      const currentUser = request.user;
+      const chatId = Number(request.query.chatId);
+
+      if (!currentUser) {
+        response.status(401).json({
+          error: 'Authorization required',
+        });
+        return;
+      }
+
+      if (
+        !Number.isSafeInteger(chatId) ||
+        chatId <= 0
+      ) {
+        response.status(400).json({
+          error: 'chatId must be a positive integer',
+        });
+        return;
+      }
+
+      if (!isUserInChat(chatId, currentUser.id)) {
+        response.status(403).json({
+          error: 'Access denied',
+        });
+        return;
+      }
+
+      const unreadMessageIds =
+        getUnreadMessageIdsByChatId(
+          chatId,
+          currentUser.id,
+        );
+
+      response.json(unreadMessageIds);
     },
   );
 

@@ -20,6 +20,7 @@ import {
   loadMessageReceipts,
   loadPendingDeliveryMessages,
   loadUnreadMessageCounts,
+  loadUnreadMessageIds,
   searchMessages as searchMessagesService,
   syncMessages as syncMessagesService,
 } from "@/services/messages-service";
@@ -45,6 +46,7 @@ type MessagesContextValue = {
   messages: MessageData[];
   receipts: MessageReceiptData[];
   unreadCounts: UnreadMessageCount[];
+  unreadMessageIdsByChat: Record<number, Set<number>>;
   confirmedReadMessageIdsByChat: Record<number, Set<number>>;
   typingUserIdsByChat: Record<number, number[]>;
   onlineByChat: Record<number, boolean>;
@@ -90,6 +92,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
   const [messages, setMessages] = useState<MessageData[]>([]);
   const [receipts, setReceipts] = useState<MessageReceiptData[]>([]);
   const [unreadCounts, setUnreadCounts] = useState<UnreadMessageCount[]>([]);
+  const [unreadMessageIdsByChat, setUnreadMessageIdsByChat] = useState<Record<number, Set<number>>>({});
   const [confirmedReadMessageIdsByChat, setConfirmedReadMessageIdsByChat] = useState<Record<number, Set<number>>>({});
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -109,11 +112,66 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
   const nextTemporaryMessageIdRef = useRef(-1);
   const webSocketConnectionRef = useRef<WebSocketConnection | null>(null);
   const loadingOlderChatIdsRef = useRef<Set<number>>(new Set());
+  const unreadIdsRevisionByChatRef = useRef<Record<number, number>>({});
+  const unreadIdsRequestIdByChatRef = useRef<Record<number, number>>({});
+  const trackedUnreadChatIdsRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
 
+  async function refreshUnreadMessageIdsForChat(
+    chatId: number,
+  ) {
+    if (!token) {
+      return;
+    }
+
+    trackedUnreadChatIdsRef.current.add(chatId);
+
+    const requestId =
+      (unreadIdsRequestIdByChatRef.current[chatId] ?? 0) + 1;
+
+    unreadIdsRequestIdByChatRef.current[chatId] = requestId;
+
+    try {
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const revisionBefore =
+          unreadIdsRevisionByChatRef.current[chatId] ?? 0;
+
+        const messageIds = await loadUnreadMessageIds(
+          chatId,
+          token,
+        );
+
+        if (
+          unreadIdsRequestIdByChatRef.current[chatId] !== requestId
+        ) {
+          return;
+        }
+
+        const revisionAfter =
+          unreadIdsRevisionByChatRef.current[chatId] ?? 0;
+
+        if (revisionBefore !== revisionAfter) {
+          continue;
+        }
+
+        setUnreadMessageIdsByChat((current) => ({
+          ...current,
+          [chatId]: new Set(messageIds),
+        }));
+
+        return;
+      }
+    } catch (error) {
+      console.warn(
+        'Failed to refresh unread message IDs:',
+        error,
+      );
+    }
+  }
+  
   async function loadMessages(
     chatId: number,
     firstUnreadMessageId: number | null = null,
@@ -121,6 +179,8 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
     if (!token || !user) {
       return;
     }
+
+    void refreshUnreadMessageIdsForChat(chatId);
 
     const [firstPage, loadedReceipts] =
       await Promise.all([
@@ -651,6 +711,32 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
 
   const handleUnreadCountUpdated = useCallback(
     (data: UnreadCountUpdatedEventData) => {
+      unreadIdsRevisionByChatRef.current[data.chatId] =
+        (unreadIdsRevisionByChatRef.current[data.chatId] ?? 0) + 1;
+
+      setUnreadMessageIdsByChat((current) => {
+        const currentIds = current[data.chatId];
+
+        if(!currentIds) {
+          return current;
+        }
+
+        const nextIds = new Set(currentIds);
+
+        for (const messageId of data.readMessageIds) {
+          nextIds.delete(messageId);
+        }
+
+        if (data.unreadCount === 0) {
+          nextIds.clear();
+        }
+
+        return {
+          ...current,
+          [data.chatId]: nextIds,
+        };
+      });
+      
       setConfirmedReadMessageIdsByChat(
         (current) => {
           if (data.unreadCount === 0) {
@@ -1188,6 +1274,25 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       return;
     }
 
+    unreadIdsRevisionByChatRef.current[newMessage.chatId] =
+      (unreadIdsRevisionByChatRef.current[newMessage.chatId] ?? 0) + 1;
+
+    setUnreadMessageIdsByChat((current) => {
+      const currentIds = current[newMessage.chatId];
+
+      if (!currentIds || currentIds.has(newMessage.id)) {
+        return current;
+      }
+
+      const nextIds = new Set(currentIds);
+      nextIds.add(newMessage.id);
+
+      return {
+        ...current,
+        [newMessage.chatId]: nextIds,
+      };
+    });
+
     setUnreadCounts((currentCounts) => {
       const existingCount = currentCounts.find(
         (count) =>
@@ -1363,6 +1468,13 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       await syncPendingDeliveryMessages();
       await refreshLatestMessagePreviews();
       await refreshUnreadCounts();
+
+      await Promise.all(
+        [...trackedUnreadChatIdsRef.current].map(
+          (chatId) =>
+            refreshUnreadMessageIdsForChat(chatId),
+        ),
+      );
     } catch (caughtError) {
       console.warn(
         'Failed to sync state after reconnect',
@@ -1378,6 +1490,8 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       setIsLoaded(false);
       setError(null);
       setUnreadCounts([]);
+      setUnreadMessageIdsByChat({});
+      setConfirmedReadMessageIdsByChat({});
       setMessageSearchResults([]);
       setIsSearchingMessages(false);
       setMessageSearchError(null);
@@ -1390,6 +1504,20 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       setIsRealtimeConnected(false);
 
       loadingOlderChatIdsRef.current.clear();
+      trackedUnreadChatIdsRef.current.clear();
+
+      for (
+        const key of Object.keys(
+          unreadIdsRequestIdByChatRef.current,
+        )
+      ) {
+        const chatId = Number(key);
+
+        unreadIdsRequestIdByChatRef.current[chatId] =
+          (unreadIdsRequestIdByChatRef.current[chatId] ?? 0) + 1;
+      }
+
+      unreadIdsRevisionByChatRef.current = {};
 
       ++messageSearchRequestIdRef.current;
       
@@ -1441,6 +1569,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       clearMessageSearch,
       receipts,
       unreadCounts,
+      unreadMessageIdsByChat,
       confirmedReadMessageIdsByChat,
       typingUserIdsByChat,
       onlineByChat,

@@ -404,6 +404,40 @@ export async function getUnreadMessageCountsRequest(
   return response.json() as Promise<UnreadMessageCount[]>;
 }
 
+export async function getUnreadMessageIdsRequest(
+  chatId: number,
+  token: string,
+): Promise<number[]> {
+  const params = new URLSearchParams({
+    chatId: chatId.toString(),
+  });
+
+  const response = await fetch(
+    `${API_BASE_URL}/messages/unread-ids?${params.toString()}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+
+    console.error(
+      'Gailed to load unread message IDs:',
+      response.status,
+      errorBody,
+    );
+
+    throw new Error(
+      `Failed to load unread message IDs: ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<number[]>;
+}
+
 export async function searchMessagesRequest(
   chatId: number,
   search: string,

@@ -9,6 +9,7 @@ import {
   getMessagesRequest,
   getPendingDeliveryMessagesRequest,
   getUnreadMessageCountsRequest,
+  getUnreadMessageIdsRequest,
   searchMessagesRequest,
   sendMessageRequest,
   syncMessagesRequest,
@@ -178,6 +179,16 @@ export async function loadUnreadMessageCounts(
   token: string,
 ): Promise<UnreadMessageCount[]> {
   return getUnreadMessageCountsRequest(
+    token,
+  );
+}
+
+export async function loadUnreadMessageIds(
+  chatId: number,
+  token: string,
+): Promise<number[]> {
+  return getUnreadMessageIdsRequest(
+    chatId,
     token,
   );
 }

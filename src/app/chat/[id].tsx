@@ -67,6 +67,7 @@ export default function ChatScreen() {
     messages,
     receipts,
     unreadCounts,
+    unreadMessageIdsByChat,
     confirmedReadMessageIdsByChat,
     typingUserIdsByChat,
     onlineByChat,
@@ -151,6 +152,8 @@ export default function ChatScreen() {
   const initialUnreadScrollAttemptsRef = useRef(0);
   const firstUnreadMessageIdRef = useRef<number | null>(null);
   const buttonScrollTargetIndexRef = useRef<number | null>(null);
+  const webUnreadJumpPendingRef = useRef(false);
+  const webUnreadJumpMessageIdRef = useRef<number | null>(null);
   const buttonScrollAttemptsRef = useRef(0);
   const buttonScrollTargetMessageIdRef = useRef<number | null>(null);
   const buttonScrollRetryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -450,6 +453,10 @@ export default function ChatScreen() {
     setIsScrollToBottomVisible(false);
 
     buttonScrollTargetIndexRef.current = null;
+
+    webUnreadJumpPendingRef.current = false;
+
+    webUnreadJumpMessageIdRef.current = null;
 
     buttonScrollAttemptsRef.current = 0;
 
@@ -877,6 +884,7 @@ export default function ChatScreen() {
           if (
             currentIds.has(firstUnreadMessageId)
           ) {
+            
             return currentIds;
           }
 
@@ -886,6 +894,11 @@ export default function ChatScreen() {
 
           return nextIds;
         },
+      );
+
+      markMessagesRead(
+        chatId,
+        [firstUnreadMessageId],
       );
     }
     
@@ -937,29 +950,36 @@ export default function ChatScreen() {
         )
       : -1;
 
+  const exactUnreadMessageIds =
+    unreadMessageIdsByChat[chatId];
+
   const currentUnreadMessages =
-    currentFirstUnreadIndex >= 0
-      ? messageList
-        .slice(
-          0,
-          currentFirstUnreadIndex + 1,
+    exactUnreadMessageIds !== undefined
+      ? messageList.filter(
+        (message) => 
+          !message.isOwn &&
+          exactUnreadMessageIds.has(message.id),
         )
-        .filter(
-          (message) =>
-            !message.isOwn,
-        )
-      : currentFirstUnreadMessageId === null &&
-          currentUnreadCount > 0
+      : currentFirstUnreadIndex >= 0
         ? messageList
-          .filter(
-            (message) =>
-              !message.isOwn,
-          )
           .slice(
             0,
-            currentUnreadCount,
+            currentFirstUnreadIndex + 1,
           )
-        : [];
+          .filter(
+            (message) => !message.isOwn,
+          )
+        : currentFirstUnreadMessageId === null &&
+            currentUnreadCount > 0
+          ? messageList
+            .filter(
+              (message) => !message.isOwn,
+            )
+            .slice(
+              0,
+              currentUnreadCount,
+            )
+          : [];
 
   const currentUnreadMessageIds =
     currentUnreadMessages
@@ -1105,11 +1125,47 @@ export default function ChatScreen() {
   
   function handleScrollToBottomPress() {
     if (
+      Platform.OS === 'web' &&
+      webUnreadJumpPendingRef.current &&
+      webUnreadJumpMessageIdRef.current !== null &&
+      typeof document !== 'undefined'
+    ) {
+      const container = document.getElementById(
+        'messages-container',
+      );
+
+      const target = document.getElementById(
+        `message-${webUnreadJumpMessageIdRef.current}`,
+      );
+
+      if (container && target) {
+        const containerRect = container.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+
+        if (targetRect.top >= containerRect.bottom) {
+          webUnreadJumpPendingRef.current = false;
+
+          webUnreadJumpMessageIdRef.current = null;
+        }
+      }
+    }
+    
+    if (
       unreadBadgeCount > 0 &&
       firstUnseenUnreadMessage !== undefined &&
       firstUnseenUnreadIndex >= 0 &&
-      !isUnreadAreaVisibleRef.current
+      !isUnreadAreaVisibleRef.current &&
+      (
+        Platform.OS !== 'web' ||
+        !webUnreadJumpPendingRef.current
+      )
     ) {
+      if (Platform.OS === 'web') {
+        webUnreadJumpPendingRef.current = true;
+
+        webUnreadJumpMessageIdRef.current = firstUnseenUnreadMessage.id;
+      }
+
       buttonScrollTargetIndexRef.current = firstUnseenUnreadIndex;
 
       buttonScrollTargetMessageIdRef.current = firstUnseenUnreadMessage.id;
@@ -1123,6 +1179,10 @@ export default function ChatScreen() {
       });
 
       return;
+    }
+
+    if (Platform.OS === 'web') {
+      webUnreadJumpPendingRef.current = false;
     }
 
     buttonScrollTargetIndexRef.current = null;
