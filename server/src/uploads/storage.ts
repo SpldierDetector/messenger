@@ -35,3 +35,16 @@ export function getChatUploadDirectory(
 
   return directory;
 }
+
+export const AVATAR_UPLOAD_DIRECTORY =
+  resolve(
+    UPLOAD_DIRECTORY,
+    'avatars',
+  );
+
+mkdirSync(
+  AVATAR_UPLOAD_DIRECTORY,
+  {
+    recursive: true,
+  },
+);

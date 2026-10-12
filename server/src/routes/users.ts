@@ -1,17 +1,94 @@
 import { Router } from 'express';
+import multer from 'multer';
+import sharp from 'sharp';
+
+import { randomUUID } from 'node:crypto';
+import { rmSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import {
   getUserById,
   searchUsers,
   updateUserProfile,
+  updateUserAvatarUrl,
 } from '../db/users.js';
+import type {
+  NextFunction,
+  Request,
+  Response,
+} from 'express'
 import type { UserRow } from '../types/user.js';
 import { mapUserRow } from '../mappers/user.js';
 import { requireAuth } from '../middleware/auth.js';
+import { AVATAR_UPLOAD_DIRECTORY } from '../uploads/storage.js';
 
 export const usersRouter = Router();
 
 usersRouter.use(requireAuth);
+
+const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
+
+const avatarUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: MAX_AVATAR_SIZE,
+    files: 1,
+  },
+}).single('file');
+
+function handleAvatarUpload(
+  request: Request,
+  response: Response,
+  next: NextFunction,
+) {
+  avatarUpload(
+    request,
+    response,
+    (error: unknown) => {
+      if (!error) {
+        next();
+        return;
+      }
+
+      if (
+        error instanceof multer.MulterError &&
+        error.code === 'LIMIT_FILE_SIZE'
+      ) {
+        response.status(413).json({
+          error: 'avatar file is too large',
+        });
+
+        return;
+      }
+
+      response.status(400).json({
+        error: 'invalid avatar upload',
+      });
+    },
+  );
+}
+
+function deleteStoredAvatar(
+  avatarUrl: string | null,
+) {
+  const filename = avatarUrl?.match(
+    /^\/avatars\/([a-f0-9-]{36}\.webp)$/,
+  )?.[1];
+
+  if (!filename) return;
+
+  try {
+    rmSync(
+      resolve(AVATAR_UPLOAD_DIRECTORY, filename),
+      { force: true },
+    );
+  } catch (error) {
+    console.warn(
+      'Failed to remove old avatar:',
+      error,
+    );
+  }
+}
 
 usersRouter.get('/', (request, response) => {
   const search =
@@ -43,6 +120,133 @@ usersRouter.get('/', (request, response) => {
 
   response.json(users);
 });
+
+usersRouter.post(
+  '/me/avatar',
+  handleAvatarUpload,
+  async (request, response) => {
+    const currentUser = request.user;
+    const file = request.file;
+
+    if (!currentUser) {
+      response.status(401).json({
+        error: 'authorization required',
+      });
+      return;
+    }
+
+    if (!file) {
+      response.status(400).json({
+        error: 'image is required',
+      });
+      return;
+    }
+
+    const allowedMimeTypes = new Set([
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+    ]);
+
+    if (!allowedMimeTypes.has(file.mimetype)) {
+      response.status(415).json({
+        error: 'unsupported image format',
+      });
+      return;
+    }
+
+    const existingRow = getUserById(
+      currentUser.id,
+    ) as UserRow | undefined;
+    
+    if (!existingRow) {
+      response.status(404).json({
+        error: 'user not found',
+      });
+      return;
+    }
+
+    const filename = `${randomUUID()}.webp`;
+
+    const filePath = resolve(
+      AVATAR_UPLOAD_DIRECTORY,
+      filename,
+    );
+
+    const avatarUrl = `/avatars/${filename}`;
+
+    try {
+      const metadata = await sharp(
+        file.buffer,
+        {
+          limitInputPixels: 16_000_000,
+        },
+      ). metadata();
+
+      if (
+        !metadata.format ||
+        !['jpeg', 'png', 'webp'].includes(
+          metadata.format,
+        )
+      ) {
+        response.status(415).json({
+          error: 'unsupported image format',
+        });
+        return;
+      }
+
+      await sharp(file.buffer, {
+        limitInputPixels: 16_000_000,
+      })
+        .rotate()
+        .resize(512, 512, {
+          fit: 'cover',
+          position: 'center',
+        })
+        .webp({ quality: 82})
+        .toFile(filePath);
+    } catch (error){
+      console.warn(
+        'Invalid avatar image:',
+        error,
+      );
+
+      rmSync(filePath, { force: true });
+
+      response.status(400).json({
+        error: 'invalid image',
+      });
+      return;
+    }
+
+    try{
+      updateUserAvatarUrl(
+        currentUser.id,
+        avatarUrl,
+      );
+    } catch (error) {
+      rmSync(filePath, { force: true });
+
+      console.error(
+        'Failed to update avatar in database:',
+        error,
+      );
+
+      response.status(500).json({
+        error: 'failed to save avatar',
+      });
+      return;
+    }
+
+    deleteStoredAvatar(existingRow.avatarUrl);
+
+    const updatedRow = getUserById(currentUser.id);
+
+    response.json({
+      user: mapUserRow(updatedRow),
+    });
+  },
+);
 
 usersRouter.patch('/me', (request, response) => {
   const currentUser = request.user;

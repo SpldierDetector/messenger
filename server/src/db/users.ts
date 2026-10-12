@@ -161,3 +161,19 @@ export function updateUserProfile(
     userId,
   );
 }
+
+export function updateUserAvatarUrl(
+  userId: number,
+  avatarUrl: string | null,
+) {
+  const statement = database.prepare(`
+    UPDATE users
+    SET avatarUrl = ?
+    WHERE id = ?  
+  `);
+
+  return statement.run(
+    avatarUrl,
+    userId,
+  );
+}
