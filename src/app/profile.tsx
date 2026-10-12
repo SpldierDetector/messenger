@@ -1,0 +1,260 @@
+import { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { router } from 'expo-router';
+
+import { useAuth } from '@/providers/auth-provider';
+import { ApiError } from '@/services/api-error';
+import { styles } from '@/styles/profile.styles';
+
+export default function ProfileScreen() {
+  const {
+    user,
+    updateProfile,
+    logout,
+  } = useAuth();
+
+  const [name, setName] = useState(user?.name ?? '');
+  const [bio, setBio] = useState(user?.bio ?? '');
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  
+  useEffect(() => {
+    setName(user?.name ?? '');
+    setBio(user?.bio ?? '');
+    setError(null);
+    setSuccess(null);
+  }, [user?.id]);
+
+  const avatarLetter =
+    user?.name.trim().charAt(0).toUpperCase() || '?';
+
+  const hasChanges =
+    name !== (user?.name ?? '') ||
+    bio !== (user?.bio ?? '');
+
+  function handleNameChange(value: string) {
+    setName(value);
+    setError(null);
+    setSuccess(null);
+  }
+
+  function handleBioChange(value: string) {
+    setBio(value);
+    setError(null);
+    setSuccess(null);
+  }
+
+  async function handleSave() {
+    if (!user || isSaving) return;
+
+    const normalizedName = name.trim();
+    const normalizedBio = bio.trim();
+
+    if (
+      normalizedName.length < 1 ||
+      normalizedName.length > 64
+    ) {
+      setError(
+        'Имя должно содержать от 1 до 64 символов',
+      );
+
+      return;
+    }
+
+    if (normalizedBio.length > 300) {
+      setError(
+        'Описание не должно превышать 300 символов',
+      );
+
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      setError(null);
+      setSuccess(null);
+
+      const updatedUser = await updateProfile({
+        name: normalizedName,
+        bio: normalizedBio || null,
+      });
+
+      setName(updatedUser.name);
+      setBio(updatedUser.bio ?? '');
+
+      setSuccess('Профиль сохранён');
+    } catch (caughtError) {
+      if (
+        caughtError instanceof ApiError &&
+        caughtError.status === 400
+      ) {
+        setError('Проверьте данные профиля');
+      } else if (
+        caughtError instanceof ApiError &&
+        caughtError.status === 401
+      ) {
+        setError(
+          'Сессия истекла. Войдите в аккаунт повторно',
+        );
+      } else {
+        console.error(
+          'Profile update failed:',
+          caughtError,
+        );
+
+        setError(
+          'Не удалось сохранить профиль',
+        );
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleLogout() {
+    await logout();
+    router.replace('/login');
+  }
+  
+  if (!user) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.error}>
+          Пользователь не авторизован
+        </Text>
+
+        <Pressable
+          onPress={() => router.replace('/')}
+          style={styles.secondaryButton}
+        >
+          <Text style={styles.secondaryButtonText}>
+            Назад
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
+      <Pressable
+        onPress={() => router.replace('/')}
+        style={styles.backButton}
+      >
+        <Text style={styles.backText}>
+          ← Назад
+        </Text>
+      </Pressable>
+
+      <Text style={styles.title}>
+        Мой профиль
+      </Text>
+
+      <View style={styles.avatarSection}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarLetter}>
+            {avatarLetter}
+          </Text>
+        </View>
+
+        <Text style={styles.avatarHint}>
+          Фотографию профиля добавим позже
+        </Text>
+      </View>
+
+      <View style={styles.form}>
+        <Text style={styles.label}>
+          Имя
+        </Text>
+
+        <TextInput
+          value={name}
+          onChangeText={handleNameChange}
+          placeholder="Ваше имя"
+          placeholderTextColor="#777777"
+          maxLength={64}
+          style={styles.input}
+        />
+
+        <Text style={styles.label}>
+          О себе
+        </Text>
+
+        <TextInput
+          value={bio}
+          onChangeText={handleBioChange}
+          placeholder="Расскажите немного о себе"
+          placeholderTextColor="#777777"
+          maxLength={300}
+          multiline
+          numberOfLines={5}
+          textAlignVertical="top"
+          style={[
+            styles.input,
+            styles.bioInput,
+          ]}
+        />
+
+        <Text style={styles.counter}>
+          {bio.length} / 300
+        </Text>
+
+        {error ? (
+          <Text style={styles.error}>
+            {error}
+          </Text>
+        ) : null}
+
+        {success ? (
+          <Text style={styles.success}>
+            {success}
+          </Text>
+        ) : null}
+
+        <Pressable
+          onPress={handleSave}
+          disabled={isSaving || !hasChanges}
+          style={[
+            styles.saveButton,
+            (isSaving || !hasChanges) && 
+              styles.saveButtonDisabled,
+          ]}
+        >
+          {isSaving ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.saveButtonText}>
+              Сохранить
+            </Text>
+          )}
+        </Pressable>
+      </View>
+
+      <Pressable
+        onPress={handleLogout}
+        disabled={isSaving}
+        accessibilityRole="button"
+        style={({ pressed }) => [
+          styles.logoutButton,
+          pressed && styles.logoutButtonPressed,
+        ]}
+      >
+        <Text style={styles.logoutButtonText}>
+          Выйти из аккаунта
+        </Text>
+      </Pressable>
+    </ScrollView>
+  );
+}

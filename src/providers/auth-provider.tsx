@@ -11,12 +11,14 @@ import {
   loginRequest,
   logoutRequest,
   registerRequest,
+  updateProfileRequest,
 } from '@/services/auth-api';
 
 import type {
   AuthUser,
   LoginRequest,
   RegisterRequest,
+  UpdateProfileRequest,
 } from '@/types/auth';
 
 import { 
@@ -35,6 +37,7 @@ type AuthContextData = {
   login: (data: LoginRequest) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
+  updateProfile: (data: UpdateProfileRequest) => Promise<AuthUser>;
 };
 
 const AuthContext = createContext<AuthContextData | null>(
@@ -160,6 +163,23 @@ export function AuthProvider({
     }
   }
 
+  async function updateProfile(
+    data: UpdateProfileRequest,
+  ): Promise<AuthUser> {
+    if (!token) {
+      throw new Error('Not authenticated');
+    }
+
+    const response = await updateProfileRequest(
+      token,
+      data,
+    );;
+
+    setUser(response.user);
+
+    return response.user;
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -170,6 +190,7 @@ export function AuthProvider({
         login,
         register,
         logout,
+        updateProfile,
       }}
     >
       {children}

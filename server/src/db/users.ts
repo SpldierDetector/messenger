@@ -19,7 +19,9 @@ export function getUserById(userId: number) {
       id,
       name,
       login,
-      passwordHash
+      passwordHash,
+      bio,
+      avatarUrl
     FROM users
     WHERE id = ?
     LIMIT 1  
@@ -34,7 +36,9 @@ export function getUserByLogin(login: string) {
       id,
       name,
       login,
-      passwordHash
+      passwordHash,
+      bio,
+      avatarUrl
     FROM users
     WHERE login = ?
     LIMIT 1  
@@ -98,7 +102,9 @@ export function searchUsers(
   const statement = database.prepare(`
     SELECT
       id,
-      name
+      name,
+      bio,
+      avatarUrl
     FROM users
     WHERE id != ?
       AND ${searchConditions}
@@ -134,4 +140,24 @@ export function updateUserLastSeenAt(
     lastSeenAt,
     userId,
   )
+}
+
+export function updateUserProfile(
+  userId: number,
+  name: string,
+  bio: string | null,
+) {
+  const statement = database.prepare(`
+    UPDATE users
+    SET
+      name = ?,
+      bio = ?
+    WHERE id = ?  
+  `);
+
+  return statement.run(
+    name,
+    bio,
+    userId,
+  );
 }

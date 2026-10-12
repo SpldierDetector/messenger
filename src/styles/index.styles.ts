@@ -26,29 +26,21 @@ export const styles = StyleSheet.create({
   chatPreviewPressed: {
     backgroundColor: '#27272a'
   },
-  logoutButton: {
-    minHeight: 38,
-    backgroundColor: '#1A1A1A',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 0,
+  profileButton:{
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#354a68',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoutButtonPressed: {
+  profileButtonPressed: {
     opacity: 0.65,
   },
-  logoutButtonText: {
-    color: '#FF6B6B',
-    fontSize: 14,
-    lineHeight: 16,
+  profileButtonText: {
+    color: '#ffffff',
+    fontSize: 18,
     fontWeight: '600',
-    includeFontPadding: false,
-    
-    transform: 
-      Platform.OS === 'web'
-      ? [{ translateY: -1 }]
-      : []
   },
   headerActions: {
     flexDirection: 'row',

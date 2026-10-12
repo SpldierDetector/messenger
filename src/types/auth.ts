@@ -1,6 +1,8 @@
 export type AuthUser = {
   id: number;
   name: string;
+  bio: string | null;
+  avatarUrl: string | null;
 };
 
 export type LoginRequest = {
@@ -21,4 +23,13 @@ export type RegisterRequest = {
   name: string;
   login: string;
   password: string;
+};
+
+export type UpdateProfileRequest = {
+  name: string;
+  bio: string | null;
+};
+
+export type UpdateProfileResponse = {
+  user: AuthUser;
 };

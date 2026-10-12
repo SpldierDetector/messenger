@@ -32,7 +32,7 @@ export default function ChatListScreen() {
   const { 
     isAuthenticated, 
     isAuthLoading, 
-    logout,
+    user,
     token,
   } = useAuth();
 
@@ -139,11 +139,6 @@ export default function ChatListScreen() {
   }
 
   const sortedChats = sortChatsByLatestMessage(chats, messages);
-  
-  async function handleLogout() {
-    await logout();
-    router.replace('/login');
-  }
 
   function handleDeleteMenuPress(mode: ChatDeleteMode) {
     if (!menuChat) {
@@ -212,6 +207,8 @@ export default function ChatListScreen() {
     }
   }
   
+  const avatarLetter = user?.name.trim().charAt(0).toUpperCase() || '?';
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -230,14 +227,20 @@ export default function ChatListScreen() {
             <Text style={styles.newChatButtonText}>+</Text>
           </Pressable>
 
-          <Pressable 
-            onPress={handleLogout}
-            style={({ pressed}) => [
-              styles.logoutButton,
-              pressed && styles.logoutButtonPressed,
-            ]}
+          <Pressable
+            onPress={() => {
+              router.push('/profile' as Href);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Мой профиль"
+            style={({ pressed }) => [
+              styles.profileButton,
+              pressed && styles.profileButtonPressed,
+            ]}  
           >
-            <Text style={styles.logoutButtonText}>Выйти</Text>
+            <Text style={styles.profileButtonText}>
+              {avatarLetter}
+            </Text>
           </Pressable>
         </View>
       </View>

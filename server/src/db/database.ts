@@ -373,6 +373,14 @@ const hasLastSeenAt = userColumns.some(
   (column) => column.name === 'lastSeenAt',
 );
 
+const hasBio = userColumns.some(
+  (column) => column.name === 'bio',
+);
+
+const hasAvatarUrl = userColumns.some(
+  (column) => column.name === 'avatarUrl',
+);
+
 if (!hasLogin) {
   database.exec(`
     ALTER TABLE users
@@ -391,6 +399,20 @@ if (!hasLastSeenAt) {
   database.exec(`
     ALTER TABLE users
     ADD COLUMN lastSeenAt INTEGER  
+  `);
+}
+
+if (!hasBio) {
+  database.exec(`
+    ALTER TABLE users
+    ADD COLUMN bio TEXT  
+  `);
+}
+
+if (!hasAvatarUrl) {
+  database.exec(`
+    ALTER TABLE users
+    ADD COLUMN avatarUrl TEXT  
   `);
 }
 

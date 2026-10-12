@@ -6,6 +6,8 @@ import type {
   LoginResponse,
   MeResponse,
   RegisterRequest,
+  UpdateProfileRequest,
+  UpdateProfileResponse,
 } from '@/types/auth';
 
 export async function loginRequest(
@@ -87,6 +89,32 @@ export async function registerRequest(
   if (!response.ok) {
     throw new ApiError(
       'Register request failed',
+      response.status,
+    );
+  }
+
+  return response.json();
+}
+
+export async function updateProfileRequest(
+  token: string,
+  data: UpdateProfileRequest,
+): Promise<UpdateProfileResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/users/me`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    },
+  );
+
+  if (!response.ok) {
+    throw new ApiError(
+      'Failed to update profile',
       response.status,
     );
   }
