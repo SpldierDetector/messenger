@@ -1223,10 +1223,18 @@ export default function ChatScreen() {
 
       const rect = element.getBoundingClientRect();
 
-      if (
-        rect.bottom > containerRect.top &&
-        rect.top < containerRect.bottom
-      ) {
+      const visibleHeight = Math.max(
+        0,
+        Math.min(rect.bottom, containerRect.bottom) -
+          Math.max(rect.top, containerRect.top),
+      );
+
+      const visibleRatio =
+        rect.height > 0
+          ? visibleHeight / rect.height
+          : 0;
+
+      if (visibleRatio >= 0.1) {
         visibleUnreadMessageIds.push(messageId);
       }
     }
@@ -1253,7 +1261,7 @@ export default function ChatScreen() {
     viewportHeight: number,
     contentHeight: number,
   ) {
-    const BOTTOM_THRESHOLD = 120;
+    const BOTTOM_THRESHOLD = 50;
     const TOP_THRESHOLD = 100;
     const previousOffsetY = previousScrollOffsetYRef.current;
 
