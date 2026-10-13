@@ -1,5 +1,6 @@
 import { API_BASE_URL } from '@/config/api';
 import type { UserData } from '@/types/user';
+import { ApiError } from '@/services/api-error';
 
 export async function searchUsersRequest(
   search: string,
@@ -29,4 +30,35 @@ export async function searchUsersRequest(
   }
 
   return response.json();
+}
+
+export async function getUserByIdRequest(
+  userId: number,
+  token: string,
+): Promise<UserData> {
+  const response = await fetch(
+    `${API_BASE_URL}/users/${userId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+
+    console.error(
+      'Failed to load user profile:',
+      response.status,
+      errorBody,
+    );
+
+    throw new ApiError(
+      'Failed to load user profile',
+      response.status,
+    );
+  }
+
+  return (await response.json()) as UserData;
 }

@@ -11,6 +11,7 @@ export function mapChatRow(
 
   return {
     id: chat.id,
+    otherUserId: chat.otherUserId,
     name: chat.name,
     isOnline:
       isOnline ??

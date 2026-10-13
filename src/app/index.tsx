@@ -1,11 +1,12 @@
 import { Redirect, router, useFocusEffect, type Href } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Modal, Pressable, Text, View, Image } from 'react-native';
+import { ActivityIndicator, FlatList, Modal, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { styles } from '@/styles/index.styles';
 import { ChatPreview } from '@/components/chat-preview';
 import { useAuth } from '@/providers/auth-provider';
 import { useMessages } from '@/providers/messages-provider';
+import { UserAvatar } from '@/components/user-avatar';
 import {
   deleteChatRequest,
   deleteChatWithHistoryRequest,
@@ -16,7 +17,6 @@ import{
   getMessagePreviewText,
 } from '@/utils/message';
 import type { ChatData } from '@/types/chat';
-import { API_BASE_URL } from '@/config/api';
 import { sortChatsByLatestMessage } from '@/utils/chat';
 import { formatChatPreviewDate } from '@/utils/date';
 
@@ -208,8 +208,6 @@ export default function ChatListScreen() {
     }
   }
   
-  const avatarLetter = user?.name.trim().charAt(0).toUpperCase() || '?';
-
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -239,19 +237,11 @@ export default function ChatListScreen() {
               pressed && styles.profileButtonPressed,
             ]}  
           >
-            {user?.avatarUrl ? (
-              <Image
-                source={{
-                  uri: `${API_BASE_URL}${user.avatarUrl}`,
-                }}
-                style={styles.profileAvatarImage}
-                resizeMode="cover"
-              />
-            ) : (
-              <Text style={styles.profileButtonText}>
-                {avatarLetter}
-              </Text>
-            )}
+            <UserAvatar
+              name={user?.name ?? ''}
+              avatarUrl={user?.avatarUrl}
+              size={38}
+            />
           </Pressable>
         </View>
       </View>

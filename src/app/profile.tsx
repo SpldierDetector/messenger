@@ -6,14 +6,13 @@ import {
   Text,
   TextInput,
   View,
-  Image,
 } from 'react-native';
 import { router } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
-import { API_BASE_URL } from '@/config/api';
 import { useAuth } from '@/providers/auth-provider';
 import { ApiError } from '@/services/api-error';
 import { styles } from '@/styles/profile.styles';
+import { UserAvatar } from '@/components/user-avatar';
 
 export default function ProfileScreen() {
   const {
@@ -37,16 +36,6 @@ export default function ProfileScreen() {
     setError(null);
     setSuccess(null);
   }, [user?.id]);
-
-  const avatarLetter =
-    user?.name.trim().charAt(0).toUpperCase() || '?';
-
-  const avatarSource =
-    user?.avatarUrl
-      ? {
-          uri: `${API_BASE_URL}${user.avatarUrl}`,
-        }
-      : null;
 
   const hasChanges =
     name !== (user?.name ?? '') ||
@@ -278,17 +267,11 @@ export default function ProfileScreen() {
 
       <View style={styles.avatarSection}>
         <View style={styles.avatar}>
-          {avatarSource ? (
-            <Image
-              source={avatarSource}
-              style={styles.avatarImage}
-              resizeMode="cover"
-            />
-          ) : (
-            <Text style={styles.avatarLetter}>
-              {avatarLetter}
-            </Text>
-          )}
+          <UserAvatar
+            name={user?.name ?? ''}
+            avatarUrl={user?.avatarUrl}
+            size={104}
+          />
         </View> 
 
         <Pressable

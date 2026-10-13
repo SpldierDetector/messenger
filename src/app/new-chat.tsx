@@ -197,17 +197,30 @@ export default function NewChatScreen() {
                 pressed && styles.userItemPressed,
               ]}
             >
-              <View style={styles.avatarContainer}>
-                <UserAvatar
-                  name={item.name}
-                  avatarUrl={item.avatarUrl}
-                  size={44}
-                />
-              </View>
+              <Pressable
+                onPress={(event) => {
+                  event.stopPropagation();
 
-              <Text style={styles.userName}>
-                {item.name}
-              </Text>
+                  router.push(
+                    `/user/${item.id}` as Href,
+                  );
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={`Профиль ${item.name}`}
+                style={styles.userIdentity}
+              >
+                <View style={styles.avatarContainer}>
+                  <UserAvatar
+                    name={item.name}
+                    avatarUrl={item.avatarUrl}
+                    size={44}
+                  />
+                </View>
+
+                <Text style={styles.userName}>
+                  {item.name}
+                </Text>
+              </Pressable>
 
               {isOpening ? (
                 <ActivityIndicator />

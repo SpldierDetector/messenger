@@ -44,12 +44,6 @@ export const styles = StyleSheet.create({
     marginBottom: 12,
   },
 
-  avatarLetter: {
-    color: '#FFFFFF',
-    fontSize: 42,
-    fontWeight: '600',
-  },
-
   avatarHint: {
     color: '#999999',
     fontSize: 13,
@@ -154,12 +148,6 @@ export const styles = StyleSheet.create({
     color: '#ff6b6b',
     fontSize: 16,
     fontWeight: '600',
-  },
-
-  avatarImage: {
-    width: 104,
-    height: 104,
-    borderRadius: 52,
   },
 
   avatarAction: {

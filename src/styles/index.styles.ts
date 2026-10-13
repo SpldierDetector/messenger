@@ -37,11 +37,6 @@ export const styles = StyleSheet.create({
   profileButtonPressed: {
     opacity: 0.65,
   },
-  profileButtonText: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -183,10 +178,5 @@ export const styles = StyleSheet.create({
   },
   dialogButtonPressed: {
     opacity: 0.7,
-  },
-  profileAvatarImage: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
   },
 });

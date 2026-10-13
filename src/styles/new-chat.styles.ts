@@ -112,4 +112,11 @@ export const styles = StyleSheet.create({
   avatarContainer: {
     marginRight: 12,
   },
+
+  userIdentity: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
 });

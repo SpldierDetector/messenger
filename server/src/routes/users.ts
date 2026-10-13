@@ -443,9 +443,12 @@ usersRouter.patch('/me', (request, response) => {
 usersRouter.get('/:id', (request, response) => {
   const userId = Number(request.params.id);
 
-  if (!Number.isFinite(userId)) {
+  if (
+    !Number.isFinite(userId) ||
+    userId <= 0
+  ) {
     response.status(400).json({
-      error: 'user id must be a number',
+      error: 'user id must be a positive integer',
     });
 
     return;
