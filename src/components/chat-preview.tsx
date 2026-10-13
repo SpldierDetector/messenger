@@ -1,7 +1,9 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { UserAvatar } from '@/components/user-avatar';
 
 type ChatPreviewProps = {
   name: string,
+  avatarUrl: string | null;
   lastMessage: string,
   time: string,
   isOnline: boolean,
@@ -11,6 +13,7 @@ type ChatPreviewProps = {
 
 export function ChatPreview({ 
   name,
+  avatarUrl,
   lastMessage,
   time,
   isOnline,
@@ -19,8 +22,12 @@ export function ChatPreview({
 }: ChatPreviewProps){
   return (
     <View style={styles.container}>
-      <View style={styles.avatar}>
-        <Text style={styles.avatarText}>{name[0]}</Text>
+      <View style={styles.avatarContainer}>
+        <UserAvatar
+          name={name}
+          avatarUrl={avatarUrl}
+          size={48}
+        />
       </View>
 
       <View style={styles.content}>
@@ -63,19 +70,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
   },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#3f3f46',
-    justifyContent: 'center',
-    alignItems: 'center',
+  avatarContainer: {
     marginRight: 12,
-  },
-  avatarText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: '600',
   },
   content: {
     flex: 1,
@@ -134,5 +130,5 @@ const styles = StyleSheet.create({
     color: '#22c55e',
     fontSize: 14,
     fontWeight: '500',
-  }
+  },
 });

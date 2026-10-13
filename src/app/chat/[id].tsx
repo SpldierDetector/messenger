@@ -1,6 +1,7 @@
 import { Message } from '@/components/message';
 import { useAuth } from '@/providers/auth-provider';
 import { useMessages } from '@/providers/messages-provider';
+import { UserAvatar } from '@/components/user-avatar';
 import { 
   downloadAttachmentNative,
   downloadAttachmentWeb,
@@ -1701,8 +1702,12 @@ export default function ChatScreen() {
             </>
           ) : (
             <>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{chat.name[0]}</Text>
+              <View style={styles.avatarContainer}>
+                <UserAvatar
+                  name={chat.name}
+                  avatarUrl={chat.avatarUrl}
+                  size={42}
+                />
               </View>
 
               <View style={styles.headerInfo}>

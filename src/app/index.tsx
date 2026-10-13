@@ -282,6 +282,7 @@ export default function ChatListScreen() {
               >
                 <ChatPreview
                   name={item.name}
+                  avatarUrl={item.avatarUrl}
                   lastMessage={
                     lastMessage
                       ? getMessagePreviewText(

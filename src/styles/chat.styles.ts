@@ -65,19 +65,8 @@ export const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 2,
   },
-  avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#3f3f46',
-    justifyContent: 'center',
-    alignItems: 'center',
+  avatarContainer: {
     marginRight: 12,
-  },
-  avatarText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: '600',
   },
   headerInfo: {
     flex: 1,

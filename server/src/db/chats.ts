@@ -10,6 +10,7 @@ export function getChatsByUserId(
       chat.id,
       otherUser.id AS otherUserId,
       otherUser.name,
+      otherUser.avatarUrl AS avatarUrl,
       otherUser.lastSeenAt AS otherUserLastSeenAt,
       chat.isOnline,
       chat.type
@@ -45,6 +46,7 @@ export function getChatById(
       chat.id,
       otherUser.id AS otherUserId,
       otherUser.name,
+      otherUser.avatarUrl AS avatarUrl,
       otherUser.lastSeenAt AS otherUserLastSeenAt,
       chat.isOnline,
       chat.type
@@ -82,6 +84,7 @@ export function getDirectChatBetweenUsers(
       chat.id,
       otherUser.id AS otherUserId,
       otherUser.name,
+      otherUser.avatarUrl AS avatarUrl,
       otherUser.lastSeenAt AS otherUserLastSeenAt,
       chat.isOnline,
       chat.type

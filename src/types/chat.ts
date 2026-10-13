@@ -8,4 +8,5 @@ export type ChatData = {
   isOnline: boolean;
   lastSeenAt: number | null;
   type: ChatType;
+  avatarUrl: string | null;
 };

@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
+import { UserAvatar } from '@/components/user-avatar';
 import { useAuth } from '@/providers/auth-provider';
 import { createDirectChatRequest } from '@/services/chat-api';
 import { searchUsersRequest } from '@/services/user-api';
@@ -197,10 +197,12 @@ export default function NewChatScreen() {
                 pressed && styles.userItemPressed,
               ]}
             >
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {item.name[0]}
-                </Text>
+              <View style={styles.avatarContainer}>
+                <UserAvatar
+                  name={item.name}
+                  avatarUrl={item.avatarUrl}
+                  size={44}
+                />
               </View>
 
               <Text style={styles.userName}>

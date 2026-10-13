@@ -18,5 +18,6 @@ export function mapChatRow(
     lastSeenAt:
       chat.otherUserLastSeenAt,
     type: chat.type,
+    avatarUrl: chat.avatarUrl ?? null,
   };
 }

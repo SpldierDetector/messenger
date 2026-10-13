@@ -9,6 +9,7 @@ export type ChatRow = {
   otherUserLastSeenAt: number | null;
   isOnline: number;
   type: ChatType;
+  avatarUrl: string | null;
 };
 
 export type ChatData = {
@@ -17,4 +18,5 @@ export type ChatData = {
   isOnline: boolean;
   lastSeenAt: number | null;
   type: ChatType;
+  avatarUrl: string | null;
 };
