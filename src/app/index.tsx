@@ -1,6 +1,6 @@
 import { Redirect, router, useFocusEffect, type Href } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Modal, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Modal, Pressable, Text, View, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { styles } from '@/styles/index.styles';
 import { ChatPreview } from '@/components/chat-preview';
@@ -16,6 +16,7 @@ import{
   getMessagePreviewText,
 } from '@/utils/message';
 import type { ChatData } from '@/types/chat';
+import { API_BASE_URL } from '@/config/api';
 import { sortChatsByLatestMessage } from '@/utils/chat';
 import { formatChatPreviewDate } from '@/utils/date';
 
@@ -238,9 +239,19 @@ export default function ChatListScreen() {
               pressed && styles.profileButtonPressed,
             ]}  
           >
-            <Text style={styles.profileButtonText}>
-              {avatarLetter}
-            </Text>
+            {user?.avatarUrl ? (
+              <Image
+                source={{
+                  uri: `${API_BASE_URL}${user.avatarUrl}`,
+                }}
+                style={styles.profileAvatarImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <Text style={styles.profileButtonText}>
+                {avatarLetter}
+              </Text>
+            )}
           </Pressable>
         </View>
       </View>

@@ -21,6 +21,7 @@ import { authRouter } from './routes/auth.js';
 import { chatsRouter } from './routes/chats.js';
 import { createMessagesRouter } from './routes/messages.js';
 import { usersRouter } from './routes/users.js';
+import { AVATAR_UPLOAD_DIRECTORY } from './uploads/storage.js';
 import type {
   AuthenticatedWebSocket,
   ChatReadEvent,
@@ -57,6 +58,23 @@ app.get('/health', (_request, response) => {
     status: 'ok',
   });
 });
+
+app.use('/avatars',
+  express.static(
+    AVATAR_UPLOAD_DIRECTORY,
+    {
+      maxAge: '7d',
+      immutable: true,
+
+      setHeaders(response) {
+        response.setHeader(
+          'X-Content-Type-Options',
+          'nosniff',
+        );
+      },
+    },
+  ),
+);
 
 app.use('/auth', authRouter);
 app.use('/chats', chatsRouter);

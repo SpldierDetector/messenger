@@ -184,4 +184,9 @@ export const styles = StyleSheet.create({
   dialogButtonPressed: {
     opacity: 0.7,
   },
+  profileAvatarImage: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+  },
 });

@@ -6,9 +6,11 @@ import {
   Text,
   TextInput,
   View,
+  Image,
 } from 'react-native';
 import { router } from 'expo-router';
-
+import * as DocumentPicker from 'expo-document-picker';
+import { API_BASE_URL } from '@/config/api';
 import { useAuth } from '@/providers/auth-provider';
 import { ApiError } from '@/services/api-error';
 import { styles } from '@/styles/profile.styles';
@@ -17,12 +19,15 @@ export default function ProfileScreen() {
   const {
     user,
     updateProfile,
+    uploadAvatar,
+    deleteAvatar,
     logout,
   } = useAuth();
 
   const [name, setName] = useState(user?.name ?? '');
   const [bio, setBio] = useState(user?.bio ?? '');
   const [isSaving, setIsSaving] = useState(false);
+  const [isUpdatingAvatar, setIsUpdatingAvatar] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   
@@ -35,6 +40,13 @@ export default function ProfileScreen() {
 
   const avatarLetter =
     user?.name.trim().charAt(0).toUpperCase() || '?';
+
+  const avatarSource =
+    user?.avatarUrl
+      ? {
+          uri: `${API_BASE_URL}${user.avatarUrl}`,
+        }
+      : null;
 
   const hasChanges =
     name !== (user?.name ?? '') ||
@@ -50,6 +62,108 @@ export default function ProfileScreen() {
     setBio(value);
     setError(null);
     setSuccess(null);
+  }
+
+  async function handleChooseAvatar() {
+    if (
+      !user ||
+      isSaving ||
+      isUpdatingAvatar
+    ) {
+      return;
+    }
+
+    try {
+      const result =
+        await DocumentPicker.getDocumentAsync({
+          type: [
+            'image/jpeg',
+            'image/png',
+            'image/webp',
+          ],
+          multiple: false,
+          copyToCacheDirectory: true,
+        });
+
+      if (result.canceled) {
+        return;
+      }
+
+      const asset = result.assets[0];
+
+      if (!asset) {
+        return;
+      }
+
+      if (
+        typeof asset.size === 'number' &&
+        asset.size > 5 * 1024 * 1024
+      ) {
+        setError (
+          'Размер фотографии не должен превышать 5 МБ',
+        );
+
+        return;
+      }
+
+      setIsUpdatingAvatar(true);
+      setError(null);
+      setSuccess(null);
+
+      await uploadAvatar(asset);
+
+      setSuccess('Фотография обновлена');
+    } catch (caughtError) {
+      console.error(
+        'Avatar upload failed:',
+        caughtError,
+      );
+
+      if (
+        caughtError instanceof ApiError &&
+        caughtError.status === 413
+      ) {
+        setError('Фотография слишком большая');
+      } else if (
+        caughtError instanceof ApiError &&
+        caughtError.status === 415
+      ) {
+        setError('Неподдерживаемый формат фотографии');
+      } else {
+        setError('Не удалось загрузить фотографию');
+      }
+    } finally {
+      setIsUpdatingAvatar(false);
+    }
+  }
+
+  async function handleDeleteAvatar() {
+    if (
+      !user?.avatarUrl ||
+      isSaving ||
+      isUpdatingAvatar
+    ) {
+      return;
+    }
+
+    try {
+      setIsUpdatingAvatar(true);
+      setError(null);
+      setSuccess(null);
+
+      await deleteAvatar();
+
+      setSuccess('Фотография удалена');
+    } catch (caughtError) {
+      console.error(
+        'Avatar deletion failed:',
+        caughtError,
+      );
+
+      setError('Не удалось удалить фотографию');
+    } finally {
+      setIsUpdatingAvatar(false);
+    }
   }
 
   async function handleSave() {
@@ -164,13 +278,50 @@ export default function ProfileScreen() {
 
       <View style={styles.avatarSection}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarLetter}>
-            {avatarLetter}
+          {avatarSource ? (
+            <Image
+              source={avatarSource}
+              style={styles.avatarImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <Text style={styles.avatarLetter}>
+              {avatarLetter}
+            </Text>
+          )}
+        </View> 
+
+        <Pressable
+          onPress={handleChooseAvatar}
+          disabled={isUpdatingAvatar || isSaving}
+          style={({ pressed }) => [
+            styles.avatarAction,
+            pressed && styles.avatarActionPressed,
+          ]}
+        >
+          <Text style={styles.avatarActionText}>
+            {isUpdatingAvatar
+              ? 'Обработка фотографии...'
+              : user.avatarUrl
+                ? 'Изменить фотографию'
+                : 'Установить фотографию'}
           </Text>
-        </View>
+        </Pressable>
+
+        {user.avatarUrl ? (
+          <Pressable
+            onPress={handleDeleteAvatar}
+            disabled={isUpdatingAvatar || isSaving}
+            style={styles.avatarDeleteAction}
+          >
+            <Text style={styles.avatarDeleteText}>
+              Удалить фотографию
+            </Text>
+          </Pressable>
+        ) : null}
 
         <Text style={styles.avatarHint}>
-          Фотографию профиля добавим позже
+          JPEG, PNG или WebP, до 5 МБ
         </Text>
       </View>
 

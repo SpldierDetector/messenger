@@ -155,4 +155,40 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+
+  avatarImage: {
+    width: 104,
+    height: 104,
+    borderRadius: 52,
+  },
+
+  avatarAction: {
+    minHeight: 40,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#242424',
+    borderRadius: 10,
+    marginBottom: 8,
+  },
+
+  avatarActionPressed: {
+    opacity: 0.65,
+  },
+
+  avatarActionText: {
+    color: '#8ab4f8',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
+  avatarDeleteAction: {
+    paddingVertical: 8,
+    marginBottom: 8,
+  },
+
+  avatarDeleteText: {
+    color: '#ff6b6b',
+    fontSize: 14,
+  },
 });

@@ -27,6 +27,15 @@ import {
   saveSessionToken,
 } from '@/services/session-storage';
 
+import type {
+  DocumentPickerAsset,
+} from 'expo-document-picker';
+
+import {
+  uploadAvatarRequest,
+  deleteAvatarRequest,
+} from '@/services/avatar-api';
+
 import { ApiError } from '@/services/api-error';
 
 type AuthContextData = {
@@ -38,6 +47,8 @@ type AuthContextData = {
   register: (data: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (data: UpdateProfileRequest) => Promise<AuthUser>;
+  uploadAvatar: (asset: DocumentPickerAsset) => Promise<AuthUser>;
+  deleteAvatar: () => Promise<AuthUser>;
 };
 
 const AuthContext = createContext<AuthContextData | null>(
@@ -180,6 +191,33 @@ export function AuthProvider({
     return response.user;
   }
 
+  async function uploadAvatar(
+    asset: DocumentPickerAsset,
+  ): Promise<AuthUser> {
+    if (!token) {
+      throw new Error('Not authenticated');
+    }
+
+    const response = await uploadAvatarRequest(
+      token,
+      asset,
+    );
+
+    setUser(response.user);
+    return response.user;
+  }
+
+  async function deleteAvatar(): Promise<AuthUser> {
+    if (!token) {
+      throw new Error('Not authenticated');
+    }
+
+    const response = await deleteAvatarRequest(token);
+
+    setUser(response.user);
+    return response.user;
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -191,6 +229,8 @@ export function AuthProvider({
         register,
         logout,
         updateProfile,
+        uploadAvatar,
+        deleteAvatar,
       }}
     >
       {children}

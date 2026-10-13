@@ -248,6 +248,65 @@ usersRouter.post(
   },
 );
 
+usersRouter.delete(
+  '/me/avatar',
+  (request, response) => {
+    const currentUser = request.user;
+
+    if (!currentUser) {
+      response.status(401).json({
+        error: 'authorization required',
+      });
+      return;
+    }
+
+    const existingRow = getUserById(
+      currentUser.id,
+    ) as UserRow | undefined;
+
+    if (!existingRow) {
+      response.status(404).json({
+        error: 'user not found',
+      });
+      return;
+    }
+
+    try {
+      updateUserAvatarUrl(
+        currentUser.id,
+        null,
+      );
+
+      const updatedRow = getUserById(
+        currentUser.id,
+      );
+
+      if (!updatedRow) {
+        throw new Error(
+          'updated user was not found',
+        );
+      }
+
+      deleteStoredAvatar(
+        existingRow.avatarUrl,
+      );
+
+      response.json({
+        user: mapUserRow(updatedRow),
+      });
+    } catch (error) {
+      console.error(
+        'Failed to delete avatar:',
+        error,
+      );
+
+      response.status(500).json({
+        error: 'failed to delete avatar',
+      });
+    }
+  },
+);
+
 usersRouter.patch('/me', (request, response) => {
   const currentUser = request.user;
 
