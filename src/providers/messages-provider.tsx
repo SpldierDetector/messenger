@@ -30,7 +30,7 @@ import {
   type UserPresenceEventData,
   type WebSocketConnection,
 } from "@/services/websocket-service";
-
+import { getUserByIdRequest } from '@/services/user-api';
 import type {
   UnreadCountUpdatedEventData,
 } from '@/services/websocket-service';
@@ -58,6 +58,7 @@ type MessagesContextValue = {
   forwardMessage: (messageId: number, targetChatId: number) => Promise<boolean>;
   sendMessage: (chatId: number, text: string, replyToMessageId?: number | null, attachments?: AttachmentData[]) => Promise<boolean>;
   retryMessage: (clientMessageId: string) => Promise<boolean>;
+  profileRevision: number;
   isLoaded: boolean;
   isSending: boolean;
   error: string | null;
@@ -87,7 +88,7 @@ type MessagesProviderProps = {
 };
 
 export function MessagesProvider({ children }: MessagesProviderProps) {
-  const { isAuthenticated, token, user, } = useAuth();
+  const { isAuthenticated, token, user, applyRealtimeProfile, } = useAuth();
 
   const [messages, setMessages] = useState<MessageData[]>([]);
   const [receipts, setReceipts] = useState<MessageReceiptData[]>([]);
@@ -100,6 +101,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
   const [typingUserIdsByChat, setTypingUserIdsByChat] = useState<Record<number, number[]>>({});
   const [onlineByChat, setOnlineByChat] = useState<Record<number, boolean>>({});
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
+  const [profileRevision, setProfileRevision] = useState(0);
   const [lastSeenByChat, setLastSeenByChat] = useState<Record<number, number | null>>({});
   const [messageSearchResults, setMessageSearchResults] = useState<MessageData[]>([]);
   const [isSearchingMessages, setIsSearchingMessages] = useState(false);
@@ -1537,9 +1539,31 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       onTypingStarted: handleTypingStarted,
       onTypingStopped: handleTypingStopped,
       onUserPresenceUpdated: handleUserPresenceUpdated,
+      onUserProfileUpdated: (updatedProfile) => {
+        applyRealtimeProfile(updatedProfile);
+
+        setProfileRevision(
+          (current) => current + 1,
+        );
+      },
       onConnected: () => {
         setIsRealtimeConnected(true);
         void syncAfterReconnect();
+
+        setProfileRevision(
+          (current) => current + 1,
+        );
+
+        void getUserByIdRequest(user.id, token)
+          .then((profile) => {
+            applyRealtimeProfile(profile);
+          })
+          .catch((error) => {
+            console.warn(
+              'Failed to sync own profile:',
+              error,
+            );
+          });
       },
       onDisconnected: () => {
         setIsRealtimeConnected(false);
@@ -1552,6 +1576,8 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
     return () => {
       if (webSocketConnectionRef.current === webSocketConnection) {
         webSocketConnectionRef.current = null;
+
+        setProfileRevision(0);
       }
 
       webSocketConnection.disconnect();
@@ -1594,6 +1620,7 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
       isLoaded,
       isSending,
       error,
+      profileRevision,
       }}>
       {children}
     </MessagesContext.Provider>

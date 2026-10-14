@@ -93,6 +93,7 @@ export default function ChatScreen() {
     markMessagesRead,
     startTyping,
     stopTyping,
+    profileRevision,
     error
   } = useMessages();
 
@@ -1340,7 +1341,11 @@ export default function ChatScreen() {
       return;
     }
 
-    router.replace('/');
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
   }
 
   function handleOpenSearch() {
@@ -1612,6 +1617,47 @@ export default function ChatScreen() {
     return null;
   }
 
+  useEffect(() => {
+    if (
+      profileRevision === 0 ||
+      !token ||
+      !Number.isSafeInteger(chatId) ||
+      chatId <= 0
+    ) {
+      return;
+    }
+
+    let isActive = true;
+
+    void getChatRequest(chatId, token)
+      .then((updatedChat) => {
+        if (!isActive || !updatedChat) return;
+
+        setChat((currentChat) => {
+          if (
+            !currentChat ||
+            currentChat.id !== updatedChat.id
+          ) {
+            return currentChat;
+          }
+
+          return updatedChat;
+        });
+      })
+      .catch((error) => {
+        if (!isActive) return;
+        
+        console.warn(
+          'Failed to refresh chat profile:',
+          error,
+        );
+      });
+
+      return () => {
+        isActive = false;
+      };
+  }, [chatId, token, profileRevision]);
+
   if (chatLoadError) {
     return (
       <SafeAreaView
@@ -1702,26 +1748,63 @@ export default function ChatScreen() {
             </>
           ) : (
             <>
-              <View style={styles.avatarContainer}>
-                <UserAvatar
-                  name={chat.name}
-                  avatarUrl={chat.avatarUrl}
-                  size={42}
-                />
-              </View>
+              <Pressable
+                onPress={() => {
+                  if (
+                    chat.type !== 'direct' ||
+                    !Number.isSafeInteger(chat.otherUserId) ||
+                    chat.otherUserId <= 0
+                  ) {
+                    return;
+                  }
 
-              <View style={styles.headerInfo}>
-                <Text style={styles.headerTitle}>{chat.name}</Text>
-                <Text style={styles.headerStatus}>
-                  {!isRealtimeConnected
-                    ? 'offline'
-                    : !isCompanionOnline
-                      ? formatLastSeen(companionLastSeenAt)
-                      : isCompanionTyping
-                        ? 'печатает...'
-                        : 'online'}
-                </Text>
-              </View>
+                  router.push(
+                    `/user/${chat.otherUserId}` as Href,
+                  );
+                }}
+                disabled={
+                  chat.type !== 'direct' ||
+                  !Number.isSafeInteger(chat.otherUserId) ||
+                  chat.otherUserId <= 0
+                }
+                accessibilityRole="button"
+                accessibilityLabel={`Открыть профиль ${chat.name}`}
+                style={({ pressed }) => [
+                  styles.profileHeaderLink,
+                  pressed && styles.profileHeaderLinkPressed,
+                ]}
+              >
+
+                <View style={styles.avatarContainer}>
+                  <UserAvatar
+                    name={chat.name}
+                    avatarUrl={chat.avatarUrl}
+                    size={42}
+                  />
+                </View>
+
+                <View style={styles.headerInfo}>
+                  <Text 
+                    style={styles.headerTitle}
+                    numberOfLines={1}  
+                  >
+                    {chat.name}
+                  </Text>
+
+                  <Text 
+                    style={styles.headerStatus}
+                    numberOfLines={1}  
+                  >
+                    {!isRealtimeConnected
+                      ? 'offline'
+                      : !isCompanionOnline
+                        ? formatLastSeen(companionLastSeenAt)
+                        : isCompanionTyping
+                          ? 'печатает...'
+                          : 'online'}
+                  </Text>
+                </View>
+              </Pressable>
 
               <Pressable
                 onPress={handleOpenSearch}

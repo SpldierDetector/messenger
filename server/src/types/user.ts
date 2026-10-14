@@ -5,6 +5,7 @@ export type UserRow = {
   passwordHash: string | null;
   bio: string | null;
   avatarUrl: string | null;
+  avatarFullUrl: string | null;
 };
 
 export type UserData = {
@@ -12,4 +13,5 @@ export type UserData = {
   name: string;
   bio: string | null;
   avatarUrl: string | null;
+  avatarFullUrl: string | null;
 };

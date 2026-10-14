@@ -11,5 +11,6 @@ export function mapUserRow(row: unknown): UserData {
     name: user.name,
     bio: user.bio ?? null,
     avatarUrl: user.avatarUrl ?? null,
+    avatarFullUrl: user.avatarFullUrl ?? null,
   };
 }

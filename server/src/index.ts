@@ -13,8 +13,9 @@ import {
 } from './db/message-receipts.js';
 import { getMessageById } from './db/messages.js';
 import { updateUserLastSeenAt } from './db/users.js';
+import { getProfileUpdateRecipientIds } from './db/profile-recipients.js';
+import { subscribeToProfileUpdates } from './realtime/profile-events.js';
 import type { MessageRow } from './types/message.js';
-
 import { isUserInChat } from './db/chat-members.js';
 import { createAttachmentsRouter } from './routes/attachments.js';
 import { authRouter } from './routes/auth.js';
@@ -86,6 +87,44 @@ const server = createServer(app);
 const webSocketServer = new WebSocketServer({
   server,
 });
+
+const unsubscribeProfileUpdates =
+  subscribeToProfileUpdates(({ user }) => {
+    const recipientIds = new Set(
+      getProfileUpdateRecipientIds(user.id),
+    );
+
+    recipientIds.add(user.id);
+
+    const payload = JSON.stringify({
+      type: 'user_profile_updated',
+      data: {
+        user,
+      },
+    });
+
+    for (const socket of webSocketServer.clients) {
+      const client = socket as AuthenticatedWebSocket;
+
+      if (client.readyState !== WebSocket.OPEN) {
+        continue;
+      }
+
+      if (
+        !Number.isSafeInteger(client.userId) ||
+        !recipientIds.has(client.userId)
+      ) {
+        continue;
+      }
+
+      client.send(payload);
+    }
+  });
+
+webSocketServer.on(
+  'close',
+  unsubscribeProfileUpdates,
+);
 
 const lastHeartbeatAtBySocket = new WeakMap<WebSocket, number>();
 

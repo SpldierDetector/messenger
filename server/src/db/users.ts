@@ -21,7 +21,8 @@ export function getUserById(userId: number) {
       login,
       passwordHash,
       bio,
-      avatarUrl
+      avatarUrl,
+      avatarFullUrl
     FROM users
     WHERE id = ?
     LIMIT 1  
@@ -38,6 +39,7 @@ export function getUserByLogin(login: string) {
       login,
       passwordHash,
       bio,
+      avatarFullUrl,
       avatarUrl
     FROM users
     WHERE login = ?
@@ -104,6 +106,7 @@ export function searchUsers(
       id,
       name,
       bio,
+      avatarFullUrl,
       avatarUrl
     FROM users
     WHERE id != ?
@@ -174,6 +177,26 @@ export function updateUserAvatarUrl(
 
   return statement.run(
     avatarUrl,
+    userId,
+  );
+}
+
+export function updateUserAvatarImages(
+  userId: number,
+  avatarUrl: string | null,
+  avatarFullUrl: string | null,
+) {
+  const statement = database.prepare(`
+    UPDATE users
+    SET
+      avatarUrl = ?,
+      avatarFullUrl = ?
+    WHERE id = ?  
+  `);
+
+  return statement.run(
+    avatarUrl,
+    avatarFullUrl,
     userId,
   );
 }

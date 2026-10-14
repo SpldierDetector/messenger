@@ -15,6 +15,7 @@ import { createDirectChatRequest } from '@/services/chat-api';
 import { searchUsersRequest } from '@/services/user-api';
 import { styles } from '@/styles/new-chat.styles'
 import type { UserData } from '@/types/user';
+import { useMessages } from '@/providers/messages-provider';
 
 export default function NewChatScreen() {
   const {
@@ -30,6 +31,7 @@ export default function NewChatScreen() {
     useState<number | null>(null);
   const [error, setError] =
     useState<string | null>(null);
+  const { profileRevision } = useMessages();
   
   useEffect(() => {
     const query = search.trim();
@@ -85,7 +87,7 @@ export default function NewChatScreen() {
       isCancelled = true;
       clearTimeout(timeoutId);
     };
-  }, [search, token]);
+  }, [search, token, profileRevision]);
 
   async function handleUserPress(
     user:UserData,
@@ -104,7 +106,7 @@ export default function NewChatScreen() {
           token,
         );
       
-      router.replace(
+      router.push(
         `/chat/${chat.id}` as Href,
       );
     } catch (caughtError) {
@@ -206,21 +208,19 @@ export default function NewChatScreen() {
                   );
                 }}
                 accessibilityRole="button"
-                accessibilityLabel={`Профиль ${item.name}`}
-                style={styles.userIdentity}
+                accessibilityLabel={`Открыть профиль ${item.name}`}
+                style={styles.avatarContainer}
               >
-                <View style={styles.avatarContainer}>
                   <UserAvatar
                     name={item.name}
                     avatarUrl={item.avatarUrl}
                     size={44}
                   />
-                </View>
+              </Pressable>
 
                 <Text style={styles.userName}>
                   {item.name}
                 </Text>
-              </Pressable>
 
               {isOpening ? (
                 <ActivityIndicator />

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -13,6 +13,7 @@ import { useAuth } from '@/providers/auth-provider';
 import { ApiError } from '@/services/api-error';
 import { styles } from '@/styles/profile.styles';
 import { UserAvatar } from '@/components/user-avatar';
+import { AvatarViewer } from '@/components/avatar-viewer';
 
 export default function ProfileScreen() {
   const {
@@ -25,10 +26,12 @@ export default function ProfileScreen() {
 
   const [name, setName] = useState(user?.name ?? '');
   const [bio, setBio] = useState(user?.bio ?? '');
+  const previousProfileRef = useRef<{id: number; name: string; bio: string | null;} | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isUpdatingAvatar, setIsUpdatingAvatar] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [isAvatarViewerVisible, setIsAvatarViewerVisible] = useState(false);
   
   useEffect(() => {
     setName(user?.name ?? '');
@@ -36,6 +39,35 @@ export default function ProfileScreen() {
     setError(null);
     setSuccess(null);
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!user) {
+      previousProfileRef.current = null;
+      return;
+    }
+
+    const previous = previousProfileRef.current;
+
+    if (previous?.id === user.id) {
+      setName((current) =>
+        current === previous.name
+          ? user.name
+          : current,
+      );
+
+      setBio((current) =>
+        current === (previous.bio ?? '')
+          ? (user.bio ?? '')
+          : current,
+      );
+    }
+
+    previousProfileRef.current = {
+      id: user.id,
+      name: user.name,
+      bio: user.bio,
+    };
+  }, [user?.id, user?.name, user?.bio]);
 
   const hasChanges =
     name !== (user?.name ?? '') ||
@@ -266,13 +298,19 @@ export default function ProfileScreen() {
       </Text>
 
       <View style={styles.avatarSection}>
-        <View style={styles.avatar}>
+        <Pressable
+          onPress={() => setIsAvatarViewerVisible(true)}
+          disabled={!user.avatarUrl}
+          accessibilityRole="button"
+          accessibilityLabel="Просмотреть свою фотографию"
+          style={styles.avatar}
+        >
           <UserAvatar
-            name={user?.name ?? ''}
-            avatarUrl={user?.avatarUrl}
+            name={user.name}
+            avatarUrl={user.avatarUrl}
             size={104}
           />
-        </View> 
+        </Pressable> 
 
         <Pressable
           onPress={handleChooseAvatar}
@@ -389,6 +427,12 @@ export default function ProfileScreen() {
           Выйти из аккаунта
         </Text>
       </Pressable>
+
+      <AvatarViewer
+        visible={isAvatarViewerVisible}
+        avatarUrl={user.avatarFullUrl ?? user.avatarUrl}
+        onClose={() => setIsAvatarViewerVisible(false)}
+      />
     </ScrollView>
   );
 }

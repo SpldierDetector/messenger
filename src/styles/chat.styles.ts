@@ -426,4 +426,13 @@ scrollToBottomBadgeText: {
   fontSize: 11,
   fontWeight: '700',
 },
+profileHeaderLink: {
+  flex: 1,
+  minWidth: 0,
+  flexDirection: 'row',
+  alignItems: 'center',
+},
+profileHeaderLinkPressed: {
+  opacity: 0.7,
+},
 });

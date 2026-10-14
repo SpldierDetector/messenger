@@ -45,6 +45,7 @@ export default function ChatListScreen() {
     isRealtimeConnected,
     clearChatHistoryLocally,
     loadLatestMessagePreviews, 
+    profileRevision,
   } = useMessages();
 
   useFocusEffect(
@@ -89,6 +90,7 @@ export default function ChatListScreen() {
       isAuthLoading,
       isAuthenticated,
       token,
+      profileRevision,
     ]),
   );
 
@@ -279,6 +281,17 @@ export default function ChatListScreen() {
                           lastMessage,
                         ) 
                       : 'Нет сообщений'
+                  }
+                  onAvatarPress={
+                    item.type === 'direct' &&
+                    Number.isSafeInteger(item.otherUserId) &&
+                    item.otherUserId > 0
+                      ? () => {
+                        router.push(
+                          `/user/${item.otherUserId}` as Href,
+                        );
+                      }
+                      : undefined
                   }
                   time={lastMessage ? formatChatPreviewDate(lastMessage.createdAt) : ''}
                   isOnline={isOnline}

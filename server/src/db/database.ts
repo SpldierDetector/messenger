@@ -381,6 +381,17 @@ const hasAvatarUrl = userColumns.some(
   (column) => column.name === 'avatarUrl',
 );
 
+const hasAvatarFullUrl = userColumns.some(
+  (column) => column.name === 'avatarFullUrl',
+);
+
+if (!hasAvatarFullUrl) {
+  database.exec(`
+    ALTER TABLE users
+    ADD COLUMN avatarFullUrl TEXT  
+  `);
+}
+
 if (!hasLogin) {
   database.exec(`
     ALTER TABLE users

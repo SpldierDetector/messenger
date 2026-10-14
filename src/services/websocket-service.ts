@@ -4,6 +4,7 @@ import type {
   MessageReceiptData,
 } from '@/types/message';
 import type { MessageApiData } from '@/types/message-api';
+import type { UserData } from '@/types/user';
 import { mapMessageApiData } from '@/utils/map-message';
 
 const WEB_SOCKET_URL = API_BASE_URL
@@ -23,6 +24,7 @@ type ConnectWebSocketOptions = {
   onTypingStarted: (data: TypingEventData) => void;
   onTypingStopped: (data: TypingEventData) => void;
   onUserPresenceUpdated: (data: UserPresenceEventData) => void;
+  onUserProfileUpdated?: (user: UserData) => void;
   onConnected?: () => void;
   onDisconnected?: () => void;
 };
@@ -82,6 +84,7 @@ export function connectWebSocket({
   onTypingStarted,
   onTypingStopped,
   onUserPresenceUpdated,
+  onUserProfileUpdated,
   onConnected,
   onDisconnected,
 }: ConnectWebSocketOptions): WebSocketConnection {
@@ -495,6 +498,25 @@ export function connectWebSocket({
           const presenceData = message.data as UserPresenceEventData;
 
           onUserPresenceUpdated(presenceData);
+        }
+
+        if (message.type === 'user_profile_updated') {
+          const data = message.data as {
+            user?: Partial<UserData>;
+          } | null;
+
+          const profile = data?.user;
+
+          if (
+            profile &&
+            Number.isSafeInteger(profile.id) &&
+            typeof profile.name === 'string' &&
+            (profile.bio === null || typeof profile.bio === 'string') &&
+            (profile.avatarUrl === null || typeof profile.avatarUrl === 'string') &&
+            (profile.avatarFullUrl === null || typeof profile.avatarFullUrl === 'string')
+          ) {
+            onUserProfileUpdated?.(profile as UserData);
+          }
         }
       } catch (error) {
         console.error('Failed to parse WebSocket message:', error);

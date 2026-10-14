@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, Pressable } from 'react-native';
 import { UserAvatar } from '@/components/user-avatar';
 
 type ChatPreviewProps = {
@@ -9,6 +9,7 @@ type ChatPreviewProps = {
   isOnline: boolean,
   isTyping: boolean,
   unreadCount: number,
+  onAvatarPress?: () => void;
 };
 
 export function ChatPreview({ 
@@ -19,16 +20,26 @@ export function ChatPreview({
   isOnline,
   isTyping,
   unreadCount,
+  onAvatarPress,
 }: ChatPreviewProps){
   return (
     <View style={styles.container}>
-      <View style={styles.avatarContainer}>
+      <Pressable
+        onPress={(event) => {
+          event.stopPropagation();
+          onAvatarPress?.();
+        }}
+        disabled={!onAvatarPress}
+        accessibilityRole="button"
+        accessibilityLabel={`Открыть профиль ${name}`}
+        style={styles.avatarContainer}
+      >
         <UserAvatar
           name={name}
           avatarUrl={avatarUrl}
           size={48}
         />
-      </View>
+      </Pressable>
 
       <View style={styles.content}>
         <View style={styles.topRow}>

@@ -10,13 +10,14 @@ import {
   getUserById,
   searchUsers,
   updateUserProfile,
-  updateUserAvatarUrl,
+  updateUserAvatarImages,
 } from '../db/users.js';
 import type {
   NextFunction,
   Request,
   Response,
-} from 'express'
+} from 'express';
+import { publishProfileUpdate } from '../realtime/profile-events.js';
 import type { UserRow } from '../types/user.js';
 import { mapUserRow } from '../mappers/user.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -70,23 +71,26 @@ function handleAvatarUpload(
 
 function deleteStoredAvatar(
   avatarUrl: string | null,
+  avatarFullUrl: string | null,
 ) {
-  const filename = avatarUrl?.match(
-    /^\/avatars\/([a-f0-9-]{36}\.webp)$/,
-  )?.[1];
+  for (const url of [avatarUrl, avatarFullUrl]) {
+    const filename = url?.match(
+      /^\/avatars\/([a-f0-9-]{36}(?:-full)?\.webp)$/,
+    )?.[1];
 
-  if (!filename) return;
+    if (!filename) continue;
 
-  try {
-    rmSync(
-      resolve(AVATAR_UPLOAD_DIRECTORY, filename),
-      { force: true },
-    );
-  } catch (error) {
-    console.warn(
-      'Failed to remove old avatar:',
-      error,
-    );
+    try {
+      rmSync(
+        resolve(AVATAR_UPLOAD_DIRECTORY, filename),
+        { force: true },
+      );
+    } catch (error) {
+      console.warn(
+        'Failed to remove avatar image:',
+        error,
+      );
+    }
   }
 }
 
@@ -158,7 +162,7 @@ usersRouter.post(
     const existingRow = getUserById(
       currentUser.id,
     ) as UserRow | undefined;
-    
+
     if (!existingRow) {
       response.status(404).json({
         error: 'user not found',
@@ -166,14 +170,23 @@ usersRouter.post(
       return;
     }
 
-    const filename = `${randomUUID()}.webp`;
+    const imageId = randomUUID();
 
-    const filePath = resolve(
+    const thumbnailName = `${imageId}.webp`;
+    const fullName = `${imageId}-full.webp`;
+
+    const thumbnailPath = resolve(
       AVATAR_UPLOAD_DIRECTORY,
-      filename,
+      thumbnailName,
     );
 
-    const avatarUrl = `/avatars/${filename}`;
+    const fullPath = resolve(
+      AVATAR_UPLOAD_DIRECTORY,
+      fullName,
+    );
+
+    const avatarUrl = `/avatars/${thumbnailName}`;
+    const avatarFullUrl = `/avatars/${fullName}`;
 
     try {
       const metadata = await sharp(
@@ -181,7 +194,7 @@ usersRouter.post(
         {
           limitInputPixels: 16_000_000,
         },
-      ). metadata();
+      ).metadata();
 
       if (
         !metadata.format ||
@@ -199,19 +212,31 @@ usersRouter.post(
         limitInputPixels: 16_000_000,
       })
         .rotate()
+        .resize(1600, 1600, {
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
+        .webp({ quality: 85 })
+        .toFile(fullPath);
+
+      await sharp(file.buffer, {
+        limitInputPixels: 16_000_000,
+      })
+        .rotate()
         .resize(512, 512, {
           fit: 'cover',
-          position: 'center',
+          position: 'centre',
         })
-        .webp({ quality: 82})
-        .toFile(filePath);
-    } catch (error){
+        .webp({ quality: 82 })
+        .toFile(thumbnailPath);
+    } catch (error) {
+      rmSync(fullPath, { force: true });
+      rmSync(thumbnailPath, { force: true });
+
       console.warn(
-        'Invalid avatar image:',
+        'Failed to process avatar image:',
         error,
       );
-
-      rmSync(filePath, { force: true });
 
       response.status(400).json({
         error: 'invalid image',
@@ -219,16 +244,30 @@ usersRouter.post(
       return;
     }
 
-    try{
-      updateUserAvatarUrl(
+    let updatedRow: UserRow;
+
+    try {
+      updateUserAvatarImages(
         currentUser.id,
         avatarUrl,
+        avatarFullUrl,
       );
+
+      const row = getUserById(
+        currentUser.id,
+      ) as UserRow | undefined;
+
+      if (!row) {
+        throw new Error('Updated user was not found');
+      }
+
+      updatedRow = row;
     } catch (error) {
-      rmSync(filePath, { force: true });
+      rmSync(fullPath, { force: true });
+      rmSync(thumbnailPath, { force: true });
 
       console.error(
-        'Failed to update avatar in database:',
+        'Failed to save avatar:',
         error,
       );
 
@@ -238,13 +277,18 @@ usersRouter.post(
       return;
     }
 
-    deleteStoredAvatar(existingRow.avatarUrl);
+    deleteStoredAvatar(
+      existingRow.avatarUrl,
+      existingRow.avatarFullUrl,
+    );
 
-    const updatedRow = getUserById(currentUser.id);
+    const updatedUser = mapUserRow(updatedRow);
 
     response.json({
-      user: mapUserRow(updatedRow),
+      user: updatedUser,
     });
+
+    publishProfileUpdate(updatedUser);
   },
 );
 
@@ -272,8 +316,9 @@ usersRouter.delete(
     }
 
     try {
-      updateUserAvatarUrl(
+      updateUserAvatarImages(
         currentUser.id,
+        null,
         null,
       );
 
@@ -289,11 +334,16 @@ usersRouter.delete(
 
       deleteStoredAvatar(
         existingRow.avatarUrl,
+        existingRow.avatarFullUrl,
       );
 
+      const updatedUser = mapUserRow(updatedRow);
+
       response.json({
-        user: mapUserRow(updatedRow),
+        user: updatedUser,
       });
+
+      publishProfileUpdate(updatedUser);
     } catch (error) {
       console.error(
         'Failed to delete avatar:',
@@ -435,9 +485,13 @@ usersRouter.patch('/me', (request, response) => {
     return;
   }
 
+  const updatedUser = mapUserRow(updatedRow);
+
   response.json({
-    user: mapUserRow(updatedRow),
+    user: updatedUser,
   });
+
+  publishProfileUpdate(updatedUser);
 });
 
 usersRouter.get('/:id', (request, response) => {

@@ -36,6 +36,7 @@ import {
   deleteAvatarRequest,
 } from '@/services/avatar-api';
 
+import type { UserData } from '@/types/user';
 import { ApiError } from '@/services/api-error';
 
 type AuthContextData = {
@@ -48,6 +49,7 @@ type AuthContextData = {
   logout: () => Promise<void>;
   updateProfile: (data: UpdateProfileRequest) => Promise<AuthUser>;
   uploadAvatar: (asset: DocumentPickerAsset) => Promise<AuthUser>;
+  applyRealtimeProfile: (profile: UserData) => void;
   deleteAvatar: () => Promise<AuthUser>;
 };
 
@@ -174,6 +176,27 @@ export function AuthProvider({
     }
   }
 
+  function applyRealtimeProfile(
+    profile: UserData,
+  ): void {
+    setUser((currentUser) => {
+      if (
+        !currentUser ||
+        currentUser.id !== profile.id
+      ) {
+        return currentUser;
+      }
+
+      return {
+        ...currentUser,
+        name: profile.name,
+        bio: profile.bio,
+        avatarUrl: profile.avatarUrl,
+        avatarFullUrl: profile.avatarFullUrl,
+      };
+    });
+  }
+
   async function updateProfile(
     data: UpdateProfileRequest,
   ): Promise<AuthUser> {
@@ -231,6 +254,7 @@ export function AuthProvider({
         updateProfile,
         uploadAvatar,
         deleteAvatar,
+        applyRealtimeProfile,
       }}
     >
       {children}

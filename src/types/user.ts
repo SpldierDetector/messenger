@@ -3,4 +3,5 @@ export type UserData = {
   name: string;
   bio: string | null;
   avatarUrl: string | null;
+  avatarFullUrl: string | null;
 };
