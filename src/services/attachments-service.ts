@@ -6,28 +6,76 @@ import {
   Directory,
   File,
   Paths,
+  UploadType,
 } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
+async function uploadNativeAttachment(
+  chatId: number,
+  uri: string,
+  originalName: string,
+  mimeType: string,
+  token: string,
+): Promise<AttachmentData> {
+  const file = new File(uri);
+
+  const result = await file.upload(
+    `${API_BASE_URL}/chats/${chatId}/attachments`,
+    {
+      httpMethod: 'POST',
+      uploadType: UploadType.MULTIPART,
+      fieldName: 'file',
+      mimeType,
+      parameters: {
+        originalName,
+      },
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
+  if (
+    result.status < 200 ||
+    result.status >= 300
+  ) {
+    throw new Error(
+      `Failed to upload attachment: ` +
+      `${result.status} ${result.body}`,
+    );
+  }
+
+  return JSON.parse(result.body) as AttachmentData;
+}
+
 export async function uploadAttachment(
-  chatId:number,
+  chatId: number,
   asset: DocumentPickerAsset,
   token: string,
 ): Promise<AttachmentData> {
-  const formData = new FormData();
-
-  if (asset.file) {
-    formData.append('file', asset.file, asset.name);
-  } else {
-    formData.append(
-      'file',
-      {
-        uri: asset.uri,
-        name: asset.name,
-        type: asset.mimeType ?? 'application/octet-stream',
-      } as unknown as Blob,
+  if (Platform.OS !== 'web') {
+    return uploadNativeAttachment(
+      chatId,
+      asset.uri,
+      asset.name,
+      asset.mimeType ?? 'application/octet-stream',
+      token,
     );
   }
+
+  if (!asset.file) {
+    throw new Error(
+      'Selected file is unavailable',
+    );
+  }
+
+  const formData = new FormData();
+
+  formData.append(
+    'file',
+    asset.file,
+    asset.name,
+  );
 
   const response = await fetch(
     `${API_BASE_URL}/chats/${chatId}/attachments`,
@@ -44,7 +92,8 @@ export async function uploadAttachment(
     const errorBody = await response.text();
 
     throw new Error(
-      `Failed to upload attachment: ${response.status} ${errorBody}`,
+      `Failed to upload attachment: ` +
+      `${response.status} ${errorBody}`,
     );
   }
 
@@ -268,27 +317,33 @@ export async function uploadVoiceAttachment(
   uri: string,
   token: string,
 ): Promise<AttachmentData> {
-  const formData = new FormData();
-
-  if (Platform.OS == 'web') {
-    const voiceResponse = await fetch(uri);
-    const voiceBlob = await voiceResponse.blob();
-
-    formData.append(
-      'file',
-      voiceBlob,
-      'voice-message.webm',
-    );
-  } else {
-    formData.append(
-      'file',
-      {
-        uri,
-        name: 'voice-message.m4a',
-        type: 'audio/mp4',
-      } as unknown as Blob,
+  if (Platform.OS !== 'web') {
+    return uploadNativeAttachment(
+      chatId,
+      uri,
+      'voice-message.m4a',
+      'audio/mp4',
+      token,
     );
   }
+
+  const voiceResponse = await fetch(uri);
+
+  if (!voiceResponse.ok) {
+    throw new Error(
+      'Failed to read recorded voice message',
+    );
+  }
+
+  const voiceBlob = await voiceResponse.blob();
+
+  const formData = new FormData();
+
+  formData.append(
+    'file',
+    voiceBlob,
+    'voice-message.webm',
+  );
 
   const response = await fetch(
     `${API_BASE_URL}/chats/${chatId}/attachments`,

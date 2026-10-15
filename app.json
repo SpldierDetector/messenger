@@ -40,7 +40,10 @@
       "expo-image",
       "expo-web-browser",
       "expo-sharing",
-      "expo-audio"
+      "expo-audio",
+      "expo-font",
+      "expo-status-bar",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,
