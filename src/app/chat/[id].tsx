@@ -99,6 +99,48 @@ export default function ChatScreen() {
 
   const { token, isAuthenticated } = useAuth();
   const chatId = Number(id);
+
+  useEffect(() => {
+    if (
+      profileRevision === 0 ||
+      !token ||
+      !Number.isSafeInteger(chatId) ||
+      chatId <= 0
+    ) {
+      return;
+    }
+
+    let isActive = true;
+
+    void getChatRequest(chatId, token)
+      .then((updatedChat) => {
+        if (!isActive || !updatedChat) return;
+
+        setChat((currentChat) => {
+          if (
+            !currentChat ||
+            currentChat.id !== updatedChat.id
+          ) {
+            return currentChat;
+          }
+
+          return updatedChat;
+        });
+      })
+      .catch((error) => {
+        if (!isActive) return;
+        
+        console.warn(
+          'Failed to refresh chat profile:',
+          error,
+        );
+      });
+
+      return () => {
+        isActive = false;
+      };
+  }, [chatId, token, profileRevision]);
+
   const [chat, setChat] = useState<ChatData | null>(null);
   const [chatLoadError, setChatLoadError] = useState<string | null>(null);
   const [isChatLoaded, setIsChatLoaded] = useState(false);
@@ -1616,47 +1658,6 @@ export default function ChatScreen() {
   if (!isChatLoaded) {
     return null;
   }
-
-  useEffect(() => {
-    if (
-      profileRevision === 0 ||
-      !token ||
-      !Number.isSafeInteger(chatId) ||
-      chatId <= 0
-    ) {
-      return;
-    }
-
-    let isActive = true;
-
-    void getChatRequest(chatId, token)
-      .then((updatedChat) => {
-        if (!isActive || !updatedChat) return;
-
-        setChat((currentChat) => {
-          if (
-            !currentChat ||
-            currentChat.id !== updatedChat.id
-          ) {
-            return currentChat;
-          }
-
-          return updatedChat;
-        });
-      })
-      .catch((error) => {
-        if (!isActive) return;
-        
-        console.warn(
-          'Failed to refresh chat profile:',
-          error,
-        );
-      });
-
-      return () => {
-        isActive = false;
-      };
-  }, [chatId, token, profileRevision]);
 
   if (chatLoadError) {
     return (
