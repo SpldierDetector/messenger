@@ -134,12 +134,26 @@ export function createAttachmentsRouter() {
             file.mimetype,
           );
 
+        const providedName = request.body?.originalName;
+
+        const candidateName =
+          typeof providedName === 'string' &&
+          providedName.trim().length > 0 &&
+          providedName.length <= 255
+            ? providedName
+            : file.originalname;
+
+        const originalName =
+          candidateName
+            .replace(/[\\/\u0000-\u001F\u007F]/g, '_')
+            .trim() || 'attachment';
+
         const result =
           insertAttachment(
             chatId,
             currentUser.id,
             attachmentType,
-            file.originalname,
+            originalName,
             file.filename,
             file.mimetype,
             file.size,

@@ -8,9 +8,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "messengerapp",
     "userInterfaceStyle": "automatic",
-    "ios": {
-      "icon": "./assets/expo.icon"
-    },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -40,7 +37,10 @@
       "expo-image",
       "expo-web-browser",
       "expo-sharing",
-      "expo-audio"
+      "expo-audio",
+      "expo-font",
+      "expo-status-bar",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,

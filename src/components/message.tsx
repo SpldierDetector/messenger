@@ -5,14 +5,14 @@ import {
   Text,
   View,
 } from 'react-native';
-import type { 
+import type {
   AttachmentData,
   MessageSendStatus,
 } from '@/types/message';
 import { styles } from '@/styles/message.styles';
 import { AttachmentImage } from '@/components/attachment-image';
 import { AttachmentAudio } from '@/components/attachment-audio';
- 
+
 type MessageProps = {
   author: string;
   text: string;
@@ -109,11 +109,24 @@ export function Message({
             : text}
         </Text>
       )}
-      
-      {deletedAt === null && attachments.map((attachment) => 
+
+      {deletedAt === null && attachments.map((attachment) =>
         attachment.type === 'image' &&
         chatId !== undefined &&
         token ? (
+          sendStatus === 'sending' ||
+          sendStatus === 'failed' ? (
+            <View
+              key={attachment.id}
+              style={styles.attachmentImage}
+            >
+              <Text style={styles.attachmentImagePlaceholder}>
+                {sendStatus === 'sending'
+                  ? 'Отправка фото...'
+                  : 'Фото не отправлено'}
+              </Text>
+            </View>
+        ) : (
           <AttachmentImage
             key={attachment.id}
             chatId={chatId}
@@ -122,6 +135,7 @@ export function Message({
             onPress={() => onAttachmentPress?.(attachment)}
             disabled={downloadingAttachmentId !== null}
           />
+        )
         ) : attachment.type === 'audio' &&
           chatId !== undefined &&
           token ? (
@@ -130,7 +144,7 @@ export function Message({
             chatId={chatId}
             attachment={attachment}
             token={token}
-          />  
+          />
         ) : (
         <Pressable
           key={attachment.id}
@@ -173,8 +187,8 @@ export function Message({
           ]}
           numberOfLines={1}
         >
-          {editedAt && !deletedAt 
-            ? 'изменено · ' 
+          {editedAt && !deletedAt
+            ? 'изменено · '
             : ''}
           {time}
         </Text>

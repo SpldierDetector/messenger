@@ -87,6 +87,43 @@ type MessagesProviderProps = {
   children: ReactNode;
 };
 
+function mergeReceipts(
+  current: MessageReceiptData[],
+  incoming: MessageReceiptData[],
+): MessageReceiptData[] {
+  const merged = new Map<string, MessageReceiptData>();
+
+  for (const receipt of current) {
+    merged.set(`${receipt.messageId}:${receipt.userId}`, receipt);
+  }
+
+  for (const receipt of incoming) {
+    const key = `${receipt.messageId}:${receipt.userId}`;
+    const previous = merged.get(key);
+
+    if (!previous) {
+      merged.set(key, receipt);
+      continue;
+    }
+
+    merged.set(key, {
+      ...receipt,
+      deliveredAt:
+        Math.max(
+          previous.deliveredAt ?? 0,
+          receipt.deliveredAt ?? 0,
+        ) || null,
+      readAt:
+        Math.max(
+          previous.readAt ?? 0,
+          receipt.readAt ?? 0,
+        ) || null,
+    });
+  }
+
+  return [...merged.values()];
+}
+
 export function MessagesProvider({ children }: MessagesProviderProps) {
   const { isAuthenticated, token, user, applyRealtimeProfile, } = useAuth();
 
@@ -298,15 +335,9 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
         ),
       );
 
-    setReceipts((currentReceipts) => [
-      ...currentReceipts.filter(
-        (receipt) =>
-          !loadedMessageIds.has(
-            receipt.messageId,
-          ),
-      ),
-      ...loadedReceipts,
-    ]);
+    setReceipts((currentReceipts) => 
+      mergeReceipts(currentReceipts, loadedReceipts),
+    );
 
     setHasMoreMessagesByChat(
       (current) => ({
@@ -1431,27 +1462,9 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
   function updateReceiptInState(
     updatedReceipt: MessageReceiptData,
   ) {
-    setReceipts((currentReceipts) => {
-      const existingIndex = currentReceipts.findIndex(
-        (receipt) =>
-          receipt.messageId === updatedReceipt.messageId &&
-          receipt.userId === updatedReceipt.userId, 
-      );
-
-      if (existingIndex === -1) {
-        return [
-          ...currentReceipts,
-          updatedReceipt,
-        ];
-      }
-
-      return currentReceipts.map(
-        (receipt, index) =>
-          index === existingIndex
-            ? updatedReceipt
-            : receipt,
-      );
-    });
+    setReceipts((currentReceipts) =>
+      mergeReceipts(currentReceipts, [updatedReceipt]),
+    );
   }
 
   function handleMessageDeleted(
@@ -1464,24 +1477,60 @@ export function MessagesProvider({ children }: MessagesProviderProps) {
     void refreshLatestMessagePreviews();
   }
 
-  async function syncAfterReconnect() {
-    try {
-      await syncCachedMessages();
-      await syncPendingDeliveryMessages();
-      await refreshLatestMessagePreviews();
-      await refreshUnreadCounts();
+  async function syncLoadedReceipts() {
+    if (!token) {
+      return;
+    }
 
-      await Promise.all(
-        [...trackedUnreadChatIdsRef.current].map(
-          (chatId) =>
-            refreshUnreadMessageIdsForChat(chatId),
-        ),
-      );
-    } catch (caughtError) {
-      console.warn(
-        'Failed to sync state after reconnect',
-        caughtError,
-      );
+    const chatIds = [
+      ...new Set(
+        messagesRef.current
+          .filter((message) => message.id > 0)
+          .map((message) => message.chatId),
+      ),
+    ];
+
+    await Promise.all(
+      chatIds.map(async (chatId) => {
+        try {
+          const loadedReceipts =
+            await loadMessageReceipts(chatId, token);
+
+          setReceipts((currentReceipts) =>
+            mergeReceipts(currentReceipts, loadedReceipts),
+          );
+        } catch (error) {
+          console.warn(
+            `Failed to sync receipts for chat ${chatId}:`,
+            error,
+          );
+        }
+      }),
+    );
+  }
+  
+  async function syncAfterReconnect() {
+    const tasks = [
+      syncCachedMessages(),
+      syncPendingDeliveryMessages(),
+      syncLoadedReceipts(),
+      refreshLatestMessagePreviews(),
+      refreshUnreadCounts(),
+      ...[...trackedUnreadChatIdsRef.current].map(
+        (chatId) =>
+          refreshUnreadMessageIdsForChat(chatId),
+      ),
+    ];
+
+    const results = await Promise.allSettled(tasks);
+
+    for (const result of results) {
+      if (result.status === 'rejected') {
+        console.warn(
+          'Failed to sync state after reconnect:',
+          result.reason,
+        );
+      }
     }
   }
   
