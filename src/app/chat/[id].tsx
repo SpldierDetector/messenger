@@ -9,6 +9,8 @@ import {
   uploadVoiceAttachment,
 } from '@/services/attachments-service';
 import { getChatRequest } from '@/services/chat-api';
+import { syncMessages } from '@/services/messages-service';
+import { getReplyPreviewText } from '@/utils/reply-preview';
 import { styles } from '@/styles/chat.styles';
 import type { ChatData } from '@/types/chat';
 import type { 
@@ -97,7 +99,7 @@ export default function ChatScreen() {
     error
   } = useMessages();
 
-  const { token, isAuthenticated } = useAuth();
+  const { token, isAuthenticated, user } = useAuth();
   const chatId = Number(id);
 
   useEffect(() => {
@@ -158,6 +160,7 @@ export default function ChatScreen() {
     setIsMessageMenuVisible,
   ] = useState(false);
   const [replyingMessage, setReplyingMessage] = useState<MessageData | null>(null);
+  const [replyOriginals, setReplyOriginals] = useState<Record<string, MessageData | null>>({});
   const [text, setText] = useState('');
   const [selectedAttachments, setSelectedAttachments] = useState<AttachmentData[]>([]);
   const [locallySeenUnreadMessageIds, setLocallySeenUnreadMessageIds] = useState<Set<number>>(() => new Set());
@@ -972,6 +975,103 @@ export default function ChatScreen() {
       },
     );
 
+  const currentUserId = user?.id;
+
+  const loadedMessageIds = new Set(
+    messages
+      .filter((message) => message.chatId === chatId)
+      .map((message) => message.id),
+  );
+
+  const missingReplyIds = [
+    ...new Set(
+      messageList
+        .map((message) => message.replyToMessageId)
+        .filter(
+          (id): id is number =>
+            id !== null && id >0,
+        ),
+    ),
+  ]
+    .filter(
+      (id) =>
+        !loadedMessageIds.has(id) &&
+        !(`${currentUserId}:${chatId}:${id}` in replyOriginals),
+    )
+    .sort((a, b) => a - b);
+
+  const missingReplyIdsKey = missingReplyIds.join(',');
+
+  useEffect(() => {
+    if (
+      !token ||
+      currentUserId === undefined ||
+      !missingReplyIdsKey
+    ) {
+      return;
+    }
+
+    let isActive = true;
+
+    const ids = missingReplyIdsKey.split(',').map(Number);
+
+    async function loadReplyOriginals() {
+      try {
+        const fetched = new Map<number, MessageData>();
+
+        for (let index = 0; index < ids.length; index += 100) {
+          const batch = ids.slice(index, index + 100);
+
+          const results = await syncMessages(
+            batch,
+            token!,
+            currentUserId!,
+          );
+
+          if (!isActive) {
+            return;
+          }
+
+          for (const message of results) {
+            if (message.chatId === chatId) {
+              fetched.set(message.id, message);
+            }
+          }
+        }
+
+        if (!isActive) {
+          return;
+        }
+
+        setReplyOriginals((current) => {
+          const next = { ...current };
+
+          for (const id of ids) {
+            const key = `${currentUserId}:${chatId}:${id}`;
+
+            if (!(key in next)) {
+              next[key] = fetched.get(id) ?? null;
+            }
+          }
+
+          return next;
+        });
+      } catch (error) {
+        if (isActive) {
+          console.warn(
+            'Failed to load reply originals:',
+            error,
+          );
+        }
+      }
+    }
+
+    void loadReplyOriginals();
+
+    return () => {
+      isActive = false;
+    };
+  }, [chatId, token, currentUserId, missingReplyIdsKey]);
   const currentUnreadState =
     unreadCounts.find(
       (count) =>
@@ -2071,9 +2171,14 @@ export default function ChatScreen() {
             const repliedMessage = 
             item.replyToMessageId !== null
               ? messages.find(
-                (message) =>
-                  message.id === item.replyToMessageId,
-              )
+                  (message) =>
+                    message.id === item.replyToMessageId &&
+                    message.chatId === chatId,
+                ) ??
+                replyOriginals[
+                  `${currentUserId}:${chatId}:${item.replyToMessageId}`
+                ] ??
+                undefined
               : undefined;
 
             const hasReply =
@@ -2143,8 +2248,9 @@ export default function ChatScreen() {
                   }
                   replyText={
                     hasReply
-                      ? repliedMessage?.text ??
-                        'Исходное сообщение недоступно'
+                      ? repliedMessage
+                        ? getReplyPreviewText(repliedMessage)
+                        : 'Исходное сообщение недоступно'
                       : undefined
                   }
                   replyDeleted={
@@ -2366,7 +2472,7 @@ export default function ChatScreen() {
                     style={styles.replyingText}
                     numberOfLines={1}
                   >
-                    {replyingMessage.text}
+                    {getReplyPreviewText(replyingMessage)}
                   </Text>
                 </View>
 
