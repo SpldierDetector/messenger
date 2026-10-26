@@ -4,6 +4,7 @@ import {
   editMessageRequest,
   forwardMessageRequest,
   getLatestMessagesRequest,
+  getMessageContextRequest,
   getMessagePageRequest,
   getMessageReceiptsRequest,
   getMessagesRequest,
@@ -74,6 +75,20 @@ export async function loadMessagePage(
     token,
     currentUserId,
     pageSize,
+  );
+}
+
+export async function loadMessageContext(
+  chatId: number,
+  messageId: number,
+  token: string,
+  currentUserId: number,
+): Promise<MessageData[]> {
+  return getMessageContextRequest(
+    chatId,
+    messageId,
+    token,
+    currentUserId,
   );
 }
 

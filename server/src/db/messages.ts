@@ -111,6 +111,78 @@ export function getMessagePageByChatId(
   );
 }
 
+export function getMessageContextByChatId(
+  chatId: number,
+  userId: number,
+  messageId: number,
+) {
+  const statement = database.prepare(`
+    WITH visible_messages AS (
+      SELECT
+        message.id,
+        message.chatId,
+        message.senderId,
+        message.clientMessageId,
+        sender.name AS author,
+        message.text,
+        message.createdAt,
+        message.editedAt,
+        message.deletedAt,
+        message.replyToMessageId,
+        message.forwardedFromMessageId,
+        message.forwardedFromAuthor
+      FROM messages AS message
+
+      JOIN user AS sender
+        ON sender.id = message.senderId
+
+      JOIN chat_members AS member
+        ON member.chatId = message.chatId
+        AND member.userId = ?
+
+      LEFT JOIN message_hidden_for_users AS hidden
+        ON hidden.messageId = message.id
+        AND hidden.userId = ?
+
+      WHERE message.chatId = ?
+        AND hidden.messageId IS NULL
+        AND message.deletedAt IS NULL
+        AND (
+          member.clearedBeforeMessageId IS NULL
+          OR message.id > member.clearedBeforeMessageId
+        )
+    )
+        
+    SELECT * FROM (
+      SELECT *
+      FROM visible_messages
+      WHERE id <= ?
+      ORDER BY id DESC
+      LIMIT 26
+    )
+
+    UNION ALL
+
+    SELECT * FROM (
+      SELECT *
+      FROM visible_messages
+      WHERE id > ?
+      ORDER BY id ASC
+      LIMIT 25
+    )
+
+    ORDER BY id ASC
+  `);
+
+  return statement.all(
+    userId,
+    userId,
+    chatId,
+    messageId,
+    messageId,
+  );
+}
+
 export function searchMessagesByChatId(
   chatId: number,
   userId: number,

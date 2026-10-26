@@ -82,6 +82,10 @@ export const styles = StyleSheet.create({
     marginBottom: 8,
   },
 
+  replyTargetHighlighted: {
+    backgroundColor: '#345477',
+  },
+
   replyAuthor: {
     color: '#bfdbfe',
     fontSize: 13,

@@ -30,8 +30,10 @@ type MessageProps = {
   attachments?: AttachmentData[];
   downloadingAttachmentId?: number | null;
   chatId?: number;
+  isReplyTargetHighlighted?: boolean;
   token?: string | null;
   onAttachmentPress?: (attachment: AttachmentData) => void;
+  onReplyPress?: () => void;
   onRetry?: () => void;
   onLongPress?: () => void;
 };
@@ -54,6 +56,8 @@ export function Message({
   onRetry,
   isRead,
   onLongPress,
+  onReplyPress,
+  isReplyTargetHighlighted = false,
   attachments = [],
   downloadingAttachmentId = null,
   onAttachmentPress,
@@ -68,6 +72,8 @@ export function Message({
         isOwn
           ? styles.ownMessage
           : styles.otherMessage,
+        isReplyTargetHighlighted &&
+          styles.replyTargetHighlighted,
       ]}
     >
       {!isOwn && (

@@ -99,6 +99,50 @@ export async function getMessagePageRequest(
   };
 }
 
+export async function getMessageContextRequest(
+  chatId: number,
+  messageId: number,
+  token: string,
+  currentUserId: number,
+): Promise<MessageData[]> {
+  const params = new URLSearchParams({
+    chatId: String(chatId),
+    messageId: String(messageId),
+  });
+
+  const response = await fetch(
+    `${API_BASE_URL}/messages/context?${params.toString()}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
+  if (response.status === 404) {
+    return [];
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to load message context: ${response.status}`,
+    );
+  }
+
+  const result = (await response.json()) as {
+    targetMessageId: number;
+    messages: MessageApiData[];
+  };
+
+  return result.messages.map(
+    (message) =>
+      mapMessageApiData(
+        message,
+        currentUserId,
+      ),
+  );
+}
+
 export async function syncMessagesRequest(
   messageIds: number[],
   token: string,

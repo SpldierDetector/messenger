@@ -33,6 +33,7 @@ import {
   getMessagesByChatId,
   getMessagesByIdsForUser,
   getPendingDeliveryMessagesByUserId,
+  getMessageContextByChatId,
   hideMessageForUser,
   insertForwardedMessage,
   insertMessage,
@@ -410,6 +411,71 @@ export function createMessagesRouter({
         messages: pageMessages,
         hasMore,
         nextBeforeMessageId,
+      });
+    },
+  );
+
+  messagesRouter.get(
+    '/context',
+    requireAuth,
+    (request, response) => {
+      const chatId = Number(request.query.chatId);
+      const messageId = Number(request.query.messageId);
+
+      if (
+        !Number.isSafeInteger(chatId) || chatId <= 0 ||
+        !Number.isSafeInteger(messageId) || messageId <= 0
+      ) {
+        response.status(400).json({
+          error: 'invalid chatId or messageId',
+        });
+        return;
+      }
+
+      const currentUser = request.user;
+
+      if (!currentUser) {
+        response.status(401).json({
+          error: 'authorization required',
+        });
+        return;
+      }
+
+      if (!isUserInChat(chatId, currentUser.id)) {
+        response.status(403).json({
+          error: 'forbidden',
+        });
+        return;
+      }
+
+      const targetMessage = (
+        getMessagesByIdsForUser(
+          [messageId],
+          currentUser.id,
+        ) as MessageRow[]
+      ).find(
+        (message) =>
+          message.id === messageId &&
+          message.chatId === chatId &&
+          message.deletedAt === null,
+      );
+
+      if (!targetMessage) {
+        response.status(404).json({
+          error: 'message not found',
+        });
+        return;
+      }
+
+      const rows = getMessageContextByChatId(
+        chatId,
+        currentUser.id,
+        messageId,
+      ) as MessageRow[];
+
+      response.json({
+        targetMessageId: messageId,
+        messages: buildMessageDataRows(rows),
       });
     },
   );
