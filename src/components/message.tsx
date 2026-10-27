@@ -89,7 +89,13 @@ export function Message({
       )}
 
       {replyAuthor && (
-        <View style={styles.replyContainer}>
+        <Pressable
+          onPress={onReplyPress}
+          disabled={!onReplyPress}
+          accessibilityRole="button"
+          accessibilityLabel="Перейти к исходному сообщению"
+          style={styles.replyContainer}
+        >
           <Text style={styles.replyAuthor}>
             {replyAuthor}
           </Text>
@@ -102,7 +108,7 @@ export function Message({
               ? 'Сообщение удалено'
               : replyText}
           </Text>
-        </View>
+        </Pressable>
       )}
 
       {(text || deletedAt !== null) && (

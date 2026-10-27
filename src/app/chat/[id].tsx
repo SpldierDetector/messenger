@@ -9,7 +9,7 @@ import {
   uploadVoiceAttachment,
 } from '@/services/attachments-service';
 import { getChatRequest } from '@/services/chat-api';
-import { syncMessages } from '@/services/messages-service';
+import { syncMessages, loadMessageContext } from '@/services/messages-service';
 import { getReplyPreviewText } from '@/utils/reply-preview';
 import { styles } from '@/styles/chat.styles';
 import type { ChatData } from '@/types/chat';
@@ -179,9 +179,21 @@ export default function ChatScreen() {
   const [recordedVoiceUri, setRecordedVoiceUri] = useState<string | null>(null);
   const [isUploadingVoice, setIsUploadingVoice] = useState(false);
   const [isCurrentChatMessagesLoaded, setIsCurrentChatMessagesLoaded] = useState(false);
+  const [contextMessages, setContextMessages] = useState<MessageData[] | null>(null);
+  const [contextTargetId, setContextTargetId] = useState<number | null>(null);
+  const [isContextLoading, setIsContextLoading] = useState(false);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<number | null>(null);
+  const isViewingContext = contextMessages !== null;
+  const isViewingContextRef = useRef(false);
+  isViewingContextRef.current = isViewingContext;
   const voicePlayer = useAudioPlayer(null);
   const voicePlayerStatus = useAudioPlayerStatus(voicePlayer);
-  const recordingBusyRef = useRef(false);  
+  const recordingBusyRef = useRef(false); 
+  const contextRequestIdRef = useRef(0);
+  const replyJumpIndexRef = useRef<number | null>(null);
+  const replyJumpAttemptsRef = useRef(0);
+  const replyJumpRetryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const listRef = useRef<FlatList>(null);
   const hasInitialScrollCompletedRef = useRef(false);
   const isNearBottomRef = useRef(true);
@@ -215,6 +227,10 @@ export default function ChatScreen() {
   function updateUnreadViewportProgress(
     visibleUnreadMessageIds: number[],
   ) {
+    if (isViewingContextRef.current) {
+      return;
+    }
+
     const nextVisibleIds = new Set(visibleUnreadMessageIds);
 
     isUnreadAreaVisibleRef.current = nextVisibleIds.size > 0;
@@ -977,6 +993,26 @@ export default function ChatScreen() {
 
   const currentUserId = user?.id;
 
+  useEffect(() => {
+    contextRequestIdRef.current += 1;
+    setContextMessages(null);
+    setContextTargetId(null);
+    setIsContextLoading(false);
+    setHighlightedMessageId(null);
+  }, [chatId, currentUserId, token]);
+
+  useEffect(() => {
+    return () => {
+      if (replyJumpRetryRef.current) {
+        clearTimeout(replyJumpRetryRef.current);
+      }
+
+      if (highlightTimerRef.current) {
+        clearTimeout(highlightTimerRef.current);
+      }
+    };
+  }, []);
+
   const loadedMessageIds = new Set(
     messages
       .filter((message) => message.chatId === chatId)
@@ -1226,7 +1262,70 @@ export default function ChatScreen() {
   const displayedMessages = 
     isSearchMode
       ? searchResultList
-      : messageList;
+      : contextMessages !== null
+        ? [...contextMessages].sort((a, b) => {
+          const difference = b.createdAt - a.createdAt;
+
+          return difference !== 0
+            ? difference
+            : b.id - a.id;
+        })
+        : messageList;
+
+  useEffect(() => {
+    if (
+      contextMessages === null ||
+      contextTargetId === null ||
+      isSearchMode
+    ) {
+      return;
+    }
+
+    const targetIndex = displayedMessages.findIndex(
+      (message) => message.id === contextTargetId,
+    );
+
+    if (targetIndex < 0) {
+      return;
+    }
+
+    if (highlightTimerRef.current) {
+      clearTimeout(highlightTimerRef.current);
+    }
+
+    if (replyJumpRetryRef.current) {
+      clearTimeout(replyJumpRetryRef.current);
+      replyJumpRetryRef.current = null;
+    }
+
+    replyJumpIndexRef.current = targetIndex;
+    replyJumpAttemptsRef.current = 0;
+
+    setHighlightedMessageId(contextTargetId);
+
+    const scrollTimer = setTimeout(() => {
+      listRef.current?.scrollToIndex({
+        index: targetIndex,
+        animated: false,
+        viewPosition: 0.5,
+      });
+    }, 150);
+
+    highlightTimerRef.current = setTimeout(() => {
+      setHighlightedMessageId(null);
+      replyJumpIndexRef.current = null;
+      highlightTimerRef.current = null;
+    }, 2500);
+
+    return () => {
+      clearTimeout(scrollTimer);
+
+      if (highlightTimerRef.current) {
+        clearTimeout(highlightTimerRef.current);
+        highlightTimerRef.current = null;
+      }
+    };
+  }, [contextMessages, contextTargetId, isSearchMode]);
   const latestMessage = messageList[0];
   const hasMoreMessages = hasMoreMessagesByChat[chatId] ?? false;
   const isLoadingOlderMessages = isLoadingOlderMessagesByChat[chatId] ?? false;
@@ -1245,6 +1344,8 @@ export default function ChatScreen() {
     if (
       isSearchMode ||
       !latestMessage ||
+      isViewingContext ||
+      isContextLoading ||
       !hasInitialScrollCompletedRef.current ||
       !isNearBottomRef.current
     ) {
@@ -1265,9 +1366,29 @@ export default function ChatScreen() {
   }, [
     latestMessage?.id,
     isSearchMode,
+    isViewingContext,
+    isContextLoading,
   ]);
   
   function handleScrollToBottomPress() {
+    if (isViewingContext || isContextLoading) {
+      const wasViewingContext = isViewingContext;
+
+      closeMessageContext();
+
+      isNearBottomRef.current = true;
+      setIsScrollToBottomVisible(false);
+
+      if (!wasViewingContext) {
+        listRef.current?.scrollToOffset({
+          offset: 0,
+          animated: true,
+        });
+      }
+
+      return;
+    }
+    
     if (
       Platform.OS === 'web' &&
       webUnreadJumpPendingRef.current &&
@@ -1342,6 +1463,10 @@ export default function ChatScreen() {
   }
 
   function updateWebUnreadVisibility() {
+    if (isViewingContextRef.current) {
+      return;
+    }
+    
     if (
       Platform.OS !== 'web' ||
       typeof document === 'undefined'
@@ -1405,6 +1530,10 @@ export default function ChatScreen() {
     viewportHeight: number,
     contentHeight: number,
   ) {
+    if (isViewingContextRef.current) {
+      return;
+    }
+
     const BOTTOM_THRESHOLD = 50;
     const TOP_THRESHOLD = 100;
     const previousOffsetY = previousScrollOffsetYRef.current;
@@ -1460,6 +1589,133 @@ export default function ChatScreen() {
 
     void loadOlderMessages(chatId);
   }
+
+  function closeMessageContext() {
+    contextRequestIdRef.current += 1;
+    setContextMessages(null);
+    setContextTargetId(null);
+    setIsContextLoading(false);
+  }
+
+  async function openMessageContext(targetMessageId: number) {
+    if (!token || currentUserId === undefined) {
+      return;
+    }
+
+    const requestId = ++contextRequestIdRef.current;
+
+    setContextTargetId(targetMessageId);
+    setIsContextLoading(true);
+
+    try {
+      const result = await loadMessageContext(
+        chatId,
+        targetMessageId,
+        token,
+        currentUserId,
+      );
+
+      if (requestId !== contextRequestIdRef.current) {
+        return;
+      }
+
+      if (!result.some(
+        (message) => message.id === targetMessageId,
+      )) {
+        closeMessageContext();
+
+        if (Platform.OS === 'web') {
+          window.alert('Исходное сообщение недоступно.');
+        } else {
+          Alert.alert('Переход невозможен', 'Исходное сообщение недоступно.');
+        }
+        return;
+      }
+
+      setContextMessages(result);
+    } catch (error) {
+      if (requestId !== contextRequestIdRef.current) {
+        return;
+      }
+
+      console.error('Failed to load message context:', error);
+      closeMessageContext();
+
+      if (Platform.OS === 'web') {
+        window.alert('Не удалось загрузить историю сообщения.');
+      } else {
+        Alert.alert('Ошибка', 'Не удалось загрузить историю сообщения.');
+      }
+
+    } finally {
+      if (requestId === contextRequestIdRef.current) {
+        setIsContextLoading(false);
+      }
+    }
+  }
+
+  function handleContextReplyPress(targetMessageId: number) {
+    if (
+      contextMessages?.some(
+        (message) => message.id === targetMessageId,
+      )
+    ) {
+      setContextTargetId(targetMessageId);
+      return;
+    }
+
+    void openMessageContext(targetMessageId);
+  }
+  
+  function handleReplyPress(targetMessageId: number) {
+    if (isSearchMode) {
+      handleCloseSearch();
+      void openMessageContext(targetMessageId);
+      return;
+    }
+    
+    const targetIndex = displayedMessages.findIndex(
+      (message) =>
+        message.id === targetMessageId &&
+        message.deletedAt === null,
+    );
+
+    if (targetIndex < 0) {
+      void openMessageContext(targetMessageId);
+      return;
+    }
+
+    if (highlightTimerRef.current) {
+      clearTimeout(highlightTimerRef.current);
+    }
+
+    if (replyJumpRetryRef.current) {
+      clearTimeout(replyJumpRetryRef.current);
+      replyJumpRetryRef.current = null;
+    }
+
+    replyJumpIndexRef.current = targetIndex;
+    replyJumpAttemptsRef.current = 0;
+
+    setHighlightedMessageId(targetMessageId);
+
+    if (!isSearchMode) {
+      isNearBottomRef.current = false;
+      setIsScrollToBottomVisible(true);
+    }
+
+    listRef.current?.scrollToIndex({
+      index: targetIndex,
+      animated: true,
+      viewPosition: 0.5,
+    });
+
+    highlightTimerRef.current = setTimeout(() => {
+      replyJumpIndexRef.current = null;
+      setHighlightedMessageId(null);
+      highlightTimerRef.current = null;
+    }, 2500);
+  }
   
   function handleOpenMessageMenu(
     message: MessageData,
@@ -1491,6 +1747,10 @@ export default function ChatScreen() {
   }
 
   function handleOpenSearch() {
+    if (isViewingContext || isContextLoading) {
+      closeMessageContext();
+    }
+    
     handleStopTyping();
 
     setIsSearchMode(true);
@@ -1948,6 +2208,13 @@ export default function ChatScreen() {
           nativeID="messages-container"  
         >
         <FlatList
+          key={
+            isSearchMode
+              ? 'search'
+              : isViewingContext
+                ? 'context'
+                : 'live'
+          }
           ref={listRef}
           style={[
             styles.messages,
@@ -1956,9 +2223,11 @@ export default function ChatScreen() {
               styles.messagesPreparing,
           ]}
           data={displayedMessages}
+          extraData={highlightedMessageId}
           inverted={!isSearchMode}
           maintainVisibleContentPosition={
             isSearchMode ||
+            isViewingContext ||
             !isInitialMessagePositionReady
               ? undefined
               : {
@@ -1973,6 +2242,9 @@ export default function ChatScreen() {
               : undefined
           }
           onContentSizeChange={() => {
+            if (isViewingContextRef.current) {
+              return;
+            }
             if (
               isSearchMode ||
               messageList.length === 0 ||
@@ -2057,6 +2329,39 @@ export default function ChatScreen() {
             scheduleWebUnreadCheck();
           }}
           onScrollToIndexFailed={(info) => {
+            if (replyJumpIndexRef.current === info.index) {
+              replyJumpAttemptsRef.current += 1;
+
+              if (replyJumpAttemptsRef.current > 3) {
+                replyJumpIndexRef.current = null;
+                return;
+              }
+
+              listRef.current?.scrollToOffset({
+                offset: Math.max(
+                  0,
+                  info.averageItemLength * info.index,
+                ),
+                animated: false,
+              });
+
+              if (replyJumpRetryRef.current) {
+                clearTimeout(replyJumpRetryRef.current);
+              }
+
+              replyJumpRetryRef.current = setTimeout(() => {
+                replyJumpRetryRef.current = null;
+
+                listRef.current?.scrollToIndex({
+                  index: info.index,
+                  animated: true,
+                  viewPosition: 0.5,
+                });
+              }, 150);
+
+              return;
+            }
+            
             if (
               buttonScrollTargetIndexRef.current !== null
             ) {
@@ -2170,7 +2475,12 @@ export default function ChatScreen() {
 
             const repliedMessage = 
             item.replyToMessageId !== null
-              ? messages.find(
+              ? displayedMessages.find(
+                (message) =>
+                  message.id === item.replyToMessageId &&
+                  message.chatId === chatId,
+              ) ??
+                messages.find(
                   (message) =>
                     message.id === item.replyToMessageId &&
                     message.chatId === chatId,
@@ -2181,8 +2491,8 @@ export default function ChatScreen() {
                 undefined
               : undefined;
 
-            const hasReply =
-              item.replyToMessageId !== null;
+            const hasReply = item.replyToMessageId !== null;
+            const replyTargetId = item.replyToMessageId;
 
             const shouldShowDate =
               !previousMessage ||
@@ -2193,6 +2503,7 @@ export default function ChatScreen() {
 
             const shouldShowUnreadSeparator =
               !isSearchMode &&
+              !isViewingContext &&
               firstUnreadMessageIdRef.current !== null &&
               item.id === firstUnreadMessageIdRef.current;
 
@@ -2258,6 +2569,14 @@ export default function ChatScreen() {
                       ? repliedMessage.deletedAt !== null
                       : false
                   }
+                  onReplyPress={
+                    item.replyToMessageId !== null
+                      ? () => handleReplyPress(item.replyToMessageId!)
+                      : undefined
+                  }
+                  isReplyTargetHighlighted={
+                    highlightedMessageId === item.id
+                  }
                   forwardedFromAuthor={
                     item.forwardedFromAuthor
                   }
@@ -2277,7 +2596,11 @@ export default function ChatScreen() {
 
         {!isSearchMode &&
           isInitialMessagePositionReady &&
-          isScrollToBottomVisible && (
+          (
+            isViewingContext ||
+            isContextLoading ||
+            isScrollToBottomVisible
+          ) && (
             <Pressable
               onPress={handleScrollToBottomPress}
               style={({ pressed }) => [
@@ -2291,7 +2614,7 @@ export default function ChatScreen() {
                 ↓
               </Text>
 
-              {unreadBadgeCount > 0 && (
+              {!isViewingContext && !isContextLoading && unreadBadgeCount > 0 && (
                 <View
                   style={styles.scrollToBottomBadge}
                 >
@@ -2632,6 +2955,7 @@ export default function ChatScreen() {
           </>
         )}
       </KeyboardAvoidingView>
+
     </SafeAreaView>
   );
 }

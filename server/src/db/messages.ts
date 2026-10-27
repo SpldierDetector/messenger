@@ -133,7 +133,7 @@ export function getMessageContextByChatId(
         message.forwardedFromAuthor
       FROM messages AS message
 
-      JOIN user AS sender
+      JOIN users AS sender
         ON sender.id = message.senderId
 
       JOIN chat_members AS member
