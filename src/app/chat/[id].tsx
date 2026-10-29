@@ -196,6 +196,9 @@ export default function ChatScreen() {
   const contextRequestIdRef = useRef(0);
   const replyJumpIndexRef = useRef<number | null>(null);
   const replyJumpTargetIdRef = useRef<number | null>(null);
+  const pauseReadDuringReplyJumpRef = useRef(false);
+  const replyReadResumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const visibleMessageIdsRef = useRef<Set<number>>(new Set());
   const displayedMessagesRef = useRef<MessageData[]>([]);
   const visibleMessageIndexRef = useRef<number | null>(null);
   const replyJumpAttemptsRef = useRef(0);
@@ -234,7 +237,10 @@ export default function ChatScreen() {
   function updateUnreadViewportProgress(
     visibleUnreadMessageIds: number[],
   ) {
-    if (isViewingContextRef.current) {
+    if (
+      pauseReadDuringReplyJumpRef.current ||
+      replyJumpTargetIdRef.current !== null
+    ) {
       return;
     }
 
@@ -297,6 +303,10 @@ export default function ChatScreen() {
       return;
     }
 
+    if (buttonScrollTargetMessageId !== null) {
+      return;
+    }
+
     if (
       !hasInitialScrollCompletedRef.current
     ) {
@@ -354,12 +364,63 @@ export default function ChatScreen() {
     );
   }
 
+  function finishReplyJump(targetMessageId: number){
+    if (replyJumpTargetIdRef.current !== targetMessageId) {
+      return;
+    }
+
+    replyJumpTargetIdRef.current = null;
+    replyJumpIndexRef.current = null;
+    replyJumpAttemptsRef.current = 0;
+
+    if (replyJumpRetryRef.current) {
+      clearTimeout(replyJumpRetryRef.current);
+      replyJumpRetryRef.current = null;
+    }
+
+    if (highlightTimerRef.current) {
+      clearTimeout(highlightTimerRef.current);
+      highlightTimerRef.current = null;
+    }
+
+    setHighlightedMessageId(targetMessageId);
+
+    highlightTimerRef.current = setTimeout(() => {
+      setHighlightedMessageId(null);
+      highlightTimerRef.current = null;
+    }, 2500);
+
+    if (replyReadResumeTimerRef.current) {
+      clearTimeout(replyReadResumeTimerRef.current);
+    }
+
+    replyReadResumeTimerRef.current = setTimeout(() => {
+      pauseReadDuringReplyJumpRef.current = false;
+      replyReadResumeTimerRef.current = null;
+    }, 400);
+  }
+
   const onViewableItemsChangedRef = useRef(
     ({
       viewableItems,
     }: {
       viewableItems: ViewToken[];
     }) => {
+      visibleMessageIdsRef.current = new Set(
+        viewableItems
+          .filter((entry) => entry.isViewable)
+          .map((entry) => (entry.item as MessageData).id),
+      );
+
+      const jumpTargetId = replyJumpTargetIdRef.current;
+
+      if (
+        jumpTargetId !== null &&
+        visibleMessageIdsRef.current.has(jumpTargetId)
+      ) {
+        finishReplyJump(jumpTargetId);
+      }
+
       const firstVisibleItem = viewableItems.find(
         (item) =>
           item.isViewable &&
@@ -1376,29 +1437,21 @@ export default function ChatScreen() {
     replyJumpIndexRef.current = targetIndex;
     replyJumpAttemptsRef.current = 0;
 
-    setHighlightedMessageId(contextTargetId);
-
     const scrollTimer = setTimeout(() => {
       listRef.current?.scrollToIndex({
         index: targetIndex,
         animated: false,
         viewPosition: 0.5,
       });
-    }, 150);
 
-    highlightTimerRef.current = setTimeout(() => {
-      setHighlightedMessageId(null);
-      replyJumpIndexRef.current = null;
-      highlightTimerRef.current = null;
-    }, 2500);
+      if (visibleMessageIdsRef.current.has(contextTargetId)) {
+        finishReplyJump(contextTargetId);
+      }
+
+    }, 150);
 
     return () => {
       clearTimeout(scrollTimer);
-
-      if (highlightTimerRef.current) {
-        clearTimeout(highlightTimerRef.current);
-        highlightTimerRef.current = null;
-      }
     };
   }, [contextMessages, contextTargetId, isSearchMode]);
   const latestMessage = messageList[0];
@@ -1453,7 +1506,7 @@ export default function ChatScreen() {
     if (
       isSearchMode ||
       !latestMessage ||
-      isViewingContext ||
+      replyJumpTargetIdRef.current !== null ||
       isContextLoading ||
       !hasInitialScrollCompletedRef.current ||
       !isNearBottomRef.current
@@ -1480,15 +1533,13 @@ export default function ChatScreen() {
   ]);
   
   function handleScrollToBottomPress() {
-    if (isViewingContext) {
-      listRef.current?.scrollToOffset({
-        offset: 0,
-        animated: true,
-      });
+    pauseReadDuringReplyJumpRef.current = false;
+    replyJumpTargetIdRef.current = null;
+    replyJumpIndexRef.current = null;
 
-      isNearBottomRef.current = true;
-      setIsScrollToBottomVisible(false);
-      return;
+    if (replyJumpRetryRef.current) {
+      clearTimeout(replyJumpRetryRef.current);
+      replyJumpRetryRef.current = null;
     }
 
     if (isContextLoading) {
@@ -1496,6 +1547,14 @@ export default function ChatScreen() {
       return;
     }
     
+    const unreadTargetIndex =
+      firstUnseenUnreadMessage !== undefined
+        ? displayedMessages.findIndex(
+          (message) =>
+            message.id === firstUnseenUnreadMessage.id,
+        )
+        : -1;
+        
     if (
       Platform.OS === 'web' &&
       webUnreadJumpPendingRef.current &&
@@ -1525,7 +1584,7 @@ export default function ChatScreen() {
     if (
       unreadBadgeCount > 0 &&
       firstUnseenUnreadMessage !== undefined &&
-      firstUnseenUnreadIndex >= 0 &&
+      unreadTargetIndex >= 0 &&
       !isUnreadAreaVisibleRef.current &&
       (
         Platform.OS !== 'web' ||
@@ -1538,7 +1597,7 @@ export default function ChatScreen() {
         webUnreadJumpMessageIdRef.current = firstUnseenUnreadMessage.id;
       }
 
-      buttonScrollTargetIndexRef.current = firstUnseenUnreadIndex;
+      buttonScrollTargetIndexRef.current = unreadTargetIndex;
 
       buttonScrollTargetMessageIdRef.current = firstUnseenUnreadMessage.id;
 
@@ -1546,7 +1605,7 @@ export default function ChatScreen() {
 
       listRef.current?.scrollToIndex({
         index: firstUnseenUnreadIndex,
-        animated: true,
+        animated: false,
         viewPosition: 0,
       });
 
@@ -1570,7 +1629,10 @@ export default function ChatScreen() {
   }
 
   function updateWebUnreadVisibility() {
-    if (isViewingContextRef.current) {
+    if (
+      pauseReadDuringReplyJumpRef.current ||
+      replyJumpTargetIdRef.current !== null
+    ) {
       return;
     }
     
@@ -1720,6 +1782,13 @@ export default function ChatScreen() {
       return;
     }
 
+    pauseReadDuringReplyJumpRef.current = true;
+
+    if (replyReadResumeTimerRef.current) {
+      clearTimeout(replyReadResumeTimerRef.current);
+      replyReadResumeTimerRef.current = null;
+    }
+
     const requestId = ++contextRequestIdRef.current;
 
     setContextTargetId(targetMessageId);
@@ -1806,6 +1875,13 @@ export default function ChatScreen() {
       return;
     }
 
+    pauseReadDuringReplyJumpRef.current = true;
+
+    if (replyReadResumeTimerRef.current) {
+      clearTimeout(replyReadResumeTimerRef.current);
+      replyReadResumeTimerRef.current = null;
+    }
+
     if (highlightTimerRef.current) {
       clearTimeout(highlightTimerRef.current);
     }
@@ -1818,8 +1894,6 @@ export default function ChatScreen() {
     replyJumpTargetIdRef.current = targetMessageId;
     replyJumpIndexRef.current = targetIndex;
     replyJumpAttemptsRef.current = 0;
-
-    setHighlightedMessageId(targetMessageId);
 
     if (!isSearchMode) {
       isNearBottomRef.current = false;
@@ -1834,11 +1908,9 @@ export default function ChatScreen() {
       viewPosition: 0.5,
     });
 
-    highlightTimerRef.current = setTimeout(() => {
-      replyJumpIndexRef.current = null;
-      setHighlightedMessageId(null);
-      highlightTimerRef.current = null;
-    }, 2500);
+    if (visibleMessageIdsRef.current.has(targetMessageId)) {
+      finishReplyJump(targetMessageId);
+    }
   }
   
   function handleOpenMessageMenu(
@@ -2451,6 +2523,17 @@ export default function ChatScreen() {
 
             scheduleWebUnreadCheck();
           }}
+          onScrollBeginDrag={() => {
+            pauseReadDuringReplyJumpRef.current = false;
+
+            replyJumpTargetIdRef.current = null;
+            replyJumpIndexRef.current = null;
+
+            if (replyJumpRetryRef.current) {
+              clearTimeout(replyJumpRetryRef.current);
+              replyJumpRetryRef.current = null;
+            }
+          }}
           onScrollToIndexFailed={(info) => {
             if (replyJumpTargetIdRef.current !== null) {
               const targetId = replyJumpTargetIdRef.current;
@@ -2461,14 +2544,13 @@ export default function ChatScreen() {
                 );
               
               if (targetIndex < 0) {
-                replyJumpTargetIdRef.current = null;
-                replyJumpIndexRef.current = null;
+                console.warn('Reply target is not loaded:', targetId);
                 return;
               }
 
               replyJumpAttemptsRef.current += 1;
 
-              if (replyJumpAttemptsRef.current > 5) {
+              if (replyJumpAttemptsRef.current > 12) {
                 console.warn(
                   'Reply jump failed for message:',
                   targetId,
@@ -2481,13 +2563,21 @@ export default function ChatScreen() {
 
               replyJumpIndexRef.current = targetIndex;
 
-              listRef.current?.scrollToOffset({
-                offset: Math.max(
-                  0,
-                  info.averageItemLength * targetIndex,
-                ),
-                animated: false,
-              });
+              const isNearOldestLoadedMessage = targetIndex >= displayedMessagesRef.current.length - 60;
+
+              if (isNearOldestLoadedMessage) {
+                listRef.current?.scrollToEnd({
+                  animated: false,
+                });
+              } else {
+                listRef.current?.scrollToOffset({
+                  offset: Math.max(
+                    0,
+                    info.averageItemLength * targetIndex,
+                  ),
+                  animated: false,
+                });
+              }
 
               if (replyJumpRetryRef.current) {
                 clearTimeout(replyJumpRetryRef.current);
@@ -2516,7 +2606,7 @@ export default function ChatScreen() {
                   animated: false,
                   viewPosition: 0.5,
                 });
-              }, 200);
+              }, 300);
 
               return;
             }
@@ -2557,7 +2647,7 @@ export default function ChatScreen() {
 
                 listRef.current?.scrollToIndex({
                   index: info.index,
-                  animated: true,
+                  animated: false,
                   viewPosition: 0,
                 });
               }, 100)
@@ -2662,7 +2752,6 @@ export default function ChatScreen() {
 
             const shouldShowUnreadSeparator =
               !isSearchMode &&
-              !isViewingContext &&
               firstUnreadMessageIdRef.current !== null &&
               item.id === firstUnreadMessageIdRef.current;
 
@@ -2780,7 +2869,7 @@ export default function ChatScreen() {
                 ↓
               </Text>
 
-              {!isViewingContext && !isContextLoading && unreadBadgeCount > 0 && (
+              {!isContextLoading && unreadBadgeCount > 0 && (
                 <View
                   style={styles.scrollToBottomBadge}
                 >
