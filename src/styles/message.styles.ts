@@ -183,6 +183,25 @@ export const styles = StyleSheet.create({
     padding: 10,
   },
 
+  attachmentImageCompact: {
+    width: 48,
+    height: 48,
+    flexShrink: 0,
+    marginTop: 0,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+
+  attachmentImagePreviewCompact: {
+    width: 48,
+    height: 48,
+  },
+
+  attachmentImagePlaceholderCompact: {
+    fontSize: 20,
+    textAlign: 'center',
+  },
+
   imageViewer: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.95)',
@@ -212,6 +231,19 @@ export const styles = StyleSheet.create({
 
   imageViewerPhoto: {
     flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+
+  imageViewerGallery: {
+    flex: 1,
+  },
+
+  imageViewerSlide: {
+    height: '100%',
+  },
+
+  imageViewerSlideImage: {
     width: '100%',
     height: '100%',
   },

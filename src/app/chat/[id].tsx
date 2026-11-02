@@ -2,6 +2,7 @@ import { Message } from '@/components/message';
 import { useAuth } from '@/providers/auth-provider';
 import { useMessages } from '@/providers/messages-provider';
 import { UserAvatar } from '@/components/user-avatar';
+import { AttachmentImage } from '@/components/attachment-image';
 import { 
   downloadAttachmentNative,
   downloadAttachmentWeb,
@@ -163,6 +164,7 @@ export default function ChatScreen() {
   const [replyOriginals, setReplyOriginals] = useState<Record<string, MessageData | null>>({});
   const [text, setText] = useState('');
   const [selectedAttachments, setSelectedAttachments] = useState<AttachmentData[]>([]);
+  const [selectedAttachmentPreviewUris, setSelectedAttachmentPreviewUris] = useState<Record<number, string>>({});
   const [locallySeenUnreadMessageIds, setLocallySeenUnreadMessageIds] = useState<Set<number>>(() => new Set());
   const [isScrollToBottomVisible, setIsScrollToBottomVisible] = useState(false);
   const [downloadingAttachmentId, setDownloadingAttachmentId] = useState<number | null>(null);
@@ -233,6 +235,17 @@ export default function ChatScreen() {
     minimumViewTime: 0,
     waitForInteraction: false,
   });
+
+  const previewableImages = selectedAttachments.filter(
+    (attachment) =>
+      attachment.type === 'image' &&
+      Boolean(selectedAttachmentPreviewUris[attachment.id]),
+  );
+
+  const previewImageUris = previewableImages.map(
+    (attachment) =>
+      selectedAttachmentPreviewUris[attachment.id],
+  );
 
   function updateUnreadViewportProgress(
     visibleUnreadMessageIds: number[],
@@ -947,6 +960,7 @@ export default function ChatScreen() {
       }
 
       const uploadedAttachments: AttachmentData[] = [];
+      const uploadedPreviewUris: Record<number, string> = {};
 
       for (const asset of assets) {
         const attachment =
@@ -957,6 +971,10 @@ export default function ChatScreen() {
           );
 
         uploadedAttachments.push(attachment);
+
+        if (attachment.type === 'image') {
+          uploadedPreviewUris[attachment.id] = asset.uri;
+        }
       }
       
       setSelectedAttachments(
@@ -964,6 +982,13 @@ export default function ChatScreen() {
           ...currentAttachments,
           ...uploadedAttachments,
         ],
+      );
+
+      setSelectedAttachmentPreviewUris(
+        (current) => ({
+          ...current,
+          ...uploadedPreviewUris,
+        }),
       );
 
       setAttachmentUploadError(null);
@@ -3089,16 +3114,30 @@ export default function ChatScreen() {
                 key={attachment.id} 
                 style={styles.attachmentBar}
               >
-                <Text style={styles.attachmentIcon}>
-                  📄
-                </Text>
+                {attachment.type === 'image' && token ? (
+                  <AttachmentImage
+                    chatId={chatId}
+                    attachment={attachment}
+                    token={token}
+                    localUri={selectedAttachmentPreviewUris[attachment.id]}
+                    compact
+                    galleryUris={previewImageUris}
+                    galleryIndex={previewableImages.findIndex((image) => image.id === attachment.id)}
+                  />
+                ) : (
+                  <>
+                    <Text style={styles.attachmentIcon}>
+                      📄
+                    </Text>
                 
-                <Text
-                  numberOfLines={1}
-                  style={styles.attachmentName}
-                >
-                  {attachment.originalName}
-                </Text>
+                    <Text
+                      numberOfLines={1}
+                      style={styles.attachmentName}
+                    >
+                      {attachment.originalName}
+                    </Text>
+                  </>
+                )}
                 
                 <Pressable
                   style={styles.attachmentRemoveButton}
