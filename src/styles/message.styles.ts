@@ -248,6 +248,37 @@ export const styles = StyleSheet.create({
     height: '100%',
   },
 
+  imageViewerNavigation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 20,
+    paddingVertical: 8,
+  },
+
+  imageViewerNavButton: {
+    width: 40,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2c2d32',
+    borderRadius: 8,
+  },
+
+  imageViewerNavButtonDisabled: {
+    opacity: 0.35,
+  },
+
+  imageViewerNavText: {
+    color: '#ffffff',
+    fontSize: 22,
+  },
+
+  imageViewerCounter: {
+    color: '#ffffff',
+    fontSize: 14,
+  },
+
   audioAttachment: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -225,6 +225,42 @@ export function AttachmentImage({
             </Pressable>
           </View>
 
+          {Platform.OS === 'web' && viewerUris.length > 1 && (
+            <View style={styles.imageViewerNavigation}>
+              <Pressable
+                onPress={() => {
+                  setViewerIndex((current) => Math.max(0, current - 1));
+                }}
+                disabled={viewerIndex === 0}
+                style={[
+                  styles.imageViewerNavButton,
+                  viewerIndex === 0 && styles.imageViewerNavButtonDisabled,
+                ]}
+              >
+                <Text style={styles.imageViewerNavText}>←</Text>
+              </Pressable>
+
+              <Text style={styles.imageViewerCounter}>
+                {viewerIndex + 1} / {viewerUris.length}
+              </Text>
+
+              <Pressable
+                onPress={() => {
+                  setViewerIndex((current) =>
+                    Math.min(viewerUris.length - 1, current + 1),
+                  );
+                }}
+                disabled={viewerIndex === viewerUris.length - 1}
+                style={[
+                  styles.imageViewerNavButton,
+                  viewerIndex === viewerUris.length - 1 &&
+                    styles.imageViewerNavButtonDisabled,
+                ]}
+              >
+                <Text style={styles.imageViewerNavText}>→</Text>
+              </Pressable>
+            </View>
+          )}
           {Platform.OS === 'web' && viewerUris.length > 0 && (
             <Image
               source={{ uri: viewerUris[viewerIndex] }}
