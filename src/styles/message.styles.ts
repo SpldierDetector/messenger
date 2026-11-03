@@ -239,6 +239,14 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
 
+  imageViewerWebArea: {
+    flex: 1,
+    minHeight: 0,
+    width: '100%',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+
   imageViewerSlide: {
     height: '100%',
   },

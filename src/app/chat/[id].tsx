@@ -52,6 +52,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
   View,
@@ -2218,6 +2219,7 @@ export default function ChatScreen() {
     setText('');
     setReplyingMessage(null);
     setSelectedAttachments([]);
+    setSelectedAttachmentPreviewUris({});
 
     if (token) {
       clearVoiceDraft(
@@ -3108,11 +3110,22 @@ export default function ChatScreen() {
               </View>
             )}
 
+            {selectedAttachments.length > 0 && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.selectedAttachmentsScroll}
+                contentContainerStyle={styles.selectedAttachmentsRow}
+              >
+            
             {selectedAttachments.map(
               (attachment) => (
               <View 
                 key={attachment.id} 
-                style={styles.attachmentBar}
+                style={[
+                  styles.attachmentBar,
+                  styles.selectedAttachmentItem,
+                ]}
               >
                 {attachment.type === 'image' && token ? (
                   <AttachmentImage
@@ -3150,6 +3163,12 @@ export default function ChatScreen() {
                             attachment.id,
                         ),
                     );
+
+                    setSelectedAttachmentPreviewUris((current) => {
+                      const updated = { ...current };
+                      delete updated[attachment.id];
+                      return updated;
+                    });
                   }}
                 >
                     <Text style={styles.attachmentRemoveText}>
@@ -3158,7 +3177,10 @@ export default function ChatScreen() {
                   </Pressable>
               </View>
             ),
-          )}
+            )}
+
+            </ScrollView>
+            )}
 
             {recordedVoiceUri && !isRecording && (
               <View style={styles.voicePreview}>

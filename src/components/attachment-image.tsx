@@ -47,7 +47,10 @@ export function AttachmentImage({
 
   const { width, height } = useWindowDimensions();
   const pageWidth = Math.max(1, width - 32);
-  const pageHeight = Math.max(1, height - 110);
+  const [webViewerSize, setWebViewerSize] = useState({
+    width: 0,
+    height: 0,
+  });
   const [viewerIndex, setViewerIndex] = useState(0);
 
   const viewerUris = galleryUris?.length
@@ -160,27 +163,7 @@ export function AttachmentImage({
               compact && styles.attachmentImagePreviewCompact,
             ]}
             resizeMode="cover"
-            onLoad={() => {
-              if (Platform.OS === 'web') {
-                console.log(
-                  '[Image preview] Loaded:',
-                  attachment.id,
-                );
-              }
-            }}
-            onError={(event) => {
-              if (Platform.OS === 'web') {
-                console.warn(
-                  '[Image preview] Error:',
-                  attachment.id,
-                  event.nativeEvent.error,
-                  'URI type:',
-                  imageUrl?.split(':')[0],
-                );
-              }
-
-              setLoadError(true);
-            }}
+            onError={() => setLoadError(true)}
           />
         ) : (
           <Text style={[
@@ -261,24 +244,43 @@ export function AttachmentImage({
               </Pressable>
             </View>
           )}
+          {Platform.OS !== 'web' && viewerUris.length > 1 && (
+            <View style={styles.imageViewerNavigation}>
+              <Text style={styles.imageViewerCounter}>
+                {viewerIndex + 1} / {viewerUris.length}
+              </Text>
+            </View>
+          )}
           {Platform.OS === 'web' && viewerUris.length > 0 && (
-            <Image
-              source={{ uri: viewerUris[viewerIndex] }}
-              style={{
-                width: pageWidth,
-                height: pageHeight,
+            <View
+              style={styles.imageViewerWebArea}
+              onLayout={({ nativeEvent }) => {
+                const {width, height} = nativeEvent.layout;
+
+                setWebViewerSize((current) => {
+                  if (
+                    current.width === width &&
+                    current.height === height
+                  ) {
+                    return current;
+                  }
+
+                  return { width, height };
+                });
               }}
-              resizeMode="contain"
-              onLoad={() => {
-                console.log('[Gallery Web] Image loaded');
-              }}
-              onError={(event) => {
-                console.warn(
-                  '[Gallery Web] Image error:',
-                  event.nativeEvent.error,
-                );
-              }}
-            />
+            >
+              {webViewerSize.width > 0 &&
+                webViewerSize.height > 0 && (
+                  <Image
+                    source={{ uri: viewerUris[viewerIndex] }}
+                    style={{
+                      width: webViewerSize.width,
+                      height: webViewerSize.height,
+                    }}
+                    resizeMode="contain"
+                  />
+                )}
+            </View>
           )}
 
           {Platform.OS !== 'web' && viewerUris.length > 0 && (

@@ -313,6 +313,21 @@ attachmentBar: {
   borderColor: '#383A40',
   borderRadius: 12,
 },
+selectedAttachmentsScroll: {
+  width: '100%',
+  flexGrow: 0,
+  marginBottom: 8,
+},
+selectedAttachmentsRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 8,
+  paddingHorizontal: 12,
+},
+selectedAttachmentItem: {
+  marginHorizontal: 0,
+  marginBottom: 0,
+},
 attachmentIcon: {
   fontSize: 18,
 },
