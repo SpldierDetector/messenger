@@ -213,7 +213,7 @@ export default function ChatListScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Voxa</Text>
+        <Text style={styles.title}>RuTsuna</Text>
 
         <View style={styles.headerActions}>
           <Pressable

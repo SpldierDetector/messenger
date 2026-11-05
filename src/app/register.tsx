@@ -98,7 +98,7 @@ export default function RegisterScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>
-        Voxa
+        RuTsuna
       </Text>
 
       <Text style={styles.subtitle}>
