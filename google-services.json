@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1070603134531",
+    "project_id": "rutsuna-d8ffe",
+    "storage_bucket": "rutsuna-d8ffe.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1070603134531:android:8155c3766e4c34c7c0d6f6",
+        "android_client_info": {
+          "package_name": "com.rutsuna.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCTxBBAObqtQgivAUrZmuoxZBVjGtyAOqw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

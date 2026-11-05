@@ -73,7 +73,6 @@ export default function loginScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>RuTsuna</Text>
-
       <Text style={styles.subtitle}>
         Войдите в аккаунт
       </Text>
