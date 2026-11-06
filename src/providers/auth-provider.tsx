@@ -38,6 +38,7 @@ import {
 
 import type { UserData } from '@/types/user';
 import { ApiError } from '@/services/api-error';
+import { unregisterDevicePushToken } from '@/services/push-device';
 
 type AuthContextData = {
   user: AuthUser | null;
@@ -142,6 +143,15 @@ export function AuthProvider({
   async function logout() {
     try {
       if (token) {
+        try {
+          await unregisterDevicePushToken(token);
+        } catch (error) {
+          console.warn(
+            '[push] Не удалось отвязать устройство:',
+            error,
+          );
+        }
+
         await logoutRequest(token);
       }
     } catch (error) {

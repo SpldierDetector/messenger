@@ -1,5 +1,5 @@
 import { Router } from 'express';
-
+import { removePushTokensForSession } from '../db/push-tokens.js';
 import { authenticateUser, registerUser } from '../auth/auth-service.js';
 import { 
   createSessionToken,
@@ -144,7 +144,7 @@ authRouter.get('/me', requireAuth, (request, response) => {
   });
 });
 
-authRouter.post('/logout', requireAuth, (request, response) =>{
+authRouter.post('/logout', requireAuth, (request, response) => {
   const token = request.authToken;
 
   if (!token) {
@@ -155,6 +155,7 @@ authRouter.post('/logout', requireAuth, (request, response) =>{
     return;
   }
 
+  removePushTokensForSession(token);
   deleteSession(token);
 
   response.status(204).send();

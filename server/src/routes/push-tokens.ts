@@ -29,7 +29,11 @@ pushTokensRouter.post(
       return;
     }
       
-    savePushToken(request.user!.id, token);
+    savePushToken(
+      request.user!.id,
+      token,
+      request.authToken!,
+    );
 
     response.status(204).send();
   },
@@ -49,7 +53,11 @@ pushTokensRouter.delete(
       return;
     }
 
-    removePushToken(request.user!.id, token);
+    removePushToken(
+      request.user!.id,
+      token,
+      request.authToken!,
+    );
 
     response.status(204).send();
   },

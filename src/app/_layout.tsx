@@ -1,5 +1,5 @@
 import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
-
+import { PushRegistration } from '@/components/push-registration';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { AuthProvider } from '@/providers/auth-provider';
 import { MessagesProvider } from '@/providers/messages-provider';
@@ -10,6 +10,7 @@ export default function TabLayout() {
     <ThemeProvider value={DarkTheme}>
       <AuthProvider>
         <MessagesProvider>
+          <PushRegistration />
           <AnimatedSplashOverlay />
 
           <Stack screenOptions={{

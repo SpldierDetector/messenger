@@ -484,3 +484,23 @@ database.exec(`
   CREATE INDEX IF NOT EXISTS push_tokens_user_id_idx
     ON push_tokens(userId);
 `);
+
+const pushTokenColumns = database
+  .prepare(`PRAGMA table_info(push_tokens)`)
+  .all() as Array<{ name: string}>;
+
+const hasSessionHash = pushTokenColumns.some(
+  (column) => column.name === 'sessionHash',
+);
+
+if (!hasSessionHash) {
+  database.exec(`
+    ALTER TABLE push_tokens
+    ADD COLUMN sessionHash TEXT  
+  `);
+}
+
+database.exec(`
+  CREATE INDEX IF NOT EXISTS push_tokens_session_hash_idx
+  ON push_tokens(sessionHash);  
+`);
