@@ -469,3 +469,18 @@ if (!hasChatType) {
     ADD COLUMN type TEXT NOT NULL DEFAULT 'direct'  
   `);
 }
+
+database.exec(`
+  CREATE TABLE IF NOT EXISTS push_tokens (
+    token TEXT PRIMARY KEY,
+    userId INTEGER NOT NULL,
+    createdAt INTEGER NOT NULL,
+    updatedAt INTEGER NOT NULL,
+
+    FOREIGN KEY (userId)
+      REFERENCES users(id)
+  );
+  
+  CREATE INDEX IF NOT EXISTS push_tokens_user_id_idx
+    ON push_tokens(userId);
+`);

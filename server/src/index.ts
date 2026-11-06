@@ -3,7 +3,7 @@ import express from 'express';
 import { createServer } from 'node:http';
 import { WebSocket, WebSocketServer } from 'ws';
 import { cleanupExpiredAttachments } from './uploads/cleanup.js';
-
+import { pushTokensRouter } from './routes/push-tokens.js';
 import { getUserBySessionToken } from './auth/auth-service.js';
 import {
   getUnreadMessageCountsByUserId,
@@ -81,6 +81,7 @@ app.use('/auth', authRouter);
 app.use('/chats', chatsRouter);
 app.use('/users', usersRouter);
 app.use('/chats', createAttachmentsRouter());
+app.use('/push-tokens', pushTokensRouter);
 
 const server = createServer(app);
 
