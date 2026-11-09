@@ -54,6 +54,7 @@ import type {
   SendMessageRequest,
   SyncMessagesRequest,
 } from '../types/message.js';
+import { sendNewMessagePush } from '../services/push-notifications.js';
 
 type MessagesRouterOptions = {
   broadcastMessageCreated: (message: MessageData) => void;
@@ -833,6 +834,17 @@ export function createMessagesRouter({
     broadcastMessageCreated(message);
 
     response.status(201).json(message);
+
+    void sendNewMessagePush(
+      message,
+      currentUser.id,
+      currentUser.name,
+    ).catch((error) => {
+      console.error(
+        '[push] Failed to send message notification:',
+        error,
+      );
+    });
   });
 
   messagesRouter.post(
@@ -1165,6 +1177,17 @@ export function createMessagesRouter({
     response.status(201).json(
       forwardedMessage,
     );
+
+    void sendNewMessagePush(
+      forwardedMessage,
+      currentUser.id,
+      currentUser.name,
+    ).catch((error) => {
+      console.error(
+        '[push] Failed to send forwarded message notification:',
+        error,
+      );
+    });
   });
 
   messagesRouter.patch(

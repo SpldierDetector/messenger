@@ -47,6 +47,7 @@ import {
 } from 'expo-audio';
 import {
   Alert,
+  AppState,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -59,7 +60,10 @@ import {
   type ViewToken,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
+import { 
+  dismissNotificationsForChat,
+  setFocusedChatForNotifications,
+} from '@/services/chat-notifications';
 
 export default function ChatScreen() {
   const TYPING_STOP_DELAY = 1500;
@@ -732,6 +736,62 @@ export default function ChatScreen() {
       stopTyping,
       isInitialMessagePositionReady,
     ]), 
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      const chatIsReady =
+        isAuthenticated &&
+        isChatLoaded &&
+        isCurrentChatMessagesLoaded &&
+        isLoaded &&
+        chatLoadError === null &&
+        Number.isSafeInteger(chatId) &&
+        chatId > 0 &&
+        chat?.id === chatId;
+
+      if (!chatIsReady) {
+        return;
+      }
+
+      setFocusedChatForNotifications(chatId);
+
+      function clearChatNotifications() {
+        void dismissNotificationsForChat(chatId)
+          .catch((error) => {
+            console.warn(
+              '[push] Failed to dismiss chat notifications:',
+              error,
+            );
+          });
+      }
+
+      if (AppState.currentState === 'active') {
+        clearChatNotifications();
+      }
+
+      const subscription = AppState.addEventListener(
+        'change',
+        (nextState) => {
+          if (nextState === 'active') {
+            clearChatNotifications();
+          }
+        },
+      );
+
+      return () => {
+        setFocusedChatForNotifications(null);
+        subscription.remove();
+      };
+    }, [
+      chatId,
+      chat?.id,
+      chatLoadError,
+      isAuthenticated,
+      isChatLoaded,
+      isCurrentChatMessagesLoaded,
+      isLoaded,
+    ]),
   );
 
   async function handleVoicePreviewPress() {

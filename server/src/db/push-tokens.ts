@@ -5,7 +5,7 @@ function hashSessionToken(authToken: string): string {
   return createHash('sha256')
     .update(authToken)
     .digest('hex');
-}
+};
 
 const saveStatement = database.prepare(`
   INSERT INTO push_tokens (
@@ -52,7 +52,7 @@ export function savePushToken(
     now,
     now,
   );
-}
+};
 
 export function removePushToken(
   userId: number,
@@ -64,7 +64,7 @@ export function removePushToken(
     userId,
     hashSessionToken(authToken),
   );
-}
+};
 
 export function removePushTokensForSession(
   authToken: string,
@@ -72,4 +72,37 @@ export function removePushTokensForSession(
   deleteSessionTokensStatement.run(
     hashSessionToken(authToken),
   );
-}
+};
+
+const getChatRecipientTokensStatement = database.prepare(`
+  SELECT pt.token
+  FROM push_tokens AS pt
+  INNER JOIN chat_members AS cm
+    ON cm.userId = pt.userId
+  WHERE cm.chatId = ?
+    AND cm.userId <> ?
+    AND pt.sessionHash IS NOT NULL  
+`);
+
+export function getPushTokensForChatRecipients(
+  chatId: number,
+  senderId: number,
+): string [] {
+  const rows = getChatRecipientTokensStatement.all(
+    chatId,
+    senderId,
+  ) as Array<{ token: string }>;
+
+  return rows.map((row) => row.token);
+};
+
+const deleteInvalidTokenStatement = database.prepare(`
+  DELETE FROM push_tokens
+  WHERE token = ? 
+`);
+
+export function removeInvalidPushToken(
+  token: string,
+): void {
+  deleteInvalidTokenStatement.run(token);
+};
